@@ -1,3 +1,4 @@
 .waf-*
-.pyc
+*.pyc
 build/
+.lock*
