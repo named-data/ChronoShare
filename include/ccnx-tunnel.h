@@ -1,7 +1,7 @@
 #ifndef CCNX_TUNNEL_H
 #define CCNX_TUNNEL_H
 
-#include <sync/sync-ccnx-wrapper.h>
+#include <ccnx-wrapper.h>
 #include <string>
 #include <boost/function.hpp>
 #include <boost/variant.hpp>
@@ -21,9 +21,7 @@ class CcnxTunnel : public CcnxWrapper
 {
 public: 
   typedef boost::variant<StringDataCallback, RawDataCallback> DataCallback;
-  typedef multimap<string, DataCallback> PendingInterestTable;
   typedef multimap<string, InterestCallback> RegisteredInterestTable;
-  typedef multimap<string, DataCallback>iterator PitIter;
   typedef multimap<string, InterestCallback>iterator RitIter;
   typedef boost::shared_mutex Lock;
   typedef boost::unique_lock<Lock> WriteLock;
@@ -73,9 +71,7 @@ protected:
 protected:
   // need a way to update local prefix, perhaps using macports trick, but eventually we need something more portable
   string m_localPrefix;
-  PendingInterestTable m_pit;
   RegisteredInterestTable m_rit;
-  Lock m_pitLock;
   Lock m_ritLock;
 };
 

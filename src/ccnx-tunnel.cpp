@@ -26,12 +26,18 @@ CcnxTunnel::refreshLocalPrefix()
 }
 
 int
+sendInterest(const string &interest, void *dataPass)
+{
+  string tunneledInterest = queryRoutableName(interest);
+}
+
+int
 CccnxTunnel::publishRawData(const string &name, const char *buf, size_t len, int freshness)
 {
   ContentObjectPtr co = createContentObject(name, buf, len, freshness);
   storeContentObject(name, co);
   
-  string tunneledName = queryRoutableName(name);
+  string tunneledName = m_localPrefix + name;
   ContentObjectPtr tunneledCo = createContentObject(tunneledName, co->m_data, co->m_len, freshness);
 
   return putToCcnd(tunneledCo);
