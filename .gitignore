@@ -1,0 +1,4 @@
+.lock-waf_darwin_build
+.waf*
+build/
+chronoshare.db
