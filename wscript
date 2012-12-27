@@ -28,7 +28,7 @@ def configure(conf):
 
     conf.load('boost')
 
-    conf.check_boost(lib='system iostreams test thread')
+    conf.check_boost(lib='system test thread')
 
     conf.load ('ccnx')
     conf.check_ccnx (path=conf.options.ccnx_dir)
