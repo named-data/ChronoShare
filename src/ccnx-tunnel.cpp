@@ -28,28 +28,28 @@ CcnxTunnel::refreshLocalPrefix()
 }
 
 int
-CcnxTunnel::sendInterest (const std::string &interest, const DataCallback &dataCallback, int retry, const TimeoutCallback &timeoutCallback)
+CcnxTunnel::sendInterest (const std::string &interest, Closure *closure)
 {
   string tunneledInterest = queryRoutableName(interest);
-  ClosurePass *cp = new TunnelClosurePass(retry, dataCallback, timeoutCallback, this, interest);
-  CcnxWrapper::sendInterest(tunneledInterest, cp);
+  Closure *cp = new TunnelClosure(closure, this, interest);
+  sendInterest(tunneledInterest, cp);
 }
 
 void 
-CcnxTunnel::handleTunneledData(const string &name, const Bytes &tunneledData, const DataCallback &originalDataCallback)
+CcnxTunnel::handleTunneledData(const string &name, const Bytes &tunneledData, const Closure::DataCallback &originalDataCallback)
 {
   ParsedContentObject pco(tunneledData);
   originalDataCallback(pco.name(), pco.content());
 }
 
 int
-CcnxTunnel::publishData(const string &name, const char *buf, size_t len, int freshness)
+CcnxTunnel::publishData(const string &name, const unsigned char *buf, size_t len, int freshness)
 {
   Bytes content = createContentObject(name, buf, len, freshness);
   storeContentObject(name, content);
   
   string tunneledName = m_localPrefix + name;
-  Bytes tunneledCo = createContentObject(tunneledName, (const char*)&content[0], content.size(), freshness);
+  Bytes tunneledCo = createContentObject(tunneledName, head(content), content.size(), freshness);
 
   return putToCcnd(tunneledCo);
 }
@@ -108,15 +108,21 @@ CcnxTunnel::clearInterestFilter(const string &prefix)
   m_rit.erase(prefix);
 }
 
-TunnelClosurePass::TunnelClosurePass(int retry, const CcnxWrapper::DataCallback &dataCallback, const CcnxWrapper::TimeoutCallback &timeoutCallback, CcnxTunnel *tunnel, const string &originalInterest)
-                  : ClosurePass(retry, dataCallback, timeoutCallback)
+TunnelClosure::TunnelClosure(int retry, const DataCallback &dataCallback, const TimeoutCallback &timeoutCallback, CcnxTunnel *tunnel, const string &originalInterest)
+                  : Closure(retry, dataCallback, timeoutCallback)
                   , m_tunnel(tunnel)
                   , m_originalInterest(originalInterest)
 {
 }
 
+TunnelClosure::TunnelClosure(const Closure *closure, CcnxTunnel *tunnel, const string &originalInterest)
+                 : Closure(*closure)
+                 , m_tunnel(tunnel)
+{
+}
+
 void 
-TunnelClosurePass::runDataCallback(const string &name, const Bytes &content)
+TunnelClosure::runDataCallback(const string &name, const Bytes &content)
 {
   if (m_tunnel != NULL)
   {
@@ -124,10 +130,10 @@ TunnelClosurePass::runDataCallback(const string &name, const Bytes &content)
   }
 }
 
-CcnxWrapper::TimeoutCallbackReturnValue
-TunnelClosurePass::runTimeoutCallback(const string &interest)
+Closure::TimeoutCallbackReturnValue
+TunnelClosure::runTimeoutCallback(const string &interest)
 {
-  return ClosurePass::runTimeoutCallback(m_originalInterest);
+  return Closure::runTimeoutCallback(m_originalInterest);
 }
 
 } // Ccnx

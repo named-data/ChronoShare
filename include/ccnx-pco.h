@@ -1,9 +1,8 @@
 #ifndef CCNX_CONTENT_OBJECT_H
 #define CCNX_CONTENT_OBJECT_H
 
-#include <boost/exception/all.hpp>
-#include <boost/shared_ptr.hpp>
 #include "ccnx-wrapper.h"
+#include "ccnx-common.h"
 
 using namespace std;
 

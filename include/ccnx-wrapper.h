@@ -10,38 +10,22 @@ extern "C" {
 #include <ccn/signing.h>
 }
 
-#include <vector>
-#include <boost/exception/all.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #include <boost/thread/thread.hpp>
-#include <boost/function.hpp>
-#include <string>
-#include <sstream>
-#include <map>
+
+#include "ccnx-common.h"
+#include "ccnx-closure.h"
 
 using namespace std;
 
 namespace Ccnx {
 
-typedef vector<unsigned char> Bytes;
-
-void
-readRaw(Bytes &bytes, const unsigned char *src, size_t len);
-
 struct CcnxOperationException : virtual boost::exception, virtual exception { };
 
-class CcnxWrapper {
+class CcnxWrapper 
+{
 public:
-  typedef boost::function<void (const string &, const Bytes &)> DataCallback;
   typedef boost::function<void (const string &)> InterestCallback;
-  typedef enum
-  {
-    RESULT_OK,
-    RESULT_REEXPRESS
-  } TimeoutCallbackReturnValue;
-  typedef boost::function<TimeoutCallbackReturnValue (const string &)> TimeoutCallback;
-
-public:
 
   CcnxWrapper();
   virtual ~CcnxWrapper();
@@ -53,10 +37,10 @@ public:
   clearInterestFilter (const string &prefix);
 
   virtual int 
-  sendInterest (const string &strInterest, const DataCallback &dataCallback, int retry = 0, const TimeoutCallback &timeoutCallback = TimeoutCallback());
+  sendInterest (const string &strInterest, Closure *closure);
 
   virtual int 
-  publishData (const string &name, const char *buf, size_t len, int freshness);
+  publishData (const string &name, const unsigned char *buf, size_t len, int freshness);
 
   int
   publishData (const string &name, const Bytes &content, int freshness);
@@ -69,7 +53,7 @@ public:
 
 protected:
   Bytes
-  createContentObject(const string &name, const char *buf, size_t len, int freshness);
+  createContentObject(const string &name, const unsigned char *buf, size_t len, int freshness);
 
   int 
   putToCcnd (const Bytes &contentObject);
@@ -97,8 +81,6 @@ protected:
   void
   ccnLoop ();
 
-  int 
-  sendInterest (const string &strInterest, void *dataPass);
   /// @endcond
 
 protected:
@@ -115,22 +97,6 @@ protected:
 };
 
 typedef boost::shared_ptr<CcnxWrapper> CcnxWrapperPtr;
-
-class ClosurePass 
-{
-public:
-  ClosurePass(int retry, const CcnxWrapper::DataCallback &dataCallback, const CcnxWrapper::TimeoutCallback &timeoutCallback);
-  int getRetry() {return m_retry;}
-  void decRetry() { m_retry--;}
-  virtual ~ClosurePass();
-  virtual void runDataCallback(const string &name, const Bytes &content);
-  virtual CcnxWrapper::TimeoutCallbackReturnValue runTimeoutCallback(const string &interest);
-
-protected:
-  int m_retry;
-  CcnxWrapper::TimeoutCallback *m_timeoutCallback;
-  CcnxWrapper::DataCallback *m_dataCallback;  
-};
 
 
 } // Ccnx

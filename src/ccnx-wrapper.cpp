@@ -26,6 +26,11 @@ readRaw(Bytes &bytes, const unsigned char *src, size_t len)
   }
 }
 
+const unsigned char *
+head(const Bytes &bytes)
+{
+  return &bytes[0];
+}
 
 CcnxWrapper::CcnxWrapper()
   : m_handle (0)
@@ -207,7 +212,7 @@ CcnxWrapper::ccnLoop ()
 }
 
 Bytes
-CcnxWrapper::createContentObject(const std::string &name, const char *buf, size_t len, int freshness)
+CcnxWrapper::createContentObject(const std::string &name, const unsigned char *buf, size_t len, int freshness)
 {
   ccn_charbuf *pname = ccn_charbuf_create();
   ccn_charbuf *signed_info = ccn_charbuf_create();
@@ -223,7 +228,7 @@ CcnxWrapper::createContentObject(const std::string &name, const char *buf, size_
 			 NULL,
 			 m_keyLoactor);
   if(ccn_encode_ContentObject(content, pname, signed_info,
-			   (const unsigned char *)buf, len,
+			   buf, len,
 			   NULL, getPrivateKey()) < 0)
   {
     // BOOST_THROW_EXCEPTION(CcnxOperationException() << errmsg_info_str("encode content failed"));
@@ -247,7 +252,7 @@ CcnxWrapper::putToCcnd (const Bytes &contentObject)
     return -1;
   
 
-  if (ccn_put(m_handle, (const unsigned char *)contentObject[0], contentObject.size()) < 0)
+  if (ccn_put(m_handle, head(contentObject), contentObject.size()) < 0)
   {
     // BOOST_THROW_EXCEPTION(CcnxOperationException() << errmsg_info_str("ccnput failed"));
   }
@@ -256,7 +261,7 @@ CcnxWrapper::putToCcnd (const Bytes &contentObject)
 }
 
 int
-CcnxWrapper::publishData (const string &name, const char *buf, size_t len, int freshness)
+CcnxWrapper::publishData (const string &name, const unsigned char *buf, size_t len, int freshness)
 {
   Bytes co = createContentObject(name, buf, len, freshness); 
   return putToCcnd(co);
@@ -265,7 +270,7 @@ CcnxWrapper::publishData (const string &name, const char *buf, size_t len, int f
 int
 CcnxWrapper::publishData (const string &name, const Bytes &content, int freshness)
 {
-  publishData(name, (const char*)content[0], content.size(), freshness);
+  publishData(name, head(content), content.size(), freshness);
 }
 
 string
@@ -318,7 +323,7 @@ incomingData(ccn_closure *selfp,
              ccn_upcall_kind kind,
              ccn_upcall_info *info)
 {
-  ClosurePass *cp = static_cast<ClosurePass *> (selfp->data);
+  Closure *cp = static_cast<Closure *> (selfp->data);
 
   switch (kind)
     {
@@ -338,11 +343,11 @@ incomingData(ccn_closure *selfp,
       }
 
       string interest = CcnxWrapper::extractName(info->interest_ccnb, info->interest_comps);
-      CcnxWrapper::TimeoutCallbackReturnValue rv = cp->runTimeoutCallback(interest);
+      Closure::TimeoutCallbackReturnValue rv = cp->runTimeoutCallback(interest);
       switch(rv)
       {
-        case CcnxWrapper::RESULT_OK : return CCN_UPCALL_RESULT_OK;
-        case CcnxWrapper::RESULT_REEXPRESS : return CCN_UPCALL_RESULT_REEXPRESS;
+        case Closure::RESULT_OK : return CCN_UPCALL_RESULT_OK;
+        case Closure::RESULT_REEXPRESS : return CCN_UPCALL_RESULT_REEXPRESS;
         default : break;
       }
       return CCN_UPCALL_RESULT_OK;
@@ -371,14 +376,7 @@ incomingData(ccn_closure *selfp,
   return CCN_UPCALL_RESULT_OK;
 }
 
-
-int CcnxWrapper::sendInterest (const string &strInterest, const DataCallback &dataCallback, int retry, const TimeoutCallback &timeoutCallback)
-{
-  ClosurePass * pass = new ClosurePass(retry, dataCallback, timeoutCallback);
-  sendInterest(strInterest, pass);
-}
-
-int CcnxWrapper::sendInterest (const string &strInterest, void *dataPass)
+int CcnxWrapper::sendInterest (const string &strInterest, Closure *closure)
 {
   recursive_mutex::scoped_lock lock(m_mutex);
   if (!m_running || !m_connected)
@@ -388,7 +386,7 @@ int CcnxWrapper::sendInterest (const string &strInterest, void *dataPass)
   ccn_closure *dataClosure = new ccn_closure;
 
   ccn_name_from_uri (pname, strInterest.c_str());
-  dataClosure->data = dataPass;
+  dataClosure->data = (void *)closure;
 
   dataClosure->p = &incomingData;
   if (ccn_express_interest (m_handle, pname, dataClosure, NULL) < 0)
@@ -519,42 +517,6 @@ CcnxWrapper::getLocalPrefix ()
   ccn_destroy (&tmp_handle);
   
   return retval;
-}
-
-
-ClosurePass::ClosurePass(int retry, const CcnxWrapper::DataCallback &dataCallback, const CcnxWrapper::TimeoutCallback &timeoutCallback)
-              : m_retry(retry), m_timeoutCallback(NULL)
-{
-  m_timeoutCallback = new CcnxWrapper::TimeoutCallback (timeoutCallback);
-  m_dataCallback = new CcnxWrapper::DataCallback (dataCallback); 
-}
-
-ClosurePass::~ClosurePass () 
-{
-  delete m_dataCallback;
-  delete m_timeoutCallback;
-  m_dataCallback = NULL;
-  m_timeoutCallback = NULL;
-}
-
-CcnxWrapper::TimeoutCallbackReturnValue
-ClosurePass::runTimeoutCallback(const string &interest)
-{
-  if ((*m_timeoutCallback).empty())
-  {
-    return CcnxWrapper::RESULT_OK;
-  }
-  
-  return (*m_timeoutCallback)(interest);
-}
-
-
-void 
-ClosurePass::runDataCallback(const string &name, const Bytes &content) 
-{
-  if (m_dataCallback != NULL) {
-    (*m_dataCallback)(name, content);
-  }
 }
 
 }

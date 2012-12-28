@@ -16,7 +16,7 @@ ParsedContentObject::ParsedContentObject(const unsigned char *data, size_t len)
 
 ParsedContentObject::ParsedContentObject(const Bytes &bytes)
 {
-  ParsedContentObject((const unsigned char *)bytes[0], bytes.size());
+  ParsedContentObject(head(bytes), bytes.size());
 }
 
 ParsedContentObject::ParsedContentObject(const ParsedContentObject &other)
@@ -36,7 +36,7 @@ ParsedContentObject::content() const
   const unsigned char *content;
   size_t len;
   Bytes bytes;
-  int res = ccn_content_get_value((const unsigned char *)m_bytes[0], m_pco.offset[CCN_PCO_E], &m_pco, &content, &len);
+  int res = ccn_content_get_value(head(m_bytes), m_pco.offset[CCN_PCO_E], &m_pco, &content, &len);
   if (res < 0)
   {
     boost::throw_exception(MisformedContentObjectException());
@@ -49,7 +49,7 @@ ParsedContentObject::content() const
 string
 ParsedContentObject::name() const
 {
-  return CcnxWrapper::extractName((const unsigned char *)m_bytes[0], m_comps);
+  return CcnxWrapper::extractName(head(m_bytes), m_comps);
 }
 
 }

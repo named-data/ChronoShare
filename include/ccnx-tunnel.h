@@ -1,13 +1,10 @@
 #ifndef CCNX_TUNNEL_H
 #define CCNX_TUNNEL_H
 
-#include <string>
-#include <boost/function.hpp>
 #include <boost/variant.hpp>
 #include <boost/thread/locks.hpp>
-#include <utility>
-#include <map>
 
+#include "ccnx-common.h"
 #include "ccnx-wrapper.h"
 
 #define _OVERRIDE 
@@ -40,10 +37,10 @@ public:
 
   // name is topology-independent
   virtual int
-  publishData(const string &name, const char *buf, size_t len, int freshness) _OVERRIDE;
+  publishData(const string &name, const unsigned char *buf, size_t len, int freshness) _OVERRIDE;
 
   virtual int
-  sendInterest (const std::string &interest, const DataCallback &dataCallback, int retry = 0, const TimeoutCallback &timeoutCallback = TimeoutCallback()) _OVERRIDE;
+  sendInterest (const std::string &interest, Closure *closure);
 
 
   // prefix is topology-independent
@@ -76,7 +73,7 @@ public:
   handleTunneledInterest(const string &tunneldInterest);
   
   void
-  handleTunneledData(const string &name, const Bytes &tunneledData, const DataCallback &originalDataCallback);
+  handleTunneledData(const string &name, const Bytes &tunneledData, const Closure::DataCallback &originalDataCallback);
 
 protected:
   // need a way to update local prefix, perhaps using macports trick, but eventually we need something more portable
@@ -85,15 +82,17 @@ protected:
   Lock m_ritLock;
 };
 
-class TunnelClosurePass : public ClosurePass
+class TunnelClosure : public Closure
 {
 public:
-  TunnelClosurePass(int retry, const CcnxWrapper::DataCallback &dataCallback, const CcnxWrapper::TimeoutCallback &timeoutCallback, CcnxTunnel *tunnel, const string &originalInterest);
+  TunnelClosure(int retry, const DataCallback &dataCallback, const TimeoutCallback &timeoutCallback, CcnxTunnel *tunnel, const string &originalInterest);
+
+  TunnelClosure(const Closure *closure, CcnxTunnel *tunnel, const string &originalInterest);
 
   virtual void 
   runDataCallback(const string &name, const Bytes &content) _OVERRIDE;
 
-  virtual CcnxWrapper::TimeoutCallbackReturnValue
+  virtual TimeoutCallbackReturnValue
   runTimeoutCallback(const string &interest) _OVERRIDE;
 
 private:
