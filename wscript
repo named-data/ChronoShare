@@ -64,7 +64,7 @@ def build (bld):
         source =  [
             'src/ccnx-wrapper.cpp',
             'src/ccnx-pco.cpp',
-            #'src/ccnx-tunnel.cpp',
+            'src/ccnx-tunnel.cpp',
             ],
         use = 'BOOST BOOST_THREAD SSL CCNX',
         includes = ['include', ],

@@ -1,4 +1,5 @@
 #include "ccnx-tunnel.h"
+#include "ccnx-pco.h"
 
 namespace Ccnx
 {
@@ -14,6 +15,7 @@ CcnxTunnel::~CcnxTunnel()
 {
 }
 
+void
 CcnxTunnel::refreshLocalPrefix() 
 {
   string newPrefix = getLocalPrefix();
@@ -26,30 +28,39 @@ CcnxTunnel::refreshLocalPrefix()
 }
 
 int
-sendInterest(const string &interest, void *dataPass)
+CcnxTunnel::sendInterest (const std::string &interest, const DataCallback &dataCallback, int retry, const TimeoutCallback &timeoutCallback)
 {
   string tunneledInterest = queryRoutableName(interest);
+  ClosurePass *cp = new TunnelClosurePass(retry, dataCallback, timeoutCallback, this, interest);
+  CcnxWrapper::sendInterest(tunneledInterest, cp);
+}
+
+void 
+CcnxTunnel::handleTunneledData(const string &name, const Bytes &tunneledData, const DataCallback &originalDataCallback)
+{
+  ParsedContentObject pco(tunneledData);
+  originalDataCallback(pco.name(), pco.content());
 }
 
 int
-CccnxTunnel::publishRawData(const string &name, const char *buf, size_t len, int freshness)
+CcnxTunnel::publishData(const string &name, const char *buf, size_t len, int freshness)
 {
-  ContentObjectPtr co = createContentObject(name, buf, len, freshness);
-  storeContentObject(name, co);
+  Bytes content = createContentObject(name, buf, len, freshness);
+  storeContentObject(name, content);
   
   string tunneledName = m_localPrefix + name;
-  ContentObjectPtr tunneledCo = createContentObject(tunneledName, co->m_data, co->m_len, freshness);
+  Bytes tunneledCo = createContentObject(tunneledName, (const char*)&content[0], content.size(), freshness);
 
   return putToCcnd(tunneledCo);
 }
 
 void
-CcnxTunnel::handleTunneledInterest(string tunneledInterest)
+CcnxTunnel::handleTunneledInterest(const string &tunneledInterest)
 {
   // The interest must have m_localPrefix as a prefix (component-wise), otherwise ccnd would not deliver it to us
   string interest = (m_localPrefix == "/") 
                     ? tunneledInterest
-                    : tunneldInterest.substr(m_localPrefix.size());
+                    : tunneledInterest.substr(m_localPrefix.size());
 
   ReadLock(m_ritLock); 
   
@@ -57,15 +68,15 @@ CcnxTunnel::handleTunneledInterest(string tunneledInterest)
   for (RitIter it = m_rit.begin(); it != m_rit.end(); it++)
   {
     // evoke callback for any prefix that is the prefix of the interest
-    if (isPrefix(it->first(), interest))
+    if (isPrefix(it->first, interest))
     {
-      (it->second())(interest);
+      (it->second)(interest);
     }
   }
 }
 
 bool
-CcnxTunnel::isPrefix(string &prefix, string &name)
+CcnxTunnel::isPrefix(const string &prefix, const string &name)
 {
   // prefix is literally prefix of name 
   if (name.find(prefix) == 0)
@@ -84,7 +95,8 @@ int
 CcnxTunnel::setInterestFilter(const string &prefix, const InterestCallback &interestCallback)
 {
   WriteLock(m_ritLock);
-  m_rit.insert(make_pair(prefix, new InterestCallback(interestCallback)));
+  // make sure copy constructor for boost::function works properly
+  m_rit.insert(make_pair(prefix, interestCallback));
   return 0;
 }
 
@@ -96,5 +108,26 @@ CcnxTunnel::clearInterestFilter(const string &prefix)
   m_rit.erase(prefix);
 }
 
+TunnelClosurePass::TunnelClosurePass(int retry, const CcnxWrapper::DataCallback &dataCallback, const CcnxWrapper::TimeoutCallback &timeoutCallback, CcnxTunnel *tunnel, const string &originalInterest)
+                  : ClosurePass(retry, dataCallback, timeoutCallback)
+                  , m_tunnel(tunnel)
+                  , m_originalInterest(originalInterest)
+{
 }
 
+void 
+TunnelClosurePass::runDataCallback(const string &name, const Bytes &content)
+{
+  if (m_tunnel != NULL)
+  {
+    m_tunnel->handleTunneledData(name, content, (*m_dataCallback));
+  }
+}
+
+CcnxWrapper::TimeoutCallbackReturnValue
+TunnelClosurePass::runTimeoutCallback(const string &interest)
+{
+  return ClosurePass::runTimeoutCallback(m_originalInterest);
+}
+
+} // Ccnx
