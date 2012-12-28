@@ -28,10 +28,11 @@ CcnxTunnel::refreshLocalPrefix()
 }
 
 int
-CcnxTunnel::sendInterest (const std::string &interest, Closure *closure)
+CcnxTunnel::sendInterest (const Interest &interest, Closure *closure)
 {
-  string tunneledInterest = queryRoutableName(interest);
-  Closure *cp = new TunnelClosure(closure, this, interest);
+  string strInterest = interest.name();
+  string tunneledInterest = queryRoutableName(strInterest);
+  Closure *cp = new TunnelClosure(closure, this, strInterest);
   sendInterest(tunneledInterest, cp);
 }
 

@@ -14,6 +14,7 @@ extern "C" {
 #include <boost/thread/thread.hpp>
 
 #include "ccnx-common.h"
+#include "ccnx-interest.h"
 #include "ccnx-closure.h"
 
 using namespace std;
@@ -37,7 +38,7 @@ public:
   clearInterestFilter (const string &prefix);
 
   virtual int 
-  sendInterest (const string &strInterest, Closure *closure);
+  sendInterest (const Interest &interest, Closure *closure);
 
   virtual int 
   publishData (const string &name, const unsigned char *buf, size_t len, int freshness);

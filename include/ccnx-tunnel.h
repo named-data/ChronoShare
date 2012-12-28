@@ -40,7 +40,7 @@ public:
   publishData(const string &name, const unsigned char *buf, size_t len, int freshness) _OVERRIDE;
 
   virtual int
-  sendInterest (const std::string &interest, Closure *closure);
+  sendInterest (const Interest &interest, Closure *closure);
 
 
   // prefix is topology-independent
