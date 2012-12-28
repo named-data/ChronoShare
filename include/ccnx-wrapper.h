@@ -10,6 +10,7 @@ extern "C" {
 #include <ccn/signing.h>
 }
 
+#include <vector>
 #include <boost/exception/all.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #include <boost/thread/thread.hpp>
@@ -18,39 +19,27 @@ extern "C" {
 #include <sstream>
 #include <map>
 
+using namespace std;
+
 namespace Ccnx {
 
-struct CcnxOperationException : virtual boost::exception, virtual std::exception { };
+typedef vector<unsigned char> Bytes;
 
-class CcnxWrapper;
+void
+readRaw(Bytes &bytes, const unsigned char *src, size_t len);
 
-class ContentObject
-{
-public:
-  ContentObject(const char *data, size_t len);
-  ~ContentObject();
-  void
-  dup(char **data, size_t *len);
-
-// exposed! use cautiously at your own risk.
-public:
-  char *m_data;
-  size_t m_len;
-};
-
-typedef boost::shared_ptr<ContentObject> ContentObjectPtr;
+struct CcnxOperationException : virtual boost::exception, virtual exception { };
 
 class CcnxWrapper {
 public:
-  typedef boost::function<void (std::string, const char *buf, size_t len)> DataCallback;
-  typedef boost::function<void (std::string)> InterestCallback;
-  typedef boost::function<TimeoutCallbackReturnValue (std::string)> TimeoutCallback;
-
+  typedef boost::function<void (string, Bytes)> DataCallback;
+  typedef boost::function<void (string)> InterestCallback;
   typedef enum
   {
     RESULT_OK,
     RESULT_REEXPRESS
   } TimeoutCallbackReturnValue;
+  typedef boost::function<TimeoutCallbackReturnValue (string)> TimeoutCallback;
 
 public:
 
@@ -58,34 +47,32 @@ public:
   virtual ~CcnxWrapper();
 
   virtual int
-  setInterestFilter (const std::string &prefix, const InterestCallback &interestCallback);
+  setInterestFilter (const string &prefix, const InterestCallback &interestCallback);
 
   virtual void
-  clearInterestFilter (const std::string &prefix);
+  clearInterestFilter (const string &prefix);
 
   virtual int 
-  sendInterest (const std::string &strInterest, const RawDataCallback &rawDataCallback, int retry = 0, const TimeoutCallback &timeoutCallback = TimeoutCallback());
+  sendInterest (const string &strInterest, const DataCallback &dataCallback, int retry = 0, const TimeoutCallback &timeoutCallback = TimeoutCallback());
 
   virtual int 
-  publishData (const std::string &name, const char *buf, size_t len, int freshness);
+  publishData (const string &name, const char *buf, size_t len, int freshness);
 
-  ContentObjectPtr 
-  createContentObject(const std::string &name, const char *buf, size_t len, int freshness);
+  int
+  publishData (const string &name, const Bytes &content, int freshness);
+
+  static string
+  getLocalPrefix ();
+
+  static string
+  extractName(const unsigned char *data, ccn_indexbuf *comps);
+
+protected:
+  Bytes
+  createContentObject(const string &name, const char *buf, size_t len, int freshness);
 
   int 
-  putToCcnd (ContentObjectPtr co);
-
-  static std::string
-  getInterestName(ccn_upcall_info *info);
-
-  static std::string
-  getDataName(ccn_upcall_info *info);
-
-  static int
-  getContentFromContentObject(ContentObjectPtr co, char **data, size_t *len);
-
-  static std::string
-  getLocalPrefix ();
+  putToCcnd (Bytes &contentObject);
   
 protected:
   void
@@ -111,7 +98,7 @@ protected:
   ccnLoop ();
 
   int 
-  sendInterest (const std::string &strInterest, void *dataPass);
+  sendInterest (const string &strInterest, void *dataPass);
   /// @endcond
 
 protected:
@@ -123,24 +110,24 @@ protected:
   boost::thread m_thread;
   bool m_running;
   bool m_connected;
-  std::map<std::string, InterestCallback> m_registeredInterests;
+  map<string, InterestCallback> m_registeredInterests;
   // std::list< std::pair<std::string, InterestCallback> > m_registeredInterests;
 };
 
 typedef boost::shared_ptr<CcnxWrapper> CcnxWrapperPtr;
 
-class ClosurePass {
+class ClosurePass 
+{
 public:
   ClosurePass(int retry, const CcnxWrapper::DataCallback &dataCallback, const CcnxWrapper::TimeoutCallback &timeoutCallback);
   int getRetry() {return m_retry;}
   void decRetry() { m_retry--;}
-  virtual ~ClosurePass(){}
-  virtual void runCallback(std::string name, const char *data, size_t len);
-  virtual CcnxWrapper::TimeoutCallbackReturnValue runTimeoutCallback(std::string interest);
+  virtual ~ClosurePass();
+  virtual void runDataCallback(string name, const Bytes &content);
+  virtual CcnxWrapper::TimeoutCallbackReturnValue runTimeoutCallback(string interest);
 
 protected:
   int m_retry;
-  CallbackType m_type;
   CcnxWrapper::TimeoutCallback *m_timeoutCallback;
   CcnxWrapper::DataCallback *m_dataCallback;  
 };

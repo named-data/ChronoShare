@@ -1,4 +1,7 @@
 #include "ccnx-wrapper.h"
+extern "C" {
+#include <ccn/fetch.h>
+}
 #include <poll.h>
 #include <boost/throw_exception.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -13,26 +16,16 @@ using namespace boost;
 
 namespace Ccnx {
 
-ContentObject::ContentObject(const char *data, size_t len)
-{
-  m_data = new char[len];
-  m_len = len;
-  memcpy(m_data, data, len);
-}
-
-ContentObject::~ContentObject()
-{
-  delete m_data;
-}
-
 void
-ContentObject::dup(char **data, size_t *len)
+readRaw(Bytes &bytes, const unsigned char *src, size_t len)
 {
-  char *tmp = new char[m_len];
-  memcpy(tmp, m_data, m_len);
-  (*data) = tmp;
-  (*len) = m_len;
+  if (len > 0)
+  {
+    bytes.resize(len);
+    memcpy(&bytes[0], src, len); 
+  }
 }
+
 
 CcnxWrapper::CcnxWrapper()
   : m_handle (0)
@@ -213,8 +206,7 @@ CcnxWrapper::ccnLoop ()
      } 
 }
 
-
-ContentObjectPtr 
+Bytes
 CcnxWrapper::createContentObject(const std::string &name, const char *buf, size_t len, int freshness)
 {
   ccn_charbuf *pname = ccn_charbuf_create();
@@ -236,25 +228,26 @@ CcnxWrapper::createContentObject(const std::string &name, const char *buf, size_
   {
     // BOOST_THROW_EXCEPTION(CcnxOperationException() << errmsg_info_str("encode content failed"));
   }
-  
-  ContentObjectPtr co(new ContentObject((const char*)content->buf, content->length));
+
+  Bytes bytes;
+  readRaw(bytes, content->buf, content->length);
 
   ccn_charbuf_destroy (&pname);
   ccn_charbuf_destroy (&signed_info);
   ccn_charbuf_destroy (&content);
 
-  return co;
+  return bytes;
 }
 
 int
-CcnxWrapper::putToCcnd (ContentObjectPtr co)
+CcnxWrapper::putToCcnd (Bytes &contentObject)
 {
   recursive_mutex::scoped_lock lock(m_mutex);
   if (!m_running || !m_connected)
     return -1;
   
 
-  if (ccn_put(m_handle, co->m_data, co->m_len) < 0)
+  if (ccn_put(m_handle, (const unsigned char *)contentObject[0], contentObject.size()) < 0)
   {
     // BOOST_THROW_EXCEPTION(CcnxOperationException() << errmsg_info_str("ccnput failed"));
   }
@@ -265,37 +258,26 @@ CcnxWrapper::putToCcnd (ContentObjectPtr co)
 int
 CcnxWrapper::publishData (const string &name, const char *buf, size_t len, int freshness)
 {
-  ContentObjectPtr co = createContentObject(name, buf, len, freshness); 
+  Bytes co = createContentObject(name, buf, len, freshness); 
   return putToCcnd(co);
 }
 
-std::string
-CcnxWrapper::getInterestName(ccn_upcall_info *info)
+int
+CcnxWrapper::publishData (const string &name, const Bytes &content, int freshness)
 {
-  ostringstream interest (ostringstream::out);
-  for (int i = 0; i < info->interest_comps->n - 1; i++)
-  {
-    char *comp;
-    size_t size;
-    interest << "/";
-    ccn_name_comp_get(info->interest_ccnb, info->interest_comps, i, (const unsigned char **)&comp, &size);
-    string compStr(comp, size);
-    interest << compStr;
-  }
-
-  return interest.str();
+  publishData(name, (const char*)content[0], content.size(), freshness);
 }
 
-std::string
-CcnxWrapper::getDataName(ccn_upcall_info *info)
+string
+CcnxWrapper::extractName(const unsigned char *data, ccn_indexbuf *comps)
 {
   ostringstream name (ostringstream::out);
-  for (int i = 0; i < info->content_comps->n - 1; i++)
+  for (int i = 0; i < comps->n - 1; i++)
   {
     char *comp;
     size_t size;
     name << "/";
-    ccn_name_comp_get(info->content_ccnb, info->content_comps, i, (const unsigned char **)&comp, &size);
+    ccn_name_comp_get(data, comps, i, (const unsigned char **)&comp, &size);
     string compStr(comp, size);
     name << compStr;
   }
@@ -303,23 +285,6 @@ CcnxWrapper::getDataName(ccn_upcall_info *info)
   return name.str();
 }
 
-int
-CcnxWrapper::getContentFromContentObject(ContentObjectPtr co, char **content, size_t *len)
-{
-  struct ccn_parsed_ContentObject pco;
-  struct ccn_indexbuf *comps = ccn_indexbuf_create();
-  int res1 = ccn_parse_ContentObject((const unsigned char *)co->m_data, co->m_len, &pco, comps);
-  int res2;
-
-  if (res1 >= 0)
-  {
-    res2 = ccn_content_get_value((const unsigned char *)co->m_data, pco.offset[CCN_PCO_E], &pco, (const unsigned char **)content, len);
-  }
-
-  ccn_indexbuf_destroy(&comps);
-
-  return (res1 < res2) ? res1 : res2;
-}
 
 static ccn_upcall_res
 incomingInterest(ccn_closure *selfp,
@@ -342,7 +307,7 @@ incomingInterest(ccn_closure *selfp,
       return CCN_UPCALL_RESULT_OK;
     }
 
-  string interest = CcnxWrapper::getInterestName(info);
+  string interest = CcnxWrapper::extractName(info->interest_ccnb, info->interest_comps);
 
   (*f) (interest);
   return CCN_UPCALL_RESULT_OK;
@@ -372,7 +337,7 @@ incomingData(ccn_closure *selfp,
         return CCN_UPCALL_RESULT_REEXPRESS;
       }
 
-      string interest = CcnxWrapper::getInterestName(info);
+      string interest = CcnxWrapper::extractName(info->interest_ccnb, info->interest_comps);
       CcnxWrapper::TimeoutCallbackReturnValue rv = cp->runTimeoutCallback(interest);
       switch(rv)
       {
@@ -387,16 +352,21 @@ incomingData(ccn_closure *selfp,
       return CCN_UPCALL_RESULT_OK;
     }
 
-  char *pcontent;
+  const unsigned char *pcontent;
   size_t len;
-  if (ccn_content_get_value(info->content_ccnb, info->pco->offset[CCN_PCO_E], info->pco, (const unsigned char **)&pcontent, &len) < 0)
+  if (ccn_content_get_value(info->content_ccnb, info->pco->offset[CCN_PCO_E], info->pco, &pcontent, &len) < 0)
   {
     // BOOST_THROW_EXCEPTION(CcnxOperationException() << errmsg_info_str("decode ContentObject failed"));
   }
 
-  string name = CcnxWrapper::getDataName(info);
+  string name = CcnxWrapper::extractName(info->content_ccnb, info->content_comps);
 
-  cp->runCallback(name, pcontent, len);
+  Bytes content;
+  // copy content and do processing on the copy
+  // otherwise the pointed memory may have been changed during the processing
+  readRaw(content, pcontent, len);
+
+  cp->runDataCallback(name, content);
 
   return CCN_UPCALL_RESULT_OK;
 }
@@ -580,10 +550,10 @@ ClosurePass::runTimeoutCallback(std::string interest)
 
 
 void 
-ClosurePass::runCallback(std::string name, const char *data, size_t len) 
+ClosurePass::runDataCallback(std::string name, const Bytes &content) 
 {
-  if (m_callback != NULL) {
-    (*m_callback)(name, data, len);
+  if (m_dataCallback != NULL) {
+    (*m_dataCallback)(name, content);
   }
 }
 
