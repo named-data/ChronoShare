@@ -32,14 +32,14 @@ struct CcnxOperationException : virtual boost::exception, virtual exception { };
 
 class CcnxWrapper {
 public:
-  typedef boost::function<void (string, Bytes)> DataCallback;
-  typedef boost::function<void (string)> InterestCallback;
+  typedef boost::function<void (const string &, const Bytes &)> DataCallback;
+  typedef boost::function<void (const string &)> InterestCallback;
   typedef enum
   {
     RESULT_OK,
     RESULT_REEXPRESS
   } TimeoutCallbackReturnValue;
-  typedef boost::function<TimeoutCallbackReturnValue (string)> TimeoutCallback;
+  typedef boost::function<TimeoutCallbackReturnValue (const string &)> TimeoutCallback;
 
 public:
 
@@ -65,14 +65,14 @@ public:
   getLocalPrefix ();
 
   static string
-  extractName(const unsigned char *data, ccn_indexbuf *comps);
+  extractName(const unsigned char *data, const ccn_indexbuf *comps);
 
 protected:
   Bytes
   createContentObject(const string &name, const char *buf, size_t len, int freshness);
 
   int 
-  putToCcnd (Bytes &contentObject);
+  putToCcnd (const Bytes &contentObject);
   
 protected:
   void
@@ -123,8 +123,8 @@ public:
   int getRetry() {return m_retry;}
   void decRetry() { m_retry--;}
   virtual ~ClosurePass();
-  virtual void runDataCallback(string name, const Bytes &content);
-  virtual CcnxWrapper::TimeoutCallbackReturnValue runTimeoutCallback(string interest);
+  virtual void runDataCallback(const string &name, const Bytes &content);
+  virtual CcnxWrapper::TimeoutCallbackReturnValue runTimeoutCallback(const string &interest);
 
 protected:
   int m_retry;

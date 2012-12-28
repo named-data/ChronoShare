@@ -2,6 +2,7 @@
 
 VERSION='0.0.1'
 APPNAME='chronoshare'
+CCNXLIB='ccnx'
 
 from waflib import Build, Logs
 
@@ -58,11 +59,12 @@ def build (bld):
     bld.add_group ("code")
         
     libccnx = bld (
-        target=APPNAME,
+        target=CCNXLIB,
         features=['cxx', 'cxxshlib'],
         source =  [
             'src/ccnx-wrapper.cpp',
-            'src/ccnx-tunnel.cpp',
+            'src/ccnx-pco.cpp',
+            #'src/ccnx-tunnel.cpp',
             ],
         use = 'BOOST BOOST_THREAD SSL CCNX',
         includes = ['include', ],

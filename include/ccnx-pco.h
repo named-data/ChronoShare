@@ -20,10 +20,10 @@ public:
   virtual ~ParsedContentObject();
 
   Bytes
-  content();
+  content() const;
 
   string
-  name();
+  name() const;
 
 protected:
   ccn_parsed_ContentObject m_pco;

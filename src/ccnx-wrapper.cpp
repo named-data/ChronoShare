@@ -240,7 +240,7 @@ CcnxWrapper::createContentObject(const std::string &name, const char *buf, size_
 }
 
 int
-CcnxWrapper::putToCcnd (Bytes &contentObject)
+CcnxWrapper::putToCcnd (const Bytes &contentObject)
 {
   recursive_mutex::scoped_lock lock(m_mutex);
   if (!m_running || !m_connected)
@@ -269,7 +269,7 @@ CcnxWrapper::publishData (const string &name, const Bytes &content, int freshnes
 }
 
 string
-CcnxWrapper::extractName(const unsigned char *data, ccn_indexbuf *comps)
+CcnxWrapper::extractName(const unsigned char *data, const ccn_indexbuf *comps)
 {
   ostringstream name (ostringstream::out);
   for (int i = 0; i < comps->n - 1; i++)
@@ -538,7 +538,7 @@ ClosurePass::~ClosurePass ()
 }
 
 CcnxWrapper::TimeoutCallbackReturnValue
-ClosurePass::runTimeoutCallback(std::string interest)
+ClosurePass::runTimeoutCallback(const string &interest)
 {
   if ((*m_timeoutCallback).empty())
   {
@@ -550,7 +550,7 @@ ClosurePass::runTimeoutCallback(std::string interest)
 
 
 void 
-ClosurePass::runDataCallback(std::string name, const Bytes &content) 
+ClosurePass::runDataCallback(const string &name, const Bytes &content) 
 {
   if (m_dataCallback != NULL) {
     (*m_dataCallback)(name, content);

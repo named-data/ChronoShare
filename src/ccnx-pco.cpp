@@ -31,7 +31,7 @@ ParsedContentObject::~ParsedContentObject()
 }
 
 Bytes
-ParsedContentObject::content()
+ParsedContentObject::content() const
 {
   const unsigned char *content;
   size_t len;
@@ -47,7 +47,7 @@ ParsedContentObject::content()
 }
 
 string
-ParsedContentObject::name()
+ParsedContentObject::name() const
 {
   return CcnxWrapper::extractName((const unsigned char *)m_bytes[0], m_comps);
 }
