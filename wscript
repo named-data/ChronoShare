@@ -1,6 +1,6 @@
 # -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
 
-VERSION='0.0.1'
+VERSION='0.1'
 APPNAME='chronoshare'
 CCNXLIB='ccnx'
 
@@ -9,6 +9,7 @@ from waflib import Build, Logs
 def options(opt):
     opt.add_option('--debug',action='store_true',default=False,dest='debug',help='''debugging mode''')
     opt.add_option('--test', action='store_true',default=False,dest='_test',help='''build unit tests''')
+    opt.add_option('--yes',action='store_true',default=False) # for autoconf/automake/make compatibility
     opt.load('compiler_c')
     opt.load('compiler_cxx')
     opt.load('boost')
@@ -19,6 +20,8 @@ def configure(conf):
     conf.load("compiler_cxx")
     conf.load('gnu_dirs')
 
+    conf.check_cfg(package='sqlite3', args=['--cflags', '--libs'], uselib_store='SQLITE3', mandatory=True)
+
     if not conf.check_cfg(package='openssl', args=['--cflags', '--libs'], uselib_store='SSL', mandatory=False):
       libcrypto = conf.check_cc(lib='crypto',
                                 header_name='openssl/crypto.h',
@@ -27,11 +30,16 @@ def configure(conf):
     if not conf.get_define ("HAVE_SSL"):
         conf.fatal ("Cannot find SSL libraries")
 
+    conf.load ('ccnx')
     conf.load('boost')
 
-    conf.check_boost(lib='system test thread')
+    conf.check_boost(lib='system iostreams regex')
 
-    conf.load ('ccnx')
+    boost_version = conf.env.BOOST_VERSION.split('_')
+    if int(boost_version[0]) < 1 or int(boost_version[1]) < 46:
+        Logs.error ("Minumum required boost version is 1.46")
+        return
+
     conf.check_ccnx (path=conf.options.ccnx_dir)
 
     if conf.options.debug:
@@ -44,6 +52,8 @@ def configure(conf):
       conf.define('_TEST', 1)
 
     conf.load('protobuf')
+
+    conf.write_config_header('src/config.h')
 
 def build (bld):
     bld.post_mode = Build.POST_LAZY
@@ -84,3 +94,12 @@ def build (bld):
 
 
 
+
+    chronoshare = bld (
+        target=APPNAME,
+        features=['cxx', 'cxxprogram'],
+        # source = bld.path.ant_glob(['src/**/*.cc']),
+        source = ['src/main.cc', 'src/sqlite-helper.cc'],
+        use = 'BOOST BOOST_IOSTREAMS BOOST_REGEX CCNX SSL SQLITE3',
+        includes = ['include', 'src'],
+        )
