@@ -33,7 +33,7 @@ def configure(conf):
     conf.load ('ccnx')
     conf.load('boost')
 
-    conf.check_boost(lib='system iostreams regex')
+    conf.check_boost(lib='system iostreams regex thread')
 
     boost_version = conf.env.BOOST_VERSION.split('_')
     if int(boost_version[0]) < 1 or int(boost_version[1]) < 46:
