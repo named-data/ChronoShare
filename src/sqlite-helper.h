@@ -35,14 +35,33 @@ public:
   DbHelper (const std::string &path);
   ~DbHelper ();
 
-  
-  
+  void
+  updateDeviceSeqno ();
+
+  std::string
+  LookupForwardingAlias (const std::string &deviceName);
+
+  void
+  updateForwardingAlias ();
+
+  /**
+   * Create an entry in SyncLog and SyncStateNodes corresponding to the current state of SyncNodes
+   */
+  void
+  rememberStateInStateLog ();
+
 private:
   static void
-  hash_xStep (sqlite3_context*,int,sqlite3_value**);
+  hash_xStep (sqlite3_context *context, int argc, sqlite3_value **argv);
 
   static void
-  hash_xFinal (sqlite3_context*);
+  hash_xFinal (sqlite3_context *context);
+
+  static void
+  hash2str_Func (sqlite3_context *context, int argc, sqlite3_value **argv);
+
+  static void
+  str2hash_Func (sqlite3_context *context, int argc, sqlite3_value **argv);
   
 private:
   sqlite3 *m_db;

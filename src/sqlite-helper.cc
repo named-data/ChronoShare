@@ -21,6 +21,7 @@
 
 #include "sqlite-helper.h"
 // #include "sync-log.h"
+#include "hash-string-converter.h"
 
 // Other options: VP_md2, EVP_md5, EVP_sha, EVP_sha1, EVP_sha256, EVP_dss, EVP_dss1, EVP_mdc2, EVP_ripemd160
 #define HASH_FUNCTION EVP_sha256
@@ -44,23 +45,24 @@ CREATE TABLE                                                    \
 CREATE INDEX SyncNodes_device_name ON SyncNodes (device_name);  \
                                                                 \
 CREATE TABLE SyncLog(                                           \
-        state_hash  BLOB NOT NULL PRIMARY KEY,                  \
+        state_id    INTEGER PRIMARY KEY AUTOINCREMENT,          \
+        state_hash  BLOB NOT NULL UNIQUE,                       \
         last_update TIMESTAMP NOT NULL                          \
     );                                                          \
                                                                 \
-CREATE TABLE                                                    \
-    SyncStateNodes(                                             \
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,          \
-        state_hash  BLOB NOT NULL                                       \
-            REFERENCES SyncLog (state_hash) ON UPDATE CASCADE ON DELETE CASCADE, \
+CREATE TABLE                                                            \
+    SyncStateNodes(                                                     \
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,                  \
+        state_id    INTEGER NOT NULL                                    \
+            REFERENCES SyncLog (state_id) ON UPDATE CASCADE ON DELETE CASCADE, \
         device_id   INTEGER NOT NULL                                    \
             REFERENCES SyncNodes (device_id) ON UPDATE CASCADE ON DELETE CASCADE, \
         seq_no      INTEGER NOT NULL                                    \
     );                                                                  \
                                                                         \
 CREATE INDEX SyncStateNodes_device_id ON SyncStateNodes (device_id);    \
-CREATE INDEX SyncStateNodes_state_hash ON SyncStateNodes (state_hash);  \
-CREATE INDEX SyncStateNodes_seq_no ON SyncStateNodes (seq_no);          \
+CREATE INDEX SyncStateNodes_state_id  ON SyncStateNodes (state_id);  \
+CREATE INDEX SyncStateNodes_seq_no    ON SyncStateNodes (seq_no);          \
                                                                         \
 CREATE TRIGGER SyncLogGuard_trigger                                     \
     BEFORE INSERT ON SyncLog                                            \
@@ -96,14 +98,6 @@ DbHelper::DbHelper (const std::string &path)
 
   char *errmsg = 0;
   res = sqlite3_exec (m_db, INIT_DATABASE.c_str (), NULL, NULL, &errmsg);
-  // if (res != SQLITE_OK && errmsg != 0)
-  //   {
-  //     std::cerr << "DEBUG: " << errmsg << std::endl;
-  //     sqlite3_free (errmsg);
-  //   }
-
-  res = sqlite3_exec (m_db, "INSERT INTO SyncLog (state_hash, last_update) SELECT hash(device_name, seq_no), datetime('now') FROM SyncNodes ORDER BY device_name",
-                          NULL, NULL, &errmsg);
   if (res != SQLITE_OK && errmsg != 0)
     {
       std::cerr << "DEBUG: " << errmsg << std::endl;
@@ -119,6 +113,34 @@ DbHelper::~DbHelper ()
       // complain
     }
 }
+
+void
+DbHelper::rememberStateInStateLog ()
+{
+  char *errmsg = 0;
+  int res = sqlite3_exec (m_db, " \
+BEGIN TRANSACTION;                              \
+INSERT INTO SyncLog                             \
+    (state_hash, last_update)                   \
+    SELECT                                              \
+       hash(device_name, seq_no), datetime('now')       \
+    FROM SyncNodes                                      \
+    ORDER BY device_name;                               \
+                                                        \
+INSERT INTO SyncStateNodes                              \
+      (state_id, device_id, seq_no)                     \
+      SELECT last_insert_rowid(), device_id, seq_no     \
+            FROM SyncNodes;                             \
+COMMIT;                                                 \
+",
+                          NULL, NULL, &errmsg);
+  if (res != SQLITE_OK && errmsg != 0)
+    {
+      std::cerr << "DEBUG: " << errmsg << std::endl;
+      sqlite3_free (errmsg);
+    }
+}
+
 
 void
 DbHelper::hash_xStep (sqlite3_context *context, int argc, sqlite3_value **argv)
@@ -172,7 +194,8 @@ DbHelper::hash_xFinal (sqlite3_context *context)
 
   if (*hash_context == 0) // no rows
     {
-      sqlite3_result_null (context);
+      char charNullResult = 0;
+      sqlite3_result_blob (context, &charNullResult, 1, SQLITE_TRANSIENT); //SQLITE_TRANSIENT forces to make a copy
       return;
     }
   
@@ -187,3 +210,37 @@ DbHelper::hash_xFinal (sqlite3_context *context)
   
   EVP_MD_CTX_destroy (*hash_context);
 }
+
+void
+DbHelper::hash2str_Func (sqlite3_context *context, int argc, sqlite3_value **argv)
+{
+  if (argc != 1 || sqlite3_value_type (argv[0]) != SQLITE_BLOB)
+    {
+      sqlite3_result_error (context, "Wrong arguments are supplied for ``hash2str'' function", -1);
+      return;
+    }
+
+  int hashBytes = sqlite3_value_bytes (argv[0]);
+  const void *hash = sqlite3_value_blob (argv[0]);
+
+  std::ostringstream os;
+  os << Hash (hash, hashBytes);
+  sqlite3_result_text (context, os.str ().c_str (), -1, SQLITE_TRANSIENT);
+}
+
+void
+DbHelper::str2hash_Func (sqlite3_context *context, int argc, sqlite3_value **argv)
+{
+  if (argc != 1 || sqlite3_value_type (argv[0]) != SQLITE_TEXT)
+    {
+      sqlite3_result_error (context, "Wrong arguments are supplied for ``str2hash'' function", -1);
+      return;
+    }
+
+  size_t hashTextBytes = sqlite3_value_bytes (argv[0]);
+  const unsigned char *hashText = sqlite3_value_text (argv[0]);
+
+  Hash hash (std::string (reinterpret_cast<const char*> (hashText), hashTextBytes));
+  sqlite3_result_blob (context, hash.GetHash (), hash.GetHashBytes (), SQLITE_TRANSIENT);
+}
+
