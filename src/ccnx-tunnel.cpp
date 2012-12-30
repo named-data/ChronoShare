@@ -49,9 +49,14 @@ CcnxTunnel::publishData(const string &name, const unsigned char *buf, size_t len
   Bytes content = createContentObject(name, buf, len, freshness);
   storeContentObject(name, content);
   
-  string tunneledName = m_localPrefix + name;
-  Bytes tunneledCo = createContentObject(tunneledName, head(content), content.size(), freshness);
+  return publishContentObject(name, content, freshness);
+}
 
+int
+CcnxTunnel::publishContentObject(const string &name, const Bytes &contentObject, int freshness)
+{
+  string tunneledName = m_localPrefix + name;
+  Bytes tunneledCo = createContentObject(tunneledName, head(contentObject), contentObject.size(), freshness);
   return putToCcnd(tunneledCo);
 }
 

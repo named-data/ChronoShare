@@ -39,6 +39,9 @@ public:
   virtual int
   publishData(const string &name, const unsigned char *buf, size_t len, int freshness) _OVERRIDE;
 
+  int
+  publishContentObject(const string &name, const Bytes &contentObject, int freshness);
+
   virtual int
   sendInterest (const Interest &interest, Closure *closure);
 
