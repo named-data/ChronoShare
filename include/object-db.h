@@ -7,6 +7,9 @@
 using namespace std;
 
 struct ObjectDBException : virtual boost::exception, virtual exception { };
+typedef boost::error_info<struct tag_errmsg, std::string> error_info_str;
+
+void throwException(const string &msg) { boost::throw_exception(ObjectDBException() << error_info_str(msg)); }
 
 typedef unsigned char Byte;
 typedef vector<Byte> Bytes;
@@ -32,24 +35,11 @@ public:
 
   // get n COs; if the remaining number of COs < n, return all;
   virtual void
-  read(const vector<Bytes> &vco, int n) = 0;
+  read(vector<Bytes> &vco, int n) = 0;
 
   // size in terms of number of COs
   virtual int
   size() = 0 const;
-
-  // the current index of in terms of COs
-  virtual int
-  pos() = 0 const;
-
-  // set the pos to be desired pos in terms of COs
-  // return true if success
-  virtual bool
-  seek(int pos) = 0;
-
-  // reset pos to be zero
-  virtual void
-  rewind() = 0;
 
 };
 
