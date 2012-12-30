@@ -6,7 +6,7 @@
 #include "ccnx-common.h"
 #include "ccnx-wrapper.h"
 
-#define _OVERRIDE 
+#define _OVERRIDE
 #ifdef __GNUC__
 #if __GNUC_MAJOR >= 4 && __GNUC_MINOR__ >= 7
   #undef _OVERRIDE
@@ -16,19 +16,19 @@
 
 using namespace std;
 
-// Eventually, Sync::CcnxWrapper should be moved to this namespace. 
+// Eventually, Sync::CcnxWrapper should be moved to this namespace.
 // It has nothing to do with Sync.
 namespace Ccnx
 {
 
-class CcnxTunnel : public CcnxWrapper 
+class CcnxTunnel : public CcnxWrapper
 {
-public: 
+public:
   typedef multimap<string, InterestCallback> RegisteredInterestTable;
   typedef multimap<string, InterestCallback>::iterator RitIter;
 
 
-  CcnxTunnel(); 
+  CcnxTunnel();
   virtual ~CcnxTunnel();
 
   // name is topology-independent
@@ -70,7 +70,7 @@ public:
 
   void
   handleTunneledInterest(const string &tunneldInterest);
-  
+
   void
   handleTunneledData(const string &name, const Bytes &tunneledData, const Closure::DataCallback &originalDataCallback);
 
@@ -88,7 +88,7 @@ public:
 
   TunnelClosure(const Closure *closure, CcnxTunnel *tunnel, const string &originalInterest);
 
-  virtual void 
+  virtual void
   runDataCallback(const string &name, const Bytes &content) _OVERRIDE;
 
   virtual TimeoutCallbackReturnValue

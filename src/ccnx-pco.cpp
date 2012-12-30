@@ -21,7 +21,7 @@ ParsedContentObject::ParsedContentObject(const Bytes &bytes)
 
 ParsedContentObject::ParsedContentObject(const ParsedContentObject &other)
 {
-  ParsedContentObject(other.m_bytes); 
+  ParsedContentObject(other.m_bytes);
 }
 
 ParsedContentObject::~ParsedContentObject()

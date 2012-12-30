@@ -11,12 +11,12 @@ CcnxTunnel::CcnxTunnel()
   refreshLocalPrefix();
 }
 
-CcnxTunnel::~CcnxTunnel() 
+CcnxTunnel::~CcnxTunnel()
 {
 }
 
 void
-CcnxTunnel::refreshLocalPrefix() 
+CcnxTunnel::refreshLocalPrefix()
 {
   string newPrefix = getLocalPrefix();
   if (!newPrefix.empty() && m_localPrefix != newPrefix)
@@ -36,7 +36,7 @@ CcnxTunnel::sendInterest (const Interest &interest, Closure *closure)
   sendInterest(tunneledInterest, cp);
 }
 
-void 
+void
 CcnxTunnel::handleTunneledData(const string &name, const Bytes &tunneledData, const Closure::DataCallback &originalDataCallback)
 {
   ParsedContentObject pco(tunneledData);
@@ -48,7 +48,7 @@ CcnxTunnel::publishData(const string &name, const unsigned char *buf, size_t len
 {
   Bytes content = createContentObject(name, buf, len, freshness);
   storeContentObject(name, content);
-  
+
   return publishContentObject(name, content, freshness);
 }
 
@@ -64,12 +64,12 @@ void
 CcnxTunnel::handleTunneledInterest(const string &tunneledInterest)
 {
   // The interest must have m_localPrefix as a prefix (component-wise), otherwise ccnd would not deliver it to us
-  string interest = (m_localPrefix == "/") 
+  string interest = (m_localPrefix == "/")
                     ? tunneledInterest
                     : tunneledInterest.substr(m_localPrefix.size());
 
-  ReadLock(m_ritLock); 
-  
+  ReadLock(m_ritLock);
+
   // This is linear scan, but should be acceptable under the assumption that the caller wouldn't be listening to a lot prefixes (as of now, most app listen to one or two prefixes)
   for (RitIter it = m_rit.begin(); it != m_rit.end(); it++)
   {
@@ -84,7 +84,7 @@ CcnxTunnel::handleTunneledInterest(const string &tunneledInterest)
 bool
 CcnxTunnel::isPrefix(const string &prefix, const string &name)
 {
-  // prefix is literally prefix of name 
+  // prefix is literally prefix of name
   if (name.find(prefix) == 0)
   {
     // name and prefix are exactly the same, or the next character in name
@@ -97,7 +97,7 @@ CcnxTunnel::isPrefix(const string &prefix, const string &name)
   return false;
 }
 
-int 
+int
 CcnxTunnel::setInterestFilter(const string &prefix, const InterestCallback &interestCallback)
 {
   WriteLock(m_ritLock);
@@ -106,7 +106,7 @@ CcnxTunnel::setInterestFilter(const string &prefix, const InterestCallback &inte
   return 0;
 }
 
-void 
+void
 CcnxTunnel::clearInterestFilter(const string &prefix)
 {
   WriteLock(m_ritLock);
@@ -127,7 +127,7 @@ TunnelClosure::TunnelClosure(const Closure *closure, CcnxTunnel *tunnel, const s
 {
 }
 
-void 
+void
 TunnelClosure::runDataCallback(const string &name, const Bytes &content)
 {
   if (m_tunnel != NULL)

@@ -22,7 +22,7 @@ readRaw(Bytes &bytes, const unsigned char *src, size_t len)
   if (len > 0)
   {
     bytes.resize(len);
-    memcpy(&bytes[0], src, len); 
+    memcpy(&bytes[0], src, len);
   }
 }
 
@@ -64,7 +64,7 @@ CcnxWrapper::connectCcnd()
     ccn_disconnect (m_handle);
     ccn_destroy (&m_handle);
   }
-  
+
   m_handle = ccn_create ();
   if (ccn_connect(m_handle, NULL) < 0)
   {
@@ -88,7 +88,7 @@ CcnxWrapper::~CcnxWrapper()
     UniqueRecLock(m_mutex);
     m_running = false;
   }
-  
+
   m_thread.join ();
   ccn_disconnect (m_handle);
   ccn_destroy (&m_handle);
@@ -154,7 +154,7 @@ CcnxWrapper::ccnLoop ()
           }
 
           if (!m_running) break;
-        
+
           if (res < 0)
             BOOST_THROW_EXCEPTION (CcnxOperationException()
                                  << errmsg_info_str("ccn_run returned error"));
@@ -163,13 +163,13 @@ CcnxWrapper::ccnLoop ()
           pollfd pfds[1];
           {
             UniqueRecLock(m_mutex);
-          
+
             pfds[0].fd = ccn_get_connection_fd (m_handle);
             pfds[0].events = POLLIN;
             if (ccn_output_is_pending (m_handle))
               pfds[0].events |= POLLOUT;
           }
-        
+
           int ret = poll (pfds, 1, 1);
           if (ret < 0)
             {
@@ -216,9 +216,9 @@ CcnxWrapper::ccnLoop ()
           }
         catch (...)
           {
-            cout << "UNKNOWN EXCEPTION !!!" << endl; 
+            cout << "UNKNOWN EXCEPTION !!!" << endl;
           }
-     } 
+     }
 }
 
 Bytes
@@ -260,7 +260,7 @@ CcnxWrapper::putToCcnd (const Bytes &contentObject)
   UniqueRecLock(m_mutex);
   if (!m_running || !m_connected)
     return -1;
-  
+
 
   if (ccn_put(m_handle, head(contentObject), contentObject.size()) < 0)
   {
@@ -273,7 +273,7 @@ CcnxWrapper::putToCcnd (const Bytes &contentObject)
 int
 CcnxWrapper::publishData (const string &name, const unsigned char *buf, size_t len, int freshness)
 {
-  Bytes co = createContentObject(name, buf, len, freshness); 
+  Bytes co = createContentObject(name, buf, len, freshness);
   return putToCcnd(co);
 }
 
@@ -391,7 +391,7 @@ int CcnxWrapper::sendInterest (const Interest &interest, Closure *closure)
   UniqueRecLock(m_mutex);
   if (!m_running || !m_connected)
     return -1;
-  
+
   ccn_charbuf *pname = ccn_charbuf_create();
   ccn_closure *dataClosure = new ccn_closure;
 
@@ -456,9 +456,9 @@ CcnxWrapper::getLocalPrefix ()
     {
       return "";
     }
-  
+
   string retval = "";
-  
+
   struct ccn_charbuf *templ = ccn_charbuf_create();
   ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
   ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
@@ -477,9 +477,9 @@ CcnxWrapper::getLocalPrefix ()
   else
     {
       struct ccn_fetch *fetch = ccn_fetch_new (tmp_handle);
-      
+
       struct ccn_fetch_stream *stream = ccn_fetch_open (fetch, name, "/local/ndn/prefix",
-                                                        NULL, 4, CCN_V_HIGHEST, 0);      
+                                                        NULL, 4, CCN_V_HIGHEST, 0);
       if (stream == NULL) {
       }
       else
@@ -490,11 +490,11 @@ CcnxWrapper::getLocalPrefix ()
           char buf[256];
           while (true) {
             res = ccn_fetch_read (stream, buf, sizeof(buf));
-            
+
             if (res == 0) {
               break;
             }
-            
+
             if (res > 0) {
               os << string(buf, res);
             } else if (res == CCN_FETCH_READ_NONE) {
@@ -525,7 +525,7 @@ CcnxWrapper::getLocalPrefix ()
 
   ccn_disconnect (tmp_handle);
   ccn_destroy (&tmp_handle);
-  
+
   return retval;
 }
 

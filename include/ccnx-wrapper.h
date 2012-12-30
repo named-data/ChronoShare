@@ -24,7 +24,7 @@ namespace Ccnx {
 
 struct CcnxOperationException : virtual boost::exception, virtual exception { };
 
-class CcnxWrapper 
+class CcnxWrapper
 {
 public:
   typedef boost::shared_mutex Lock;
@@ -45,10 +45,10 @@ public:
   virtual void
   clearInterestFilter (const string &prefix);
 
-  virtual int 
+  virtual int
   sendInterest (const Interest &interest, Closure *closure);
 
-  virtual int 
+  virtual int
   publishData (const string &name, const unsigned char *buf, size_t len, int freshness);
 
   int
@@ -64,14 +64,14 @@ protected:
   Bytes
   createContentObject(const string &name, const unsigned char *buf, size_t len, int freshness);
 
-  int 
+  int
   putToCcnd (const Bytes &contentObject);
-  
+
 protected:
   void
   connectCcnd();
 
-  /// @cond include_hidden 
+  /// @cond include_hidden
   void
   createKeyLocator ();
 
@@ -110,4 +110,4 @@ typedef boost::shared_ptr<CcnxWrapper> CcnxWrapperPtr;
 
 } // Ccnx
 
-#endif 
+#endif

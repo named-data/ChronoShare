@@ -10,7 +10,7 @@ namespace Ccnx {
 
 struct MisformedContentObjectException : virtual boost::exception, virtual exception { };
 
-class ParsedContentObject 
+class ParsedContentObject
 {
 public:
   ParsedContentObject(const unsigned char *data, size_t len);

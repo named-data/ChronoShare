@@ -7,7 +7,7 @@ using namespace std;
 
 namespace Ccnx {
 
-class Closure 
+class Closure
 {
 public:
   typedef boost::function<void (const string &, const Bytes &)> DataCallback;
@@ -25,15 +25,15 @@ public:
   int getRetry() {return m_retry;}
   void decRetry() { m_retry--;}
   virtual ~Closure();
-  virtual void 
+  virtual void
   runDataCallback(const string &name, const Bytes &content);
-  virtual TimeoutCallbackReturnValue 
+  virtual TimeoutCallbackReturnValue
   runTimeoutCallback(const string &interest);
 
 protected:
   int m_retry;
   TimeoutCallback *m_timeoutCallback;
-  DataCallback *m_dataCallback;  
+  DataCallback *m_dataCallback;
 };
 
 } // Ccnx
