@@ -1,0 +1,129 @@
+/* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
+/*
+ * Copyright (c) 2012 University of California, Los Angeles
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Author: Alexander Afanasyev <alexander.afanasyev@ucla.edu>
+ *         Zhenkai Zhu <zhenkai@cs.ucla.edu>
+ */
+
+#include "hash-string-converter.h"
+
+#include <boost/assert.hpp>
+#include <boost/throw_exception.hpp>
+#include <boost/make_shared.hpp>
+#include <openssl/evp.h>
+
+typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str; 
+typedef boost::error_info<struct tag_errmsg, int> errmsg_info_int; 
+
+#include <boost/archive/iterators/transform_width.hpp>
+#include <boost/iterator/transform_iterator.hpp>
+#include <boost/archive/iterators/dataflow_exception.hpp>
+
+using namespace boost;
+using namespace boost::archive::iterators;
+using namespace std;
+
+
+template<class CharType>
+struct hex_from_4_bit
+{
+  typedef CharType result_type;
+  CharType operator () (CharType ch) const
+  {
+    const char *lookup_table = "0123456789abcdef";
+    // cout << "New character: " << (int) ch << " (" << (char) ch << ")" << "\n";
+    BOOST_ASSERT (ch < 16);
+    return lookup_table[static_cast<size_t>(ch)];
+  }
+};
+
+typedef transform_iterator<hex_from_4_bit<string::const_iterator::value_type>,
+                           transform_width<string::const_iterator, 4, 8, string::const_iterator::value_type> > string_from_binary;
+
+
+template<class CharType>
+struct hex_to_4_bit
+{
+  typedef CharType result_type;
+  CharType operator () (CharType ch) const
+  {
+    const signed char lookup_table [] = {
+      -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9,-1,-1,-1,-1,-1,-1,
+      -1,10,11,12,13,14,15,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+      -1,10,11,12,13,14,15,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+    };
+
+    // cout << "New character: " << hex << (int) ch << " (" << (char) ch << ")" << "\n";
+    signed char value = -1;
+    if ((unsigned)ch < 128)
+      value = lookup_table [(unsigned)ch];
+    if (value == -1)
+      BOOST_THROW_EXCEPTION (Error::HashConversion () << errmsg_info_int ((int)ch));
+    
+    return value;
+  }
+};
+
+typedef transform_width<transform_iterator<hex_to_4_bit<string::const_iterator::value_type>, string::const_iterator>, 8, 4> string_to_binary;
+
+
+std::ostream &
+operator << (std::ostream &os, const Hash &hash)
+{
+  if (hash.m_length == 0)
+    return os;
+
+  ostreambuf_iterator<char> out_it (os); // ostream iterator
+  // need to encode to base64
+  copy (string_from_binary (reinterpret_cast<const char*> (hash.m_buf)),
+        string_from_binary (reinterpret_cast<const char*> (hash.m_buf+hash.m_length)),
+        out_it);
+
+  return os;
+}
+
+Hash::Hash (const std::string &hashInTextEncoding)
+{
+  if (hashInTextEncoding.size () == 0)
+    {
+      m_buf = 0;
+      m_length = 0;
+      return;
+    }
+
+  if (hashInTextEncoding.size () > EVP_MAX_MD_SIZE * 2)
+    {
+      cerr << "Input hash is too long. Returning an empty hash" << endl;
+      m_buf = 0;
+      m_length = 0;
+      return;
+    }
+
+  m_buf = new unsigned char [EVP_MAX_MD_SIZE];
+  
+  unsigned char *end = copy (string_to_binary (hashInTextEncoding.begin ()),
+                            string_to_binary (hashInTextEncoding.end ()),
+                            m_buf);
+
+  m_length = end-m_buf;
+}
+
