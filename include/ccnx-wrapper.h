@@ -10,6 +10,7 @@ extern "C" {
 #include <ccn/signing.h>
 }
 
+#include <boost/thread/locks.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #include <boost/thread/thread.hpp>
 
@@ -26,6 +27,13 @@ struct CcnxOperationException : virtual boost::exception, virtual exception { };
 class CcnxWrapper 
 {
 public:
+  typedef boost::shared_mutex Lock;
+  typedef boost::unique_lock<Lock> WriteLock;
+  typedef boost::shared_lock<Lock> ReadLock;
+
+  typedef boost::recursive_mutex RecLock;
+  typedef boost::unique_lock<RecLock> UniqueRecLock;
+
   typedef boost::function<void (const string &)> InterestCallback;
 
   CcnxWrapper();
@@ -89,7 +97,7 @@ protected:
   ccn_keystore *m_keyStore;
   ccn_charbuf *m_keyLoactor;
   // to lock, use "boost::recursive_mutex::scoped_lock scoped_lock(mutex);
-  boost::recursive_mutex m_mutex;
+  RecLock m_mutex;
   boost::thread m_thread;
   bool m_running;
   bool m_connected;

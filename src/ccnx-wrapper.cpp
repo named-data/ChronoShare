@@ -59,8 +59,7 @@ CcnxWrapper::CcnxWrapper()
 void
 CcnxWrapper::connectCcnd()
 {
-  recursive_mutex::scoped_lock lock (m_mutex);
-
+  UniqueRecLock(m_mutex);
   if (m_handle != 0) {
     ccn_disconnect (m_handle);
     ccn_destroy (&m_handle);
@@ -86,7 +85,7 @@ CcnxWrapper::connectCcnd()
 CcnxWrapper::~CcnxWrapper()
 {
   {
-    recursive_mutex::scoped_lock lock(m_mutex);
+    UniqueRecLock(m_mutex);
     m_running = false;
   }
   
@@ -150,7 +149,7 @@ CcnxWrapper::ccnLoop ()
         {
           int res = 0;
           {
-            recursive_mutex::scoped_lock lock (m_mutex);
+            UniqueRecLock(m_mutex);
             res = ccn_run (m_handle, 0);
           }
 
@@ -163,7 +162,7 @@ CcnxWrapper::ccnLoop ()
 
           pollfd pfds[1];
           {
-            recursive_mutex::scoped_lock lock (m_mutex);
+            UniqueRecLock(m_mutex);
           
             pfds[0].fd = ccn_get_connection_fd (m_handle);
             pfds[0].events = POLLIN;
@@ -258,7 +257,7 @@ CcnxWrapper::createContentObject(const std::string &name, const unsigned char *b
 int
 CcnxWrapper::putToCcnd (const Bytes &contentObject)
 {
-  recursive_mutex::scoped_lock lock(m_mutex);
+  UniqueRecLock(m_mutex);
   if (!m_running || !m_connected)
     return -1;
   
@@ -389,7 +388,7 @@ incomingData(ccn_closure *selfp,
 
 int CcnxWrapper::sendInterest (const Interest &interest, Closure *closure)
 {
-  recursive_mutex::scoped_lock lock(m_mutex);
+  UniqueRecLock(m_mutex);
   if (!m_running || !m_connected)
     return -1;
   
@@ -410,7 +409,7 @@ int CcnxWrapper::sendInterest (const Interest &interest, Closure *closure)
 
 int CcnxWrapper::setInterestFilter (const string &prefix, const InterestCallback &interestCallback)
 {
-  recursive_mutex::scoped_lock lock(m_mutex);
+  UniqueRecLock(m_mutex);
   if (!m_running || !m_connected)
     return -1;
 
@@ -432,7 +431,7 @@ int CcnxWrapper::setInterestFilter (const string &prefix, const InterestCallback
 void
 CcnxWrapper::clearInterestFilter (const std::string &prefix)
 {
-  recursive_mutex::scoped_lock lock(m_mutex);
+  UniqueRecLock(m_mutex);
   if (!m_running || !m_connected)
     return;
 

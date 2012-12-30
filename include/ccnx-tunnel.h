@@ -2,7 +2,6 @@
 #define CCNX_TUNNEL_H
 
 #include <boost/variant.hpp>
-#include <boost/thread/locks.hpp>
 
 #include "ccnx-common.h"
 #include "ccnx-wrapper.h"
@@ -27,9 +26,6 @@ class CcnxTunnel : public CcnxWrapper
 public: 
   typedef multimap<string, InterestCallback> RegisteredInterestTable;
   typedef multimap<string, InterestCallback>::iterator RitIter;
-  typedef boost::shared_mutex Lock;
-  typedef boost::unique_lock<Lock> WriteLock;
-  typedef boost::shared_lock<Lock> ReadLock;
 
 
   CcnxTunnel(); 
