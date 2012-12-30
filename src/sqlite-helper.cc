@@ -21,7 +21,8 @@
 
 #include "sqlite-helper.h"
 // #include "sync-log.h"
-#include "hash-string-converter.h"
+#include <boost/make_shared.hpp>
+#include <boost/ref.hpp>
 
 // Other options: VP_md2, EVP_md5, EVP_sha, EVP_sha1, EVP_sha256, EVP_dss, EVP_dss1, EVP_mdc2, EVP_ripemd160
 #define HASH_FUNCTION EVP_sha256
@@ -30,8 +31,11 @@
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str; 
 // typedef boost::error_info<struct tag_errmsg, int> errmsg_info_int; 
 
+using namespace boost;
 
 const std::string INIT_DATABASE = "\
+PRAGMA foreign_keys = ON;                                       \
+                                                                \
 CREATE TABLE                                                    \
     SyncNodes(                                                  \
         device_id       INTEGER PRIMARY KEY AUTOINCREMENT,      \
@@ -42,14 +46,28 @@ CREATE TABLE                                                    \
         last_update     TIMESTAMP                               \
     );                                                          \
                                                                 \
-CREATE INDEX SyncNodes_device_name ON SyncNodes (device_name);  \
-                                                                \
-CREATE TABLE SyncLog(                                           \
-        state_id    INTEGER PRIMARY KEY AUTOINCREMENT,          \
-        state_hash  BLOB NOT NULL UNIQUE,                       \
-        last_update TIMESTAMP NOT NULL                          \
-    );                                                          \
-                                                                \
+CREATE TRIGGER SyncNodesUpdater_trigger                                \
+    BEFORE INSERT ON SyncNodes                                         \
+    FOR EACH ROW                                                       \
+    WHEN (SELECT device_id                                             \
+             FROM SyncNodes                                            \
+             WHERE device_name=NEW.device_name)                        \
+         IS NOT NULL                                                   \
+    BEGIN                                                              \
+        UPDATE SyncNodes                                               \
+            SET seq_no=max(seq_no,NEW.seq_no)                          \
+            WHERE device_name=NEW.device_name;                         \
+        SELECT RAISE(IGNORE);                                          \
+    END;                                                               \
+                                                                       \
+CREATE INDEX SyncNodes_device_name ON SyncNodes (device_name);         \
+                                                                       \
+CREATE TABLE SyncLog(                                                  \
+        state_id    INTEGER PRIMARY KEY AUTOINCREMENT,                 \
+        state_hash  BLOB NOT NULL UNIQUE,                              \
+        last_update TIMESTAMP NOT NULL                                 \
+    );                                                                 \
+                                                                       \
 CREATE TABLE                                                            \
     SyncStateNodes(                                                     \
         id          INTEGER PRIMARY KEY AUTOINCREMENT,                  \
@@ -86,13 +104,31 @@ DbHelper::DbHelper (const std::string &path)
     }
   
   res = sqlite3_create_function (m_db, "hash", 2, SQLITE_ANY, 0, 0,
-                                     DbHelper::hash_xStep, DbHelper::hash_xFinal);
+                                 DbHelper::hash_xStep, DbHelper::hash_xFinal);
   if (res != SQLITE_OK)
     {
       BOOST_THROW_EXCEPTION (Error::Db ()
                              << errmsg_info_str ("Cannot create function ``hash''"));
     }
 
+  res = sqlite3_create_function (m_db, "hash2str", 2, SQLITE_ANY, 0,
+                                 DbHelper::hash2str_Func,
+                                 0, 0);
+  if (res != SQLITE_OK)
+    {
+      BOOST_THROW_EXCEPTION (Error::Db ()
+                             << errmsg_info_str ("Cannot create function ``hash''"));
+    }
+
+  res = sqlite3_create_function (m_db, "str2hash", 2, SQLITE_ANY, 0,
+                                 DbHelper::str2hash_Func,
+                                 0, 0);
+  if (res != SQLITE_OK)
+    {
+      BOOST_THROW_EXCEPTION (Error::Db ()
+                             << errmsg_info_str ("Cannot create function ``hash''"));
+    }
+  
   // Alex: determine if tables initialized. if not, initialize... not sure what is the best way to go...
   // for now, just attempt to create everything
 
@@ -114,31 +150,69 @@ DbHelper::~DbHelper ()
     }
 }
 
-void
-DbHelper::rememberStateInStateLog ()
+HashPtr
+DbHelper::RememberStateInStateLog ()
 {
-  char *errmsg = 0;
-  int res = sqlite3_exec (m_db, " \
-BEGIN TRANSACTION;                              \
-INSERT INTO SyncLog                             \
-    (state_hash, last_update)                   \
+  int res = sqlite3_exec (m_db, "BEGIN TRANSACTION;", 0,0,0);
+
+  res += sqlite3_exec (m_db, "\
+INSERT INTO SyncLog                                     \
+    (state_hash, last_update)                           \
     SELECT                                              \
        hash(device_name, seq_no), datetime('now')       \
     FROM SyncNodes                                      \
     ORDER BY device_name;                               \
-                                                        \
+", 0,0,0);
+
+  if (res != SQLITE_OK)
+    {
+      BOOST_THROW_EXCEPTION (Error::Db ()
+                             << errmsg_info_str ("1"));
+    }
+  
+  sqlite3_int64 rowId = sqlite3_last_insert_rowid (m_db);
+  
+  sqlite3_stmt *insertStmt;
+  res += sqlite3_prepare (m_db, "\
 INSERT INTO SyncStateNodes                              \
       (state_id, device_id, seq_no)                     \
-      SELECT last_insert_rowid(), device_id, seq_no     \
+      SELECT ?, device_id, seq_no                       \
             FROM SyncNodes;                             \
-COMMIT;                                                 \
-",
-                          NULL, NULL, &errmsg);
-  if (res != SQLITE_OK && errmsg != 0)
+", -1, &insertStmt, 0);
+
+  res += sqlite3_bind_int64 (insertStmt, 1, rowId);
+  sqlite3_step (insertStmt);
+
+  if (res != SQLITE_OK)
     {
-      std::cerr << "DEBUG: " << errmsg << std::endl;
-      sqlite3_free (errmsg);
+      BOOST_THROW_EXCEPTION (Error::Db ()
+                             << errmsg_info_str ("4"));
     }
+  sqlite3_finalize (insertStmt);
+  
+  sqlite3_stmt *getHashStmt;
+  res += sqlite3_prepare (m_db, "\
+SELECT state_hash FROM SyncLog WHERE state_id = ?\
+", -1, &getHashStmt, 0);
+  res += sqlite3_bind_int64 (getHashStmt, 1, rowId);
+
+  HashPtr retval;
+  int stepRes = sqlite3_step (getHashStmt);
+  if (stepRes == SQLITE_ROW)
+    {
+      retval = make_shared<Hash> (sqlite3_column_blob (getHashStmt, 0),
+                                  sqlite3_column_bytes (getHashStmt, 0));
+    }
+  sqlite3_finalize (getHashStmt);
+  res += sqlite3_exec (m_db, "COMMIT;", 0,0,0);
+
+  if (res != SQLITE_OK)
+    {
+      BOOST_THROW_EXCEPTION (Error::Db ()
+                             << errmsg_info_str ("Some error with rememberStateInStateLog"));
+    }
+
+  return retval;
 }
 
 
@@ -224,7 +298,8 @@ DbHelper::hash2str_Func (sqlite3_context *context, int argc, sqlite3_value **arg
   const void *hash = sqlite3_value_blob (argv[0]);
 
   std::ostringstream os;
-  os << Hash (hash, hashBytes);
+  Hash tmpHash (hash, hashBytes);
+  os << tmpHash;
   sqlite3_result_text (context, os.str ().c_str (), -1, SQLITE_TRANSIENT);
 }
 
@@ -244,3 +319,135 @@ DbHelper::str2hash_Func (sqlite3_context *context, int argc, sqlite3_value **arg
   sqlite3_result_blob (context, hash.GetHash (), hash.GetHashBytes (), SQLITE_TRANSIENT);
 }
 
+
+sqlite3_int64
+DbHelper::LookupSyncLog (const std::string &stateHash)
+{
+  Hash tmpHash (stateHash);
+  return LookupSyncLog (stateHash);
+}
+
+sqlite3_int64
+DbHelper::LookupSyncLog (const Hash &stateHash)
+{
+  sqlite3_stmt *stmt;
+  int res = sqlite3_prepare (m_db, "SELECT state_id FROM SyncLog WHERE state_hash = ?",
+                             -1, &stmt, 0);
+  
+  if (res != SQLITE_OK)
+    {
+      BOOST_THROW_EXCEPTION (Error::Db ()
+                             << errmsg_info_str ("Cannot prepare statement"));
+    }
+
+  res = sqlite3_bind_blob (stmt, 1, stateHash.GetHash (), stateHash.GetHashBytes (), SQLITE_STATIC);
+  if (res != SQLITE_OK)
+    {
+      BOOST_THROW_EXCEPTION (Error::Db ()
+                             << errmsg_info_str ("Cannot bind"));
+    }
+
+  sqlite3_int64 row = 0; // something bad
+
+  if (sqlite3_step (stmt) == SQLITE_ROW)
+    {
+      row = sqlite3_column_int64 (stmt, 0);
+    }
+
+  sqlite3_finalize (stmt);
+
+  return row;
+}
+
+void
+DbHelper::UpdateDeviceSeqno (const std::string &name, uint64_t seqNo)
+{
+  sqlite3_stmt *stmt;
+  // update is performed using trigger
+  int res = sqlite3_prepare (m_db, "INSERT INTO SyncNodes (device_name, seq_no) VALUES (?,?);", 
+                             -1, &stmt, 0);
+
+  res += sqlite3_bind_text  (stmt, 1, name.c_str (), name.size (), SQLITE_STATIC);
+  res += sqlite3_bind_int64 (stmt, 2, seqNo);
+  sqlite3_step (stmt);
+  
+  if (res != SQLITE_OK)
+    {
+      BOOST_THROW_EXCEPTION (Error::Db ()
+                             << errmsg_info_str ("Some error with UpdateDeviceSeqno"));
+    }
+  sqlite3_finalize (stmt);
+}
+
+void
+DbHelper::FindStateDifferences (const std::string &oldHash, const std::string &newHash)
+{
+  Hash tmpOldHash (oldHash);
+  Hash tmpNewHash (newHash);
+
+  FindStateDifferences (tmpOldHash, tmpNewHash);
+}
+
+void
+DbHelper::FindStateDifferences (const Hash &oldHash, const Hash &newHash)
+{
+  sqlite3_stmt *stmt;
+
+  int res = sqlite3_prepare_v2 (m_db, "\
+SELECT sn.device_name, s_old.seq_no, s_new.seq_no                       \
+    FROM (SELECT *                                                      \
+            FROM SyncStateNodes                                         \
+            WHERE state_id=(SELECT state_id                             \
+                                FROM SyncLog                            \
+                                WHERE state_hash=:old_hash)) s_old      \
+    LEFT JOIN (SELECT *                                                 \
+                FROM SyncStateNodes                                     \
+                WHERE state_id=(SELECT state_id                         \
+                                    FROM SyncLog                        \
+                                    WHERE state_hash=:new_hash)) s_new  \
+                                                                        \
+        ON s_old.device_id = s_new.device_id                            \
+    JOIN SyncNodes sn ON sn.device_id = s_old.device_id                 \
+                                                                        \
+    WHERE s_new.seq_no IS NULL OR                                       \
+          s_old.seq_no != s_new.seq_no                                  \
+                                                                        \
+UNION ALL                                                               \
+                                                                        \
+SELECT sn.device_name, s_old.seq_no, s_new.seq_no                       \
+    FROM (SELECT *                                                      \
+            FROM SyncStateNodes                                         \
+            WHERE state_id=(SELECT state_id                             \
+                                FROM SyncLog                            \
+                                WHERE state_hash=:new_hash )) s_new     \
+    LEFT JOIN (SELECT *                                                 \
+                FROM SyncStateNodes                                     \
+                WHERE state_id=(SELECT state_id                         \
+                                    FROM SyncLog                        \
+                                    WHERE state_hash=:old_hash)) s_old  \
+                                                                        \
+        ON s_old.device_id = s_new.device_id                            \
+    JOIN SyncNodes sn ON sn.device_id = s_new.device_id                 \
+                                                                        \
+    WHERE s_old.seq_no IS NULL                                          \
+", -1, &stmt, 0);
+
+  if (res != SQLITE_OK)
+    {
+      BOOST_THROW_EXCEPTION (Error::Db ()
+                             << errmsg_info_str ("Some error with FindStateDifferences"));
+    }
+
+  res += sqlite3_bind_blob  (stmt, 1, oldHash.GetHash (), oldHash.GetHashBytes (), SQLITE_STATIC);
+  res += sqlite3_bind_blob  (stmt, 2, newHash.GetHash (), newHash.GetHashBytes (), SQLITE_STATIC);
+
+  while (sqlite3_step (stmt) == SQLITE_ROW)
+    {
+      std::cout << sqlite3_column_text (stmt, 0) <<
+        ": from "  << sqlite3_column_int64 (stmt, 1) <<
+        " to "     << sqlite3_column_int64 (stmt, 2) <<
+        std::endl;
+    }
+  sqlite3_finalize (stmt);
+  
+}

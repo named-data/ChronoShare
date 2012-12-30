@@ -118,7 +118,7 @@ Hash::Hash (const std::string &hashInTextEncoding)
       return;
     }
 
-  unsigned char *m_buf = new unsigned char [EVP_MAX_MD_SIZE];
+  m_buf = new unsigned char [EVP_MAX_MD_SIZE];
   
   unsigned char *end = copy (string_to_binary (hashInTextEncoding.begin ()),
                             string_to_binary (hashInTextEncoding.end ()),

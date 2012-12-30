@@ -33,15 +33,19 @@ public:
   Hash (const void *buf, size_t length)
     : m_length (length)
   {
-    m_buf = new unsigned char [length];
-    memcpy (m_buf, buf, length);
+    if (m_length != 0)
+      {
+        m_buf = new unsigned char [length];
+        memcpy (m_buf, buf, length);
+      }
   }
 
   Hash (const std::string &hashInTextEncoding);
 
   ~Hash ()
   {
-    delete [] m_buf;
+    if (m_length != 0)
+      delete [] m_buf;
   }
   
   bool
@@ -76,6 +80,9 @@ private:
   unsigned char *m_buf;
   size_t m_length;
 
+  Hash (const Hash &) { }
+  Hash & operator = (const Hash &) { return *this; }
+  
   friend std::ostream &
   operator << (std::ostream &os, const Hash &digest);
 };

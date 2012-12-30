@@ -26,6 +26,7 @@
 #include <openssl/evp.h>
 #include <boost/exception/all.hpp>
 #include <string>
+#include "hash-string-converter.h"
 
 // temporarily ignoring all potential database errors
 
@@ -35,21 +36,38 @@ public:
   DbHelper (const std::string &path);
   ~DbHelper ();
 
+  // done
   void
-  updateDeviceSeqno ();
+  UpdateDeviceSeqno (const std::string &name, uint64_t seqNo);
 
-  std::string
-  LookupForwardingAlias (const std::string &deviceName);
+  // std::string
+  // LookupForwardingAlias (const std::string &deviceName);
 
-  void
-  updateForwardingAlias ();
+  // void
+  // UpdateForwardingAlias ();
 
+  // done
   /**
    * Create an entry in SyncLog and SyncStateNodes corresponding to the current state of SyncNodes
    */
-  void
-  rememberStateInStateLog ();
+  HashPtr
+  RememberStateInStateLog ();
 
+  // done
+  sqlite3_int64
+  LookupSyncLog (const std::string &stateHash);
+
+  // done
+  sqlite3_int64
+  LookupSyncLog (const Hash &stateHash);
+
+  // How difference is exposed will be determined later by the actual protocol
+  void
+  FindStateDifferences (const std::string &oldHash, const std::string &newHash);
+
+  void
+  FindStateDifferences (const Hash &oldHash, const Hash &newHash);
+  
 private:
   static void
   hash_xStep (sqlite3_context *context, int argc, sqlite3_value **argv);
