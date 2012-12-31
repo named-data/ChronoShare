@@ -8,8 +8,10 @@
 #include <ofstream>
 #include <sstream>
 #include <boost/thread/locks.hpp>
-#include <boost/thread/recursive_mutex.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/interprocess/sync/file_lock.hpp>
+#include <boost/interprocess/sync/sharable_lock.hpp>
+#include <boost/interprocess/sync/scoped_lock.hpp>
 
 #define _OVERRIDE
 #ifdef __GNUC__
@@ -38,9 +40,9 @@ using namespace std;
 class ObjectDBFile
 {
 public:
-  typedef boost::shared_mutex Lock;
-  typedef boost::unique_lock<Lock> WriteLock;
-  typedef boost::shared_lock<Lock> ReadLock;
+  typedef boost::interprocess::file_lock Filelock;
+  typedef boost::interprocess::scoped_lock<Filelock> WriteLock;
+  typedef boost::interprocess::sharable_lock<Filelock> ReadLock;
 
   ObjectDBFile(const string &filename);
   virtual ~ObjectDBFile(){}
@@ -91,10 +93,6 @@ public:
   rewind();
 
 protected:
-  // write lock should have been grabbed already before the call
-  void
-  prepareWrite();
-
   // read or write lock should have been grabbed already before the call
   void
   checkInit(const string &msg);
@@ -109,8 +107,7 @@ protected:
   string m_filename;
   ifstream m_istream;
   ofstream m_ostream;
-  Lock m_lock;
-  bool m_writable;
+  Filelock m_filelock;
   bool m_initialized;
   // capacity in terms of number of COs
   int m_cap;
