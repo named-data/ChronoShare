@@ -23,12 +23,15 @@ ObjectDBFile::ObjectDBFile(const string &filename)
                 , m_cap(0)
                 , m_index(0)
                 , m_initialized(false)
-                , m_writable(false)
                 , m_filename(filename)
+                // This ensures file with filename exists (assuming having write permission)
+                // This is needed as file_lock only works with existing file
+                , m_ostream(m_filename, ios_base::binary | ios_base::app)
+                , m_istream(m_filename, ios_base::binary | ios_base::in)
+                , m_filelock(m_filename)
 {
-  m_istream.open(m_filename, ios_base::binary);
   int magic;
-  ReadLock(m_lock);
+  ReadLock(m_filelock);
   readInt(m_istream, magic);
   if (magic == MAGIC_NUM)
   {
@@ -42,24 +45,16 @@ ObjectDBFile::ObjectDBFile(const string &filename)
 ObjectDBFile::~ObjectDBFile()
 {
   m_istream.close();
-  if (m_writable)
-  {
-    m_ostream.close();
-  }
+  m_ostream.close();
 }
 
 void
 ObjectDBFile::init(int capacity)
 {
-  WriteLock(m_lock);
+  WriteLock(m_filelock);
   if (m_initialized)
   {
     throwException("Trying to init already initialized ObjectDBFile object" + m_filename);
-  }
-
-  if (!m_writable)
-  {
-    prepareWrite();
   }
 
   m_cap = capacity;
@@ -92,13 +87,8 @@ ObjectDBFile::init(int capacity)
 void
 ObjectDBFile::append(const Bytes &co)
 {
-  WriteLock(m_lock);
+  WriteLock(m_filelock);
   checkInit("Trying to append to un-initialized ObjectDBFile: " + m_filename);
-
-  if (!m_writable)
-  {
-    prepareWrite();
-  }
 
   if (m_size >= m_cap)
   {
@@ -156,7 +146,7 @@ ObjectDBFile::updateSzie()
 int
 ObjectDBFile::fSize()
 {
-  ReadLock(m_lock);
+  ReadLock(m_filelock);
   updateSize();
   return m_size;
 }
@@ -164,14 +154,14 @@ ObjectDBFile::fSize()
 int
 ObjectDBFile::index()
 {
-  ReadLock(m_lock);
+  ReadLock(m_filelock);
   return m_index;
 }
 
 bool
 ObjectDBFile::seek(int index)
 {
-  ReadLock(m_lock);
+  ReadLock(m_filelock);
   updateSize();
   if (m_size <= index)
   {
@@ -188,7 +178,7 @@ ObjectDBFile::seek(int index)
 void
 rewind()
 {
-  ReadLock(m_lock);
+  ReadLock(m_filelock);
   m_index = 0;
   // point to the start of the CO fields
   m_istream.seekg( (3 + m_cap) * sizeof(int), ios::beg);
@@ -200,23 +190,5 @@ ObjectDBFile::checkInit(const string &msg)
   if (!m_initialized)
   {
     throwException(msg);
-  }
-}
-
-void
-ObjectDBFile::prepareWrite()
-{
-  ios_base::openmode mode = ios_base::app | ios_base::binary;
-  // discard any content if the object is considered uninitialized
-  if (!m_initialized)
-  {
-    mode |= ios_base::trunc;
-  }
-
-  m_ostream.open(m_filename, mode);
-  m_writable = m_ostream.is_open();
-  if (!m_writable)
-  {
-    throwException("Unable to open file for write: " + m_filename);
   }
 }
