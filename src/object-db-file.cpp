@@ -122,15 +122,19 @@ ObjectDBFile::append(const Bytes &co)
 Bytes
 ObjectDBFile::next()
 {
-  ReadLock(m_filelock);
-  // We are been lazy here; just use file lock as mutex
-  // for the access to the cache too
-  if (m_dummyCache.find(m_index) != map::end)
+  // Scoped shared lock for cache
   {
-    int index = m_index;
-    m_index++;
-    return m_dummyCache[index];
+    SLock(m_cacheLock);
+    // no need to read file if found in cache
+    if (m_dummyCache.find(m_index) != map::end)
+    {
+      int index = m_index;
+      m_index++;
+      return m_dummyCache[index];
+    }
   }
+
+  ReadLock(m_filelock);
 
   // m_index not found in cache
   Bytes co;
@@ -152,6 +156,7 @@ ObjectDBFile::next()
 void
 ObjectDBFile::fillDummyCache()
 {
+  ULock(m_cacheLock);
   m_dummyCache.clear();
   int stop = (m_index + CACHE_SIZE < m_size) ? m_index + CACHE_SIZE : m_size;
   // the m_index should not change

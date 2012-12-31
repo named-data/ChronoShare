@@ -10,6 +10,7 @@
 #include <deque>
 #include <boost/thread/locks.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/thread/shared_mutex.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/interprocess/sync/sharable_lock.hpp>
 #include <boost/interprocess/sync/scoped_lock.hpp>
@@ -44,6 +45,9 @@ public:
   typedef boost::interprocess::file_lock Filelock;
   typedef boost::interprocess::scoped_lock<Filelock> WriteLock;
   typedef boost::interprocess::sharable_lock<Filelock> ReadLock;
+  typedef boost::shared_mutex Mutex;
+  typedef boost::shared_lock<Mutex> SLock;
+  typedef boost::unique_lock<Mutex> ULock;
 
   ObjectDBFile(const string &filename);
   virtual ~ObjectDBFile(){}
@@ -121,6 +125,7 @@ protected:
   // If needed and time allows, we can have more complex cache
   #define CACHE_SIZE 10
   map<int, Bytes> m_dummyCache;
+  Mutex m_cacheMutex;
 };
 
 void inline
