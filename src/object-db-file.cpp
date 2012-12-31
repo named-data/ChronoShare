@@ -117,14 +117,35 @@ ObjectDBFile::append(const Bytes &co)
   // By the end, the write pos is at the end of the file
 }
 
+// forget about caching for now; but ideally, we should cache the next few COs in memory
+// and the request for COs tends to be sequential
 Bytes
 ObjectDBFile::next()
 {
+  ReadLock(m_filelock);
+  Bytes co;
+  if (m_index >= m_size)
+  {
+    return co;
+  }
+  readBytes(m_istream, co);
+  m_index++;
+  return co;
 }
 
+// Caching is not so useful here, as its sequentially reading anyway
 void
 ObjectDBFile::read(vector<Bytes> &vco, int n)
 {
+  ReadLock(m_filelock);
+  int stop = (m_index + n < m_size ) ? m_index + n : m_size;
+  while (m_index < stop)
+  {
+    Bytes co;
+    readBytes(m_istream, co);
+    vco.push_back(co);
+    m_index++;
+  }
 }
 
 int
