@@ -7,6 +7,7 @@
 #include <ifstream>
 #include <ofstream>
 #include <sstream>
+#include <deque>
 #include <boost/thread/locks.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
@@ -63,10 +64,6 @@ public:
   virtual Bytes
   next() _OVERRIDE;
 
-  // get n COs; if the remaining number of COs < n, return all;
-  virtual void
-  read(vector<Bytes> &vco, int n) _OVERRIDE;
-
   // size in terms of number of COs
   // This is the lazy form of size, i.e. it returns the size cached in this object
   // but that may not necessarily equal to the actual size kept in file
@@ -101,6 +98,10 @@ protected:
   void
   updateSize();
 
+  // read lock should have been grabbed already before the call
+  void
+  fillDummyCache();
+
   #define MAGIC_NUM 0xAAAAAAAA
 
 protected:
@@ -114,6 +115,12 @@ protected:
   int m_size;
   // the index (or seq) of the CO to be read
   int m_index;
+
+  // A dummy Cache that holds the next 10 (or all remaining if less than 10)
+  // COs after a next() operation
+  // If needed and time allows, we can have more complex cache
+  #define CACHE_SIZE 10
+  map<int, Bytes> m_dummyCache;
 };
 
 void inline

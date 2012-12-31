@@ -123,28 +123,45 @@ Bytes
 ObjectDBFile::next()
 {
   ReadLock(m_filelock);
+  // We are been lazy here; just use file lock as mutex
+  // for the access to the cache too
+  if (m_dummyCache.find(m_index) != map::end)
+  {
+    int index = m_index;
+    m_index++;
+    return m_dummyCache[index];
+  }
+
+  // m_index not found in cache
   Bytes co;
   if (m_index >= m_size)
   {
+    // at the end of file, return empty
     return co;
   }
+
   readBytes(m_istream, co);
   m_index++;
+
+  // fill dummy cache with the next CACHE_SIZE COs
+  fillDummyCache();
+
   return co;
 }
 
-// Caching is not so useful here, as its sequentially reading anyway
 void
-ObjectDBFile::read(vector<Bytes> &vco, int n)
+ObjectDBFile::fillDummyCache()
 {
-  ReadLock(m_filelock);
-  int stop = (m_index + n < m_size ) ? m_index + n : m_size;
-  while (m_index < stop)
+  m_dummyCache.clear();
+  int stop = (m_index + CACHE_SIZE < m_size) ? m_index + CACHE_SIZE : m_size;
+  // the m_index should not change
+  int index = m_index;
+  while (index < stop)
   {
     Bytes co;
     readBytes(m_istream, co);
-    vco.push_back(co);
-    m_index++;
+    m_dummyCache.insert(make_pair(index, co));
+    index++;
   }
 }
 

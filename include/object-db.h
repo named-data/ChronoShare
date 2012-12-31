@@ -33,10 +33,6 @@ public:
   virtual Bytes
   next() = 0;
 
-  // get n COs; if the remaining number of COs < n, return all;
-  virtual void
-  read(vector<Bytes> &vco, int n) = 0;
-
   // size in terms of number of COs
   virtual int
   size() = 0 const;
