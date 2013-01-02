@@ -22,6 +22,7 @@
 #ifndef SQLITE_HELPER_H
 #define SQLITE_HELPER_H
 
+#include <stdint.h>
 #include <sqlite3.h>
 #include <openssl/evp.h>
 #include <boost/exception/all.hpp>
