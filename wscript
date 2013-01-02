@@ -12,6 +12,7 @@ def options(opt):
     opt.add_option('--yes',action='store_true',default=False) # for autoconf/automake/make compatibility
 
     opt.load('compiler_cxx boost ccnx protoc')
+    opt.load('ice_cxx', tooldir=["."])
 
 def configure(conf):
     conf.load("compiler_cxx")
@@ -50,7 +51,8 @@ def configure(conf):
       conf.define('_TEST', 1)
 
     conf.load('protoc')
-
+    conf.load('ice_cxx')
+    
     conf.write_config_header('src/config.h')
 
 def build (bld):
@@ -83,7 +85,8 @@ def build (bld):
         # source = bld.path.ant_glob(['src/**/*.cc']),
         source = ['src/main.cc', 
                   'src/db-helper.cc',
-                  'src/hash-string-converter.cc'],
+                  'src/hash-string-converter.cc',
+                  'src/chronoshare-client.ice'],
         use = 'BOOST BOOST_IOSTREAMS BOOST_REGEX CCNX SSL SQLITE3',
         includes = ['include', 'src'],
         )

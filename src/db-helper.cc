@@ -34,64 +34,98 @@ typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;
 using namespace boost;
 
 const std::string INIT_DATABASE = "\
-PRAGMA foreign_keys = ON;                                       \
-                                                                \
-CREATE TABLE                                                    \
-    SyncNodes(                                                  \
-        device_id       INTEGER PRIMARY KEY AUTOINCREMENT,      \
-        device_name     TEXT NOT NULL,                          \
-        description     TEXT,                                   \
-        seq_no          INTEGER NOT NULL,                       \
-        last_known_tdi  TEXT,                                   \
-        last_update     TIMESTAMP                               \
-    );                                                          \
-                                                                \
-CREATE TRIGGER SyncNodesUpdater_trigger                                \
-    BEFORE INSERT ON SyncNodes                                         \
-    FOR EACH ROW                                                       \
-    WHEN (SELECT device_id                                             \
-             FROM SyncNodes                                            \
-             WHERE device_name=NEW.device_name)                        \
-         IS NOT NULL                                                   \
-    BEGIN                                                              \
-        UPDATE SyncNodes                                               \
-            SET seq_no=max(seq_no,NEW.seq_no)                          \
-            WHERE device_name=NEW.device_name;                         \
-        SELECT RAISE(IGNORE);                                          \
-    END;                                                               \
-                                                                       \
-CREATE INDEX SyncNodes_device_name ON SyncNodes (device_name);         \
-                                                                       \
-CREATE TABLE SyncLog(                                                  \
-        state_id    INTEGER PRIMARY KEY AUTOINCREMENT,                 \
-        state_hash  BLOB NOT NULL UNIQUE,                              \
-        last_update TIMESTAMP NOT NULL                                 \
-    );                                                                 \
-                                                                       \
-CREATE TABLE                                                            \
-    SyncStateNodes(                                                     \
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,                  \
-        state_id    INTEGER NOT NULL                                    \
-            REFERENCES SyncLog (state_id) ON UPDATE CASCADE ON DELETE CASCADE, \
-        device_id   INTEGER NOT NULL                                    \
-            REFERENCES SyncNodes (device_id) ON UPDATE CASCADE ON DELETE CASCADE, \
-        seq_no      INTEGER NOT NULL                                    \
-    );                                                                  \
-                                                                        \
-CREATE INDEX SyncStateNodes_device_id ON SyncStateNodes (device_id);    \
-CREATE INDEX SyncStateNodes_state_id  ON SyncStateNodes (state_id);  \
-CREATE INDEX SyncStateNodes_seq_no    ON SyncStateNodes (seq_no);          \
-                                                                        \
-CREATE TRIGGER SyncLogGuard_trigger                                     \
-    BEFORE INSERT ON SyncLog                                            \
-    FOR EACH ROW                                                        \
-    WHEN (SELECT state_hash                                             \
-            FROM SyncLog                                                \
-            WHERE state_hash=NEW.state_hash)                            \
-        IS NOT NULL                                                     \
-    BEGIN                                                               \
-        DELETE FROM SyncLog WHERE state_hash=NEW.state_hash;            \
-    END;                                                                \
+PRAGMA foreign_keys = ON;                                       \n\
+                                                                \n\
+CREATE TABLE                                                    \n\
+    SyncNodes(                                                  \n\
+        device_id       INTEGER PRIMARY KEY AUTOINCREMENT,      \n\
+        device_name     TEXT NOT NULL,                          \n\
+        description     TEXT,                                   \n\
+        seq_no          INTEGER NOT NULL,                       \n\
+        last_known_tdi  TEXT,                                   \n\
+        last_update     TIMESTAMP                               \n\
+    );                                                          \n\
+                                                                \n\
+CREATE TRIGGER SyncNodesUpdater_trigger                                \n\
+    BEFORE INSERT ON SyncNodes                                         \n\
+    FOR EACH ROW                                                       \n\
+    WHEN (SELECT device_id                                             \n\
+             FROM SyncNodes                                            \n\
+             WHERE device_name=NEW.device_name)                        \n\
+         IS NOT NULL                                                   \n\
+    BEGIN                                                              \n\
+        UPDATE SyncNodes                                               \n\
+            SET seq_no=max(seq_no,NEW.seq_no)                          \n\
+            WHERE device_name=NEW.device_name;                         \n\
+        SELECT RAISE(IGNORE);                                          \n\
+    END;                                                               \n\
+                                                                       \n\
+CREATE INDEX SyncNodes_device_name ON SyncNodes (device_name);         \n\
+                                                                       \n\
+CREATE TABLE SyncLog(                                                  \n\
+        state_id    INTEGER PRIMARY KEY AUTOINCREMENT,                 \n\
+        state_hash  BLOB NOT NULL UNIQUE,                              \n\
+        last_update TIMESTAMP NOT NULL                                 \n\
+    );                                                                 \n\
+                                                                       \n\
+CREATE TABLE                                                            \n\
+    SyncStateNodes(                                                     \n\
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,                  \n\
+        state_id    INTEGER NOT NULL                                    \n\
+            REFERENCES SyncLog (state_id) ON UPDATE CASCADE ON DELETE CASCADE, \n\
+        device_id   INTEGER NOT NULL                                    \n\
+            REFERENCES SyncNodes (device_id) ON UPDATE CASCADE ON DELETE CASCADE, \n\
+        seq_no      INTEGER NOT NULL                                    \n\
+    );                                                                  \n\
+                                                                        \n\
+CREATE INDEX SyncStateNodes_device_id ON SyncStateNodes (device_id);    \n\
+CREATE INDEX SyncStateNodes_state_id  ON SyncStateNodes (state_id);     \n\
+CREATE INDEX SyncStateNodes_seq_no    ON SyncStateNodes (seq_no);       \n\
+                                                                        \n\
+CREATE TRIGGER SyncLogGuard_trigger                                     \n\
+    BEFORE INSERT ON SyncLog                                            \n\
+    FOR EACH ROW                                                        \n\
+    WHEN (SELECT state_hash                                             \n\
+            FROM SyncLog                                                \n\
+            WHERE state_hash=NEW.state_hash)                            \n\
+        IS NOT NULL                                                     \n\
+    BEGIN                                                               \n\
+        DELETE FROM SyncLog WHERE state_hash=NEW.state_hash;            \n\
+    END;                                                                \n\
+                                                                        \n\
+CREATE TABLE ActionLog (                                                \n\
+    device_id   INTEGER NOT NULL,                                       \n\
+    seq_no      INTEGER NOT NULL,                                       \n\
+                                                                        \n\
+    action      CHAR(1) NOT NULL, /* 0 for \"update\", 1 for \"delete\". */ \n\
+    filename    TEXT NOT NULL,                                          \n\
+                                                                        \n\
+    version     INTEGER NOT NULL,                                       \n\
+    action_timestamp TIMESTAMP NOT NULL,                                \n\
+                                                                        \n\
+    file_hash   BLOB, /* NULL if action is \"delete\" */                \n\
+    file_atime  TIMESTAMP,                                              \n\
+    file_mtime  TIMESTAMP,                                              \n\
+    file_ctime  TIMESTAMP,                                              \n\
+    file_chmod  INTEGER,                                                \n\
+                                                                        \n\
+    parent_device_id INTEGER,                                           \n\
+    parent_seq_no    INTEGER,                                           \n\
+                                                                        \n\
+    action_name	     TEXT NOT NULL,                                     \n\
+    action_content_object BLOB NOT NULL,                                \n\
+                                                                        \n\
+    PRIMARY KEY (device_id, seq_no),                                    \n\
+                                                                        \n\
+    FOREIGN KEY (parent_device_id, parent_seq_no)                       \n\
+	REFERENCES ActionLog (device_id, parent_seq_no)                 \n\
+	ON UPDATE RESTRICT                                              \n\
+	ON DELETE SET NULL                                              \n\
+);                                                                      \n\
+                                                                        \n\
+CREATE INDEX ActionLog_filename_version ON ActionLog (filename,version);        \n\
+CREATE INDEX ActionLog_parent ON ActionLog (parent_device_id, parent_seq_no);   \n\
+CREATE INDEX ActionLog_action_name ON ActionLog (action_name);          \n\
 ";
 
 DbHelper::DbHelper (const std::string &path)
