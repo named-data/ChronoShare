@@ -22,9 +22,12 @@
 #include <iostream>
 #include <boost/algorithm/string.hpp>
 #include <config.h>
+#include <Ice/Ice.h>
+#include <chronoshare-client.ice.h>
 
 using namespace std;
 using namespace boost;
+using namespace ChronoshareClient;
 
 void
 usage ()
@@ -76,6 +79,40 @@ main (int argc, char **argv)
           usage ();
         }
     }
+
+
+  int status = 0;
+  Ice::CommunicatorPtr ic;
+  try
+    {
+      // Create a communicator
+      //
+      ic = Ice::initialize (argc, argv);
+    
+      Ice::ObjectPrx base = ic->stringToProxy("NotifyDaemon:default -p 55436");
+      if (!base)
+        {
+          throw "Could not create proxy";
+        }
+
+      NotifyPrx notify = NotifyPrx::checkedCast (base);
+      if (notify)
+        {
+          notify->deleteFile ("bla");
+        }
+      else
+        {
+          cerr << "Cannot connect to the daemon\n";
+          status = 1;
+        }
+    }
+  catch (const Ice::Exception& ex)
+    {
+      cerr << ex << endl;
+      status = 1;
+    }
   
-  return 0;
+  if (ic)
+    ic->destroy();
+  return status;
 }

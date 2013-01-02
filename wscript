@@ -85,7 +85,7 @@ def build (bld):
         target = "common",
         features = ["cxx"],
         source = bld.path.ant_glob(
-            'src/chronoshare-client.ice'
+            'src/chronoshare-client.ice'            
             ),
         use = 'BOOST',
         includes = ['include', 'src'],
@@ -95,7 +95,7 @@ def build (bld):
     client = bld (
         target="cs-client",
         features=['cxx', 'cxxprogram'],
-        source = ['client/client.cc', 
+        source = ['client/client.cc',
                   ],
         use = "BOOST CCNX SSL ICE common",
         includes = ['include', 'src'],
@@ -105,7 +105,8 @@ def build (bld):
         target="cs-daemon",
         features=['cxx', 'cxxprogram'],
         # source = bld.path.ant_glob(['src/**/*.cc']),
-        source = ['daemon/daemon.cc', 
+        source = ['daemon/daemon.cc',
+                  'daemon/notify-i.cc',
                   'src/db-helper.cc',
                   'src/hash-string-converter.cc',
                   ],
