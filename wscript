@@ -62,11 +62,12 @@ def build (bld):
             'src/ccnx-pco.cpp',
             'src/ccnx-closure.cpp',
             'src/ccnx-tunnel.cpp',
+            'src/object-db-file.cpp'
             ],
         use = 'BOOST BOOST_THREAD SSL CCNX',
         includes = ['include', ],
         )
-        
+
     # Unit tests
     if bld.get_define("_TEST"):
       unittests = bld.program (
@@ -81,7 +82,7 @@ def build (bld):
         target="tmp",
         features=['cxx', 'cxxprogram'],
         # source = bld.path.ant_glob(['src/**/*.cc']),
-        source = ['src/main.cc', 
+        source = ['src/main.cc',
                   'src/sqlite-helper.cc',
                   'src/hash-string-converter.cc'],
         use = 'BOOST BOOST_IOSTREAMS BOOST_REGEX CCNX SSL SQLITE3',
