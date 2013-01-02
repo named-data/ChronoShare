@@ -35,7 +35,7 @@ public:
 
   // size in terms of number of COs
   virtual int
-  size() = 0 const;
+  size() = 0;
 
 };
 
