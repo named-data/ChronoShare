@@ -5,6 +5,8 @@
 
 from waflib.Task import Task
 from waflib.TaskGen import extension 
+from waflib import Logs
+from waflib import Node
 
 """
 A simple tool to integrate zeroc ICE into your build system.
@@ -50,8 +52,9 @@ def configure(conf):
         else:
                 conf.find_program('slice2cpp', var='SLICE2CPP', path_list=["%s/bin" % path for path in ICE_PATHS], mandatory=True)
         
-        conf.env['LIB_ICE'] = ["ZeroCIce", "IceUtil"]
-        # self.env['LIBPATH_ICE'] = ""
-        # self.env['CXXFLAGS_ICE'] = ""
-	
+        ICE_PATH = conf.env.SLICE2CPP[:-14]
+        
+	conf.env['LIB_ICE'] = ["Ice", "ZeroCIce", "IceUtil"]
+	conf.env['INCLUDES_ICE']= '%s/include' % ICE_PATH
+	conf.env['LIBPATH_ICE'] = '%s/lib' % ICE_PATH
 
