@@ -82,7 +82,7 @@ def build (bld):
         features=['cxx', 'cxxprogram'],
         # source = bld.path.ant_glob(['src/**/*.cc']),
         source = ['src/main.cc', 
-                  'src/sqlite-helper.cc',
+                  'src/db-helper.cc',
                   'src/hash-string-converter.cc'],
         use = 'BOOST BOOST_IOSTREAMS BOOST_REGEX CCNX SSL SQLITE3',
         includes = ['include', 'src'],

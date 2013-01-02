@@ -19,7 +19,7 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#include "sqlite-helper.h"
+#include "db-helper.h"
 // #include "sync-log.h"
 #include <boost/make_shared.hpp>
 #include <boost/ref.hpp>

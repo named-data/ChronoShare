@@ -20,7 +20,7 @@
  *	   Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#include "sqlite-helper.h"
+#include "db-helper.h"
 #include <iostream>
 
 using namespace std;
