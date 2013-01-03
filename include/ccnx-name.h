@@ -5,6 +5,9 @@
 
 namespace Ccnx {
 
+class CcnxCharbuf;
+typedef boost::shared_ptr<CcnxCharbuf> CcnxCharbufPtr;
+
 //  This class is mostly used in CcnxWrapper; users should not be directly using this class
 // The main purpose of this class to is avoid manually create and destroy charbuf everytime
 class CcnxCharbuf
@@ -17,15 +20,16 @@ public:
   // expose internal data structure, use with caution!!
   ccn_charbuf *
   getBuf() { return m_buf; }
+  static CcnxCharbufPtr Null;
 
 protected:
   ccn_charbuf *m_buf;
 };
 
-typedef boost::shared_ptr<CcnxCharbuf> CcnxCharbufPtr;
 
 struct NameException:
   virtual boost::exception, virtual exception {};
+
 class Name
 {
 public:
@@ -58,8 +62,22 @@ public:
   getCompAsString(int index) const;
 
   Name
-  getPartialName(int start, int n) const;
+  getPartialName(int start, int n = -1) const;
 
+  string
+  toString() const;
+
+  Name &
+  operator=(const Name &other);
+
+  bool
+  operator==(const string &str);
+
+  bool
+  operator!=(const string &str);
+
+  friend Name
+  operator+(const Name &n1, const Name &n2);
 
 protected:
   vector<Bytes> m_comps;
@@ -67,6 +85,16 @@ protected:
 
 ostream&
 operator <<(ostream &os, const Name &name);
+
+bool
+operator ==(const Name &n1, const Name &n2);
+
+bool
+operator !=(const Name &n1, const Name &n2);
+
+bool
+operator <(const Name &n1, const Name &n2);
+
 
 struct InterestSelectorException:
   virtual boost::exception, virtual exception {};
@@ -117,7 +145,13 @@ public:
   publisherPublicKeyDigest(const Bytes &digest) {m_publisherPublicKeyDigest = digest; return *this;}
 
   CcnxCharbufPtr
-  toCcnxCharbuf();
+  toCcnxCharbuf() const;
+
+  bool
+  isEmpty() const;
+
+  bool
+  operator==(const Selectors &other);
 
 private:
   int m_maxSuffixComps;

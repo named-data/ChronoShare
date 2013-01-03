@@ -63,7 +63,7 @@ CcnxWrapper::connectCcnd()
 
   if (!m_registeredInterests.empty())
   {
-    for (map<std::string, InterestCallback>::const_iterator it = m_registeredInterests.begin(); it != m_registeredInterests.end(); ++it)
+    for (map<Name, InterestCallback>::const_iterator it = m_registeredInterests.begin(); it != m_registeredInterests.end(); ++it)
     {
       // clearInterestFilter(it->first);
       setInterestFilter(it->first, it->second);
@@ -211,13 +211,13 @@ CcnxWrapper::ccnLoop ()
 }
 
 Bytes
-CcnxWrapper::createContentObject(const std::string &name, const unsigned char *buf, size_t len, int freshness)
+CcnxWrapper::createContentObject(const Name  &name, const unsigned char *buf, size_t len, int freshness)
 {
-  ccn_charbuf *pname = ccn_charbuf_create();
+  CcnxCharbufPtr ptr = name.toCcnxCharbuf();
+  ccn_charbuf *pname = ptr->getBuf();
   ccn_charbuf *signed_info = ccn_charbuf_create();
   ccn_charbuf *content = ccn_charbuf_create();
 
-  ccn_name_from_uri(pname, name.c_str());
   ccn_signed_info_create(signed_info,
 			 getPublicKeyDigest(),
 			 getPublicKeyDigestLength(),
@@ -236,7 +236,6 @@ CcnxWrapper::createContentObject(const std::string &name, const unsigned char *b
   Bytes bytes;
   readRaw(bytes, content->buf, content->length);
 
-  ccn_charbuf_destroy (&pname);
   ccn_charbuf_destroy (&signed_info);
   ccn_charbuf_destroy (&content);
 
@@ -260,33 +259,16 @@ CcnxWrapper::putToCcnd (const Bytes &contentObject)
 }
 
 int
-CcnxWrapper::publishData (const string &name, const unsigned char *buf, size_t len, int freshness)
+CcnxWrapper::publishData (const Name &name, const unsigned char *buf, size_t len, int freshness)
 {
   Bytes co = createContentObject(name, buf, len, freshness);
   return putToCcnd(co);
 }
 
 int
-CcnxWrapper::publishData (const string &name, const Bytes &content, int freshness)
+CcnxWrapper::publishData (const Name &name, const Bytes &content, int freshness)
 {
   publishData(name, head(content), content.size(), freshness);
-}
-
-string
-CcnxWrapper::extractName(const unsigned char *data, const ccn_indexbuf *comps)
-{
-  ostringstream name (ostringstream::out);
-  for (int i = 0; i < comps->n - 1; i++)
-  {
-    char *comp;
-    size_t size;
-    name << "/";
-    ccn_name_comp_get(data, comps, i, (const unsigned char **)&comp, &size);
-    string compStr(comp, size);
-    name << compStr;
-  }
-
-  return name.str();
 }
 
 
@@ -311,7 +293,7 @@ incomingInterest(ccn_closure *selfp,
       return CCN_UPCALL_RESULT_OK;
     }
 
-  string interest = CcnxWrapper::extractName(info->interest_ccnb, info->interest_comps);
+  Name interest(info->interest_ccnb, info->interest_comps);
 
   (*f) (interest);
   return CCN_UPCALL_RESULT_OK;
@@ -341,7 +323,7 @@ incomingData(ccn_closure *selfp,
         return CCN_UPCALL_RESULT_REEXPRESS;
       }
 
-      string interest = CcnxWrapper::extractName(info->interest_ccnb, info->interest_comps);
+      Name interest(info->interest_ccnb, info->interest_comps);
       Closure::TimeoutCallbackReturnValue rv = cp->runTimeoutCallback(interest);
       switch(rv)
       {
@@ -363,7 +345,7 @@ incomingData(ccn_closure *selfp,
     // BOOST_THROW_EXCEPTION(CcnxOperationException() << errmsg_info_str("decode ContentObject failed"));
   }
 
-  string name = CcnxWrapper::extractName(info->content_ccnb, info->content_comps);
+  Name name(info->content_ccnb, info->content_comps);
 
   Bytes content;
   // copy content and do processing on the copy
@@ -375,37 +357,44 @@ incomingData(ccn_closure *selfp,
   return CCN_UPCALL_RESULT_OK;
 }
 
-int CcnxWrapper::sendInterest (const string &interest, Closure *closure)
+int CcnxWrapper::sendInterest (const Name &interest, Closure *closure, const Selectors &selectors)
 {
   UniqueRecLock(m_mutex);
   if (!m_running || !m_connected)
     return -1;
 
-  ccn_charbuf *pname = ccn_charbuf_create();
+  CcnxCharbufPtr namePtr = interest.toCcnxCharbuf();
+  ccn_charbuf *pname = namePtr->getBuf();
   ccn_closure *dataClosure = new ccn_closure;
 
-  ccn_name_from_uri (pname, interest.c_str());
   dataClosure->data = (void *)closure;
 
   dataClosure->p = &incomingData;
-  if (ccn_express_interest (m_handle, pname, dataClosure, NULL) < 0)
+
+  CcnxCharbufPtr selectorsPtr = selectors.toCcnxCharbuf();
+  ccn_charbuf *templ = NULL;
+  if (selectorsPtr != CcnxCharbuf::Null)
+  {
+    templ = selectorsPtr->getBuf();
+  }
+
+  if (ccn_express_interest (m_handle, pname, dataClosure, templ) < 0)
   {
   }
 
-  ccn_charbuf_destroy (&pname);
   return 0;
 }
 
-int CcnxWrapper::setInterestFilter (const string &prefix, const InterestCallback &interestCallback)
+int CcnxWrapper::setInterestFilter (const Name &prefix, const InterestCallback &interestCallback)
 {
   UniqueRecLock(m_mutex);
   if (!m_running || !m_connected)
     return -1;
 
-  ccn_charbuf *pname = ccn_charbuf_create();
+  CcnxCharbufPtr ptr = prefix.toCcnxCharbuf();
+  ccn_charbuf *pname = ptr->getBuf();
   ccn_closure *interestClosure = new ccn_closure;
 
-  ccn_name_from_uri (pname, prefix.c_str());
   interestClosure->data = new InterestCallback (interestCallback); // should be removed when closure is removed
   interestClosure->p = &incomingInterest;
   int ret = ccn_set_interest_filter (m_handle, pname, interestClosure);
@@ -413,37 +402,35 @@ int CcnxWrapper::setInterestFilter (const string &prefix, const InterestCallback
   {
   }
 
-  m_registeredInterests.insert(pair<std::string, InterestCallback>(prefix, interestCallback));
-  ccn_charbuf_destroy(&pname);
+  m_registeredInterests.insert(pair<Name, InterestCallback>(prefix, interestCallback));
 }
 
 void
-CcnxWrapper::clearInterestFilter (const std::string &prefix)
+CcnxWrapper::clearInterestFilter (const Name &prefix)
 {
   UniqueRecLock(m_mutex);
   if (!m_running || !m_connected)
     return;
 
-  ccn_charbuf *pname = ccn_charbuf_create();
+  CcnxCharbufPtr ptr = prefix.toCcnxCharbuf();
+  ccn_charbuf *pname = ptr->getBuf();
 
-  ccn_name_from_uri (pname, prefix.c_str());
   int ret = ccn_set_interest_filter (m_handle, pname, 0);
   if (ret < 0)
   {
   }
 
   m_registeredInterests.erase(prefix);
-  ccn_charbuf_destroy(&pname);
 }
 
-string
+Name
 CcnxWrapper::getLocalPrefix ()
 {
   struct ccn * tmp_handle = ccn_create ();
   int res = ccn_connect (tmp_handle, NULL);
   if (res < 0)
     {
-      return "";
+      return Name();
     }
 
   string retval = "";
@@ -515,7 +502,7 @@ CcnxWrapper::getLocalPrefix ()
   ccn_disconnect (tmp_handle);
   ccn_destroy (&tmp_handle);
 
-  return retval;
+  return Name(retval);
 }
 
 }

@@ -25,35 +25,32 @@ public:
   typedef boost::recursive_mutex RecLock;
   typedef boost::unique_lock<RecLock> UniqueRecLock;
 
-  typedef boost::function<void (const string &)> InterestCallback;
+  typedef boost::function<void (const Name &)> InterestCallback;
 
   CcnxWrapper();
   virtual ~CcnxWrapper();
 
   virtual int
-  setInterestFilter (const string &prefix, const InterestCallback &interestCallback);
+  setInterestFilter (const Name &prefix, const InterestCallback &interestCallback);
 
   virtual void
-  clearInterestFilter (const string &prefix);
+  clearInterestFilter (const Name &prefix);
 
   virtual int
-  sendInterest (const string &interest, Closure *closure);
+  sendInterest (const Name &interest, Closure *closure, const Selectors &selector = Selectors());
 
   virtual int
-  publishData (const string &name, const unsigned char *buf, size_t len, int freshness);
+  publishData (const Name &name, const unsigned char *buf, size_t len, int freshness);
 
   int
-  publishData (const string &name, const Bytes &content, int freshness);
+  publishData (const Name &name, const Bytes &content, int freshness);
 
-  static string
+  static Name
   getLocalPrefix ();
-
-  static string
-  extractName(const unsigned char *data, const ccn_indexbuf *comps);
 
 protected:
   Bytes
-  createContentObject(const string &name, const unsigned char *buf, size_t len, int freshness);
+  createContentObject(const Name &name, const unsigned char *buf, size_t len, int freshness);
 
   int
   putToCcnd (const Bytes &contentObject);
@@ -92,8 +89,7 @@ protected:
   boost::thread m_thread;
   bool m_running;
   bool m_connected;
-  map<string, InterestCallback> m_registeredInterests;
-  // std::list< std::pair<std::string, InterestCallback> > m_registeredInterests;
+  map<Name, InterestCallback> m_registeredInterests;
 };
 
 typedef boost::shared_ptr<CcnxWrapper> CcnxWrapperPtr;
