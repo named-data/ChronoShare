@@ -84,9 +84,9 @@ def build (bld):
     common = bld.objects (
         target = "common",
         features = ["cxx"],
-        source = bld.path.ant_glob(
-            'src/chronoshare-client.ice'            
-            ),
+        source = ['src/hash-helper.cc',
+                  'src/chronoshare-client.ice',
+                  ],
         use = 'BOOST',
         includes = ['include', 'src'],
         )
@@ -108,7 +108,8 @@ def build (bld):
         source = ['daemon/daemon.cc',
                   'daemon/notify-i.cc',
                   'src/db-helper.cc',
-                  'src/hash-string-converter.cc',
+                  'src/sync-log.cc',
+                  'src/action-log.cc',
                   ],
         use = "BOOST CCNX SSL SQLITE3 ICE common",
         includes = ['include', 'src'],

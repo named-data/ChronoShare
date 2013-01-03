@@ -20,26 +20,46 @@
  */
 
 #include "notify-i.h"
+#include <hash-helper.h>
 
 using namespace std;
 
+// NotifyI::NotifyI (DbHelperPtr &db)
+//   : m_db (db)
+// {
+// }
+
 void
 NotifyI::updateFile (const ::std::string &filename,
-                     const ::ChronoshareClient::HashBytes &hash,
+                     const ::std::pair<const Ice::Byte*, const Ice::Byte*> &hashRaw,
                      const ::std::string &atime,
                      const ::std::string &mtime,
                      const ::std::string &ctime,
                      ::Ice::Int mode,
                      const ::Ice::Current&)
 {
-  cout << "updateFile " << filename << endl;
+  Hash hash (hashRaw.first, hashRaw.second-hashRaw.first);
+
+  // m_db->AddActionUpdate (filename, hash, atime, mtime, ctime, mode);
+  
+  // cout << "updateFile " << filename << " with hash " << hash << endl;
 }
 
+void
+NotifyI::moveFile (const ::std::string &oldFilename,
+                   const ::std::string &newFilename,
+                   const ::Ice::Current&)
+{
+  // cout << "moveFile from " << oldFilename << " to " << newFilename << endl;
+  // m_db->AddActionMove (filename, oldFilename);
+}
 
 void
 NotifyI::deleteFile (const ::std::string &filename,
                      const ::Ice::Current&)
 {
-  cout << "deleteFile " << filename << endl;
+  // m_db->AddActionDelete (filename, oldFilename);
+  
+  // cout << "deleteFile " << filename << endl;
 }
 

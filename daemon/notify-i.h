@@ -27,9 +27,11 @@
 class NotifyI : public ChronoshareClient::Notify
 {
 public:
+  // NotifyI (DbHelperPtr &db);
+  
   virtual void
   updateFile (const ::std::string &filename,
-              const ::ChronoshareClient::HashBytes &hash,
+              const ::std::pair<const Ice::Byte*, const Ice::Byte*> &hash,
               const ::std::string &atime,
               const ::std::string &mtime,
               const ::std::string &ctime,
@@ -37,9 +39,16 @@ public:
               const ::Ice::Current& = ::Ice::Current());
 
   virtual void
+  moveFile (const ::std::string &oldFilename,
+            const ::std::string &newFilename,
+            const ::Ice::Current& = ::Ice::Current());
+  
+  virtual void
   deleteFile (const ::std::string &filename,
               const ::Ice::Current& = ::Ice::Current());
 
+private:
+  // DbHelperPtr m_db;
 };
 
 #endif // NOTIFY_I_H

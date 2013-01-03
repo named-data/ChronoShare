@@ -24,6 +24,9 @@
 #include <config.h>
 #include <Ice/Ice.h>
 #include <chronoshare-client.ice.h>
+#include <sys/stat.h>
+#include <hash-helper.h>
+
 
 using namespace std;
 using namespace boost;
@@ -42,6 +45,7 @@ usage ()
   exit (1);
 }
 
+
 int
 main (int argc, char **argv)
 {
@@ -58,29 +62,7 @@ main (int argc, char **argv)
       cout << "chronoshare version " << CHRONOSHARE_VERSION << endl;
       exit (0);
     }
-  else if (cmd == "update")
-    {
-      if (argc != 3)
-        {
-          usage ();
-        }
-    }
-  else if (cmd == "delete")
-    {
-      if (argc != 3)
-        {
-          usage ();
-        }
-    }
-  else if (cmd == "move")
-    {
-      if (argc != 4)
-        {
-          usage ();
-        }
-    }
-
-
+  
   int status = 0;
   Ice::CommunicatorPtr ic;
   try
@@ -98,7 +80,59 @@ main (int argc, char **argv)
       NotifyPrx notify = NotifyPrx::checkedCast (base);
       if (notify)
         {
-          notify->deleteFile ("bla");
+
+          if (cmd == "update")
+            {
+              if (argc != 3)
+                {
+                  usage ();
+                }
+
+              struct stat fileStats;
+              int ok = stat (argv[2], &fileStats);
+              if (ok == 0)
+                {
+                  // Alex: the following code is platform specific :(
+                  
+                  char atimespec[26], mtimespec[26], ctimespec[26];
+                  ctime_r (&fileStats.st_atime, atimespec);
+                  ctime_r (&fileStats.st_mtime, mtimespec);
+                  ctime_r (&fileStats.st_ctime, ctimespec);
+
+                  HashPtr fileHash = Hash::FromFileContent (argv[2]);
+                  
+                  notify->updateFile (argv[2],
+                                      make_pair(reinterpret_cast<const ::Ice::Byte*> (fileHash->GetHash ()),
+                                                reinterpret_cast<const ::Ice::Byte*> (fileHash->GetHash ()) +
+                                                fileHash->GetHashBytes ()),
+                                      atimespec, mtimespec, ctimespec,
+                                      fileStats.st_mode);
+                }
+              else
+                {
+                  cerr << "File [" << argv[2] << "] doesn't exist or is not accessible" << endl;
+                  return 1;
+                }
+            }
+          else if (cmd == "delete")
+            {
+              if (argc != 3)
+                {
+                  usage ();
+                }
+              
+              notify->deleteFile (argv[2]);
+            }
+          else if (cmd == "move")
+            {
+              if (argc != 4)
+                {
+                  usage ();
+                }
+
+              
+              notify->moveFile (argv[2], argv[3]);
+            }
         }
       else
         {

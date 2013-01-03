@@ -19,39 +19,33 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#ifndef DB_HELPER_H
-#define DB_HELPER_H
+#ifndef ACTION_LOG_H
+#define ACTION_LOG_H
 
-#include <sqlite3.h>
-#include <openssl/evp.h>
-#include <boost/exception/all.hpp>
-#include <string>
-#include "hash-helper.h"
+#include "sync-log.h"
 
-typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str; 
-
-class DbHelper
+class ActionLog : public SyncLog
 {
 public:
-  DbHelper (const std::string &path);
-  virtual ~DbHelper ();
+  ActionLog (const std::string &path, const std::string &localName);
+
   
-private:
-  static void
-  hash_xStep (sqlite3_context *context, int argc, sqlite3_value **argv);
+  
+  
+  void
+  AddActionUpdate (const std::string &filename,
+                        const Hash &hash,
+                        const std::string &atime, const std::string &mtime, const std::string &ctime,
+                        int mode);
 
-  static void
-  hash_xFinal (sqlite3_context *context);
+  void
+  AddActionMove (const std::string &oldFile, const std::string &newFile);
 
+  void
+  AddActionDelete (const std::string &filename);
+  
 protected:
-  sqlite3 *m_db;
+  std::string m_localName;
 };
 
-namespace Error {
-struct Db : virtual boost::exception, virtual std::exception { };
-}
-
-typedef boost::shared_ptr<DbHelper> DbHelperPtr;
-
-
-#endif // DB_HELPER_H
+#endif // ACTION_LOG_H

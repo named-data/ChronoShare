@@ -19,7 +19,7 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#include "db-helper.h"
+#include "action-log.h"
 #include <iostream>
 #include <Ice/Service.h>
 #include <Ice/Identity.h>
@@ -61,7 +61,8 @@ main (int argc, char **argv)
   
   try
     {
-      DbHelper db ("./");
+      // DbHelper db ("./", "/ndn/ucla.edu/alex");
+      ActionLog bla ("./", "/ndn/ucla.edu/alex");
 
       MyService svc;
       status = svc.main (argc, argv);

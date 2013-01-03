@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012 University of California, Los Angeles
+ * Copyright (c) 2013 University of California, Los Angeles
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -22,27 +22,48 @@
 #ifndef SYNC_LOG_H
 #define SYNC_LOG_H
 
-#define INIT_LOGGER(name)
-#define _LOG_FUNCTION(x)
-#define _LOG_FUNCTION_NOARGS
-#define _LOG_TRACE(x)
-#define INIT_LOGGERS(x)
+#include "db-helper.h"
 
-#ifdef _DEBUG
+class SyncLog : public DbHelper
+{
+public:
+  SyncLog (const std::string &path)
+    : DbHelper (path)
+  {
+  }
 
-#include <boost/thread/thread.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <iostream>
-#include <string>
+  // done
+  void
+  UpdateDeviceSeqno (const std::string &name, uint64_t seqNo);
 
-#define _LOG_DEBUG(x) \
-  std::clog << boost::get_system_time () << " " << boost::this_thread::get_id () << " " << x << std::endl;
+  // std::string
+  // LookupForwardingAlias (const std::string &deviceName);
 
-#else
-#define _LOG_DEBUG(x)
-#endif
+  // void
+  // UpdateForwardingAlias ();
 
-#define _LOG_ERROR(x) \
-  std::clog << boost::get_system_time () << " " << boost::this_thread::get_id () << " " << x << std::endl;
+  // done
+  /**
+   * Create an entry in SyncLog and SyncStateNodes corresponding to the current state of SyncNodes
+   */
+  HashPtr
+  RememberStateInStateLog ();
+
+  // done
+  sqlite3_int64
+  LookupSyncLog (const std::string &stateHash);
+
+  // done
+  sqlite3_int64
+  LookupSyncLog (const Hash &stateHash);
+
+  // How difference is exposed will be determined later by the actual protocol
+  void
+  FindStateDifferences (const std::string &oldHash, const std::string &newHash);
+
+  void
+  FindStateDifferences (const Hash &oldHash, const Hash &newHash);  
+};
+
 
 #endif // SYNC_LOG_H
