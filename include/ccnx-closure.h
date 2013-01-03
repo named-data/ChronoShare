@@ -2,6 +2,7 @@
 #define CCNX_CLOSURE_H
 
 #include "ccnx-common.h"
+#include "ccnx-name.h"
 
 using namespace std;
 
@@ -10,7 +11,7 @@ namespace Ccnx {
 class Closure
 {
 public:
-  typedef boost::function<void (const string &, const Bytes &)> DataCallback;
+  typedef boost::function<void (const Name &, const Bytes &)> DataCallback;
 
   typedef enum
   {
@@ -18,7 +19,7 @@ public:
     RESULT_REEXPRESS
   } TimeoutCallbackReturnValue;
 
-  typedef boost::function<TimeoutCallbackReturnValue (const string &)> TimeoutCallback;
+  typedef boost::function<TimeoutCallbackReturnValue (const Name &)> TimeoutCallback;
 
   Closure(int retry, const DataCallback &dataCallback, const TimeoutCallback &timeoutCallback);
   Closure(const Closure &other);
@@ -26,9 +27,9 @@ public:
   void decRetry() { m_retry--;}
   virtual ~Closure();
   virtual void
-  runDataCallback(const string &name, const Bytes &content);
+  runDataCallback(const Name &name, const Bytes &content);
   virtual TimeoutCallbackReturnValue
-  runTimeoutCallback(const string &interest);
+  runTimeoutCallback(const Name &interest);
 
 protected:
   int m_retry;

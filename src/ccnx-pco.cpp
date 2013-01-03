@@ -46,10 +46,10 @@ ParsedContentObject::content() const
   return bytes;
 }
 
-string
+Name
 ParsedContentObject::name() const
 {
-  return CcnxWrapper::extractName(head(m_bytes), m_comps);
+  return Name(head(m_bytes), m_comps);
 }
 
 }

@@ -4,6 +4,7 @@
 #include <boost/algorithm/string/join.hpp>
 
 namespace Ccnx{
+CcnxCharbufPtr CcnxCharbuf::Null;
 
 CcnxCharbuf::CcnxCharbuf()
             : m_buf(NULL)
@@ -64,6 +65,40 @@ Name::Name(const unsigned char *data, const ccn_indexbuf *comps)
     readRaw(comp, compPtr, size);
     m_comps.push_back(comp);
   }
+}
+
+Name &
+Name::operator=(const Name &other)
+{
+  m_comps = other.m_comps;
+  return *this;
+}
+bool
+Name::operator==(const string &str)
+{
+  return this->toString() == str;
+}
+
+bool
+Name::operator!=(const string &str)
+{
+  return !(*this == str);
+}
+
+Name
+operator+(const Name &n1, const Name &n2)
+{
+  vector<Bytes> comps = n1.m_comps;
+  copy(n2.m_comps.begin(), n2.m_comps.end(), back_inserter(comps));
+  return Name(comps);
+}
+
+string
+Name::toString() const
+{
+  stringstream ss(stringstream::out);
+  ss << *this;
+  return ss.str();
 }
 
 CcnxCharbufPtr
@@ -131,7 +166,7 @@ Name
 Name::getPartialName(int start, int n) const
 {
   int size = m_comps.size();
-  if (start < 0 || start >= size || start + n > size)
+  if (start < 0 || start >= size || n > 0 && start + n > size)
   {
     stringstream ss(stringstream::out);
     ss << "getPartialName() parameter out of range! ";
@@ -142,10 +177,21 @@ Name::getPartialName(int start, int n) const
   }
 
   vector<Bytes> comps;
-  for (int i = 0; i < n; i++)
+  int end;
+  if (n > 0)
   {
-    comps.push_back(m_comps[start + i]);
+    end = start + n;
   }
+  else
+  {
+    end = size;
+  }
+
+  for (int i = start; i < end; i++)
+  {
+    comps.push_back(m_comps[i]);
+  }
+
   return Name(comps);
 }
 
@@ -163,6 +209,31 @@ operator <<(ostream &os, const Name &name)
   return os;
 }
 
+bool
+operator ==(const Name &n1, const Name &n2)
+{
+  stringstream ss1(stringstream::out);
+  stringstream ss2(stringstream::out);
+  ss1 << n1;
+  ss2 << n2;
+  return ss1.str() == ss2.str();
+}
+
+bool
+operator !=(const Name &n1, const Name &n2)
+{
+  return !(n1 == n2);
+}
+
+bool
+operator <(const Name &n1, const Name &n2)
+{
+  stringstream ss1(stringstream::out);
+  stringstream ss2(stringstream::out);
+  ss1 << n1;
+  ss2 << n2;
+  return ss1.str() < ss2.str();
+}
 
 Selectors::Selectors()
           : m_maxSuffixComps(-1)
@@ -185,9 +256,36 @@ Selectors::Selectors(const Selectors &other)
   m_publisherPublicKeyDigest = other.m_publisherPublicKeyDigest;
 }
 
-CcnxCharbufPtr
-Selectors::toCcnxCharbuf()
+bool
+Selectors::operator == (const Selectors &other)
 {
+  return m_maxSuffixComps == other.m_maxSuffixComps
+         && m_minSuffixComps == other.m_minSuffixComps
+         && m_answerOriginKind == other.m_answerOriginKind
+         && (m_interestLifetime - other.m_interestLifetime) < 10e-4
+         && m_scope == other.m_scope
+         && m_childSelector == other.m_childSelector;
+}
+
+bool
+Selectors::isEmpty() const
+{
+  return m_maxSuffixComps == -1
+         && m_minSuffixComps == -1
+         && m_answerOriginKind == AOK_DEFAULT
+         && (m_interestLifetime - (-1.0)) < 10e-4
+         && m_scope == -1
+         && m_childSelector == DEFAULT;
+}
+
+
+CcnxCharbufPtr
+Selectors::toCcnxCharbuf() const
+{
+  if (isEmpty())
+  {
+    return CcnxCharbuf::Null;
+  }
   CcnxCharbufPtr ptr(new CcnxCharbuf());
   ccn_charbuf *cbuf = ptr->getBuf();
   ccn_charbuf_append_tt(cbuf, CCN_DTAG_Interest, CCN_DTAG);

@@ -23,7 +23,7 @@ Closure::~Closure ()
 }
 
 Closure::TimeoutCallbackReturnValue
-Closure::runTimeoutCallback(const string &interest)
+Closure::runTimeoutCallback(const Name &interest)
 {
   if ((*m_timeoutCallback).empty())
   {
@@ -35,7 +35,7 @@ Closure::runTimeoutCallback(const string &interest)
 
 
 void
-Closure::runDataCallback(const string &name, const Bytes &content)
+Closure::runDataCallback(const Name &name, const Bytes &content)
 {
   if (m_dataCallback != NULL) {
     (*m_dataCallback)(name, content);

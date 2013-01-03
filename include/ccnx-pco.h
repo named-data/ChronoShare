@@ -3,6 +3,7 @@
 
 #include "ccnx-wrapper.h"
 #include "ccnx-common.h"
+#include "ccnx-name.h"
 
 using namespace std;
 
@@ -21,7 +22,7 @@ public:
   Bytes
   content() const;
 
-  string
+  Name
   name() const;
 
 protected:
