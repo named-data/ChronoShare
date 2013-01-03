@@ -1,6 +1,14 @@
 #ifndef CCNX_COMMON_H
 #define CCNX_COMMON_H
 
+extern "C" {
+#include <ccn/ccn.h>
+#include <ccn/charbuf.h>
+#include <ccn/keystore.h>
+#include <ccn/uri.h>
+#include <ccn/bloom.h>
+#include <ccn/signing.h>
+}
 #include <vector>
 #include <boost/shared_ptr.hpp>
 #include <boost/exception/all.hpp>
@@ -24,10 +32,8 @@ head(const Bytes &bytes);
 
 // --- Bytes operations end ---
 
-// --- Name operation start ---
-void
-split(const string &name, Comps &comps);
-// --- Name operation end ---
+// Exceptions
+typedef boost::error_info<struct tag_errmsg, std::string> error_info_str;
 
 } // Ccnx
 #endif // CCNX_COMMON_H

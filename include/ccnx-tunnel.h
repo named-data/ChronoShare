@@ -39,7 +39,7 @@ public:
   publishContentObject(const string &name, const Bytes &contentObject, int freshness);
 
   virtual int
-  sendInterest (const Interest &interest, Closure *closure);
+  sendInterest (const string &interest, Closure *closure);
 
 
   // prefix is topology-independent

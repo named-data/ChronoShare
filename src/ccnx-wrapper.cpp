@@ -32,17 +32,6 @@ head(const Bytes &bytes)
   return &bytes[0];
 }
 
-void
-split(const string &name, Comps &comps)
-{
-  stringstream ss(name);
-  string comp;
-  while(getline(ss, comp, '/'))
-  {
-    comps.push_back(comp);
-  }
-}
-
 CcnxWrapper::CcnxWrapper()
   : m_handle (0)
   , m_keyStore (0)
@@ -386,7 +375,7 @@ incomingData(ccn_closure *selfp,
   return CCN_UPCALL_RESULT_OK;
 }
 
-int CcnxWrapper::sendInterest (const Interest &interest, Closure *closure)
+int CcnxWrapper::sendInterest (const string &interest, Closure *closure)
 {
   UniqueRecLock(m_mutex);
   if (!m_running || !m_connected)
@@ -395,7 +384,7 @@ int CcnxWrapper::sendInterest (const Interest &interest, Closure *closure)
   ccn_charbuf *pname = ccn_charbuf_create();
   ccn_closure *dataClosure = new ccn_closure;
 
-  ccn_name_from_uri (pname, interest.name().c_str());
+  ccn_name_from_uri (pname, interest.c_str());
   dataClosure->data = (void *)closure;
 
   dataClosure->p = &incomingData;
