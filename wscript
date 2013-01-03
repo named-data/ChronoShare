@@ -11,10 +11,12 @@ def options(opt):
     opt.add_option('--test', action='store_true',default=False,dest='_test',help='''build unit tests''')
     opt.add_option('--yes',action='store_true',default=False) # for autoconf/automake/make compatibility
 
-    opt.load('compiler_cxx boost ccnx protoc')
+    opt.load('compiler_cxx boost ccnx protoc ice_cxx')
 
 def configure(conf):
     conf.load("compiler_cxx")
+
+    conf.define ("CHRONOSHARE_VERSION", VERSION)
 
     conf.check_cfg(package='sqlite3', args=['--cflags', '--libs'], uselib_store='SQLITE3', mandatory=True)
 
@@ -50,6 +52,7 @@ def configure(conf):
       conf.define('_TEST', 1)
 
     conf.load('protoc')
+    conf.load('ice_cxx')
 
     conf.write_config_header('src/config.h')
 
@@ -79,13 +82,37 @@ def build (bld):
           includes = ['include', ],
           )
 
-    chronoshare = bld (
-        target="tmp",
+    common = bld.objects (
+        target = "common",
+        features = ["cxx"],
+        source = ['src/hash-helper.cc',
+                  'src/chronoshare-client.ice',
+                  ],
+        use = 'BOOST',
+        includes = ['include', 'src'],
+        )
+
+
+    client = bld (
+        target="cs-client",
+        features=['cxx', 'cxxprogram'],
+        source = ['client/client.cc',
+                  ],
+        use = "BOOST CCNX SSL ICE common",
+        includes = ['include', 'src'],
+        )
+
+    daemon = bld (
+        target="cs-daemon",
         features=['cxx', 'cxxprogram'],
         # source = bld.path.ant_glob(['src/**/*.cc']),
-        source = ['src/main.cc',
-                  'src/sqlite-helper.cc',
-                  'src/hash-string-converter.cc'],
-        use = 'BOOST BOOST_IOSTREAMS BOOST_REGEX CCNX SSL SQLITE3',
+        source = ['daemon/daemon.cc',
+                  'daemon/notify-i.cc',
+                  'src/db-helper.cc',
+                  'src/sync-log.cc',
+                  'src/action-log.cc',
+                  'src/sync-state.proto',
+                  ],
+        use = "BOOST CCNX SSL SQLITE3 ICE common",
         includes = ['include', 'src'],
         )

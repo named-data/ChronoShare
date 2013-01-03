@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012 University of California, Los Angeles
+ * Copyright (c) 2012-2013 University of California, Los Angeles
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -19,55 +19,23 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#ifndef SQLITE_HELPER_H
-#define SQLITE_HELPER_H
+#ifndef DB_HELPER_H
+#define DB_HELPER_H
 
 #include <stdint.h>
 #include <sqlite3.h>
 #include <openssl/evp.h>
 #include <boost/exception/all.hpp>
 #include <string>
-#include "hash-string-converter.h"
+#include "hash-helper.h"
 
-// temporarily ignoring all potential database errors
+typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str; 
 
 class DbHelper
 {
 public:
   DbHelper (const std::string &path);
-  ~DbHelper ();
-
-  // done
-  void
-  UpdateDeviceSeqno (const std::string &name, uint64_t seqNo);
-
-  // std::string
-  // LookupForwardingAlias (const std::string &deviceName);
-
-  // void
-  // UpdateForwardingAlias ();
-
-  // done
-  /**
-   * Create an entry in SyncLog and SyncStateNodes corresponding to the current state of SyncNodes
-   */
-  HashPtr
-  RememberStateInStateLog ();
-
-  // done
-  sqlite3_int64
-  LookupSyncLog (const std::string &stateHash);
-
-  // done
-  sqlite3_int64
-  LookupSyncLog (const Hash &stateHash);
-
-  // How difference is exposed will be determined later by the actual protocol
-  void
-  FindStateDifferences (const std::string &oldHash, const std::string &newHash);
-
-  void
-  FindStateDifferences (const Hash &oldHash, const Hash &newHash);
+  virtual ~DbHelper ();
   
 private:
   static void
@@ -76,13 +44,7 @@ private:
   static void
   hash_xFinal (sqlite3_context *context);
 
-  static void
-  hash2str_Func (sqlite3_context *context, int argc, sqlite3_value **argv);
-
-  static void
-  str2hash_Func (sqlite3_context *context, int argc, sqlite3_value **argv);
-  
-private:
+protected:
   sqlite3 *m_db;
 };
 
@@ -90,5 +52,7 @@ namespace Error {
 struct Db : virtual boost::exception, virtual std::exception { };
 }
 
+typedef boost::shared_ptr<DbHelper> DbHelperPtr;
 
-#endif // SQLITE_HELPER_H
+
+#endif // DB_HELPER_H

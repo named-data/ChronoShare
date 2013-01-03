@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2012 University of California, Los Angeles
+ * Copyright (c) 2012-2013 University of California, Los Angeles
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -19,18 +19,24 @@
  *         Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#ifndef HASH_STRING_CONVERTER_H
-#define HASH_STRING_CONVERTER_H
+#ifndef HASH_HELPER_H
+#define HASH_HELPER_H
 
 #include <string.h>
 #include <iostream>
 #include <boost/shared_ptr.hpp>
 #include <boost/exception/all.hpp>
 
+// Other options: VP_md2, EVP_md5, EVP_sha, EVP_sha1, EVP_sha256, EVP_dss, EVP_dss1, EVP_mdc2, EVP_ripemd160
+#define HASH_FUNCTION EVP_sha256
+
+class Hash;
+typedef boost::shared_ptr<Hash> HashPtr;
+
 class Hash
 {
 public:
-  Hash (const void *buf, size_t length)
+  Hash (const void *buf, unsigned int length)
     : m_length (length)
   {
     if (m_length != 0)
@@ -40,8 +46,12 @@ public:
       }
   }
 
-  Hash (const std::string &hashInTextEncoding);
+  static HashPtr
+  FromString (const std::string &hashInTextEncoding);
 
+  static HashPtr
+  FromFileContent (const std::string &hashInTextEncoding);
+  
   ~Hash ()
   {
     if (m_length != 0)
@@ -70,7 +80,7 @@ public:
     return m_buf;
   }
 
-  size_t
+  unsigned int
   GetHashBytes () const
   {
     return m_length;
@@ -78,7 +88,7 @@ public:
   
 private:
   unsigned char *m_buf;
-  size_t m_length;
+  unsigned int m_length;
 
   Hash (const Hash &) { }
   Hash & operator = (const Hash &) { return *this; }
@@ -90,8 +100,6 @@ private:
 namespace Error {
 struct HashConversion : virtual boost::exception, virtual std::exception { };
 }
-
-typedef boost::shared_ptr<Hash> HashPtr;
 
 
 std::ostream &

@@ -15,12 +15,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Author: Zhenkai Zhu <zhenkai@cs.ucla.edu>
- *         Chaoyi Bian <bcy@pku.edu.cn>
- *	   Alexander Afanasyev <alexander.afanasyev@ucla.edu>
+ * Author: Alexander Afanasyev <alexander.afanasyev@ucla.edu>
+ *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#include "sqlite-helper.h"
+#include "db-helper.h"
 #include <iostream>
 
 using namespace std;

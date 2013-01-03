@@ -19,12 +19,13 @@
  *         Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#include "hash-string-converter.h"
+#include "hash-helper.h"
 
 #include <boost/assert.hpp>
 #include <boost/throw_exception.hpp>
 #include <boost/make_shared.hpp>
 #include <openssl/evp.h>
+#include <fstream>
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str; 
 typedef boost::error_info<struct tag_errmsg, int> errmsg_info_int; 
@@ -101,29 +102,56 @@ operator << (std::ostream &os, const Hash &hash)
   return os;
 }
 
-Hash::Hash (const std::string &hashInTextEncoding)
+HashPtr
+Hash::FromString (const std::string &hashInTextEncoding)
 {
+  HashPtr retval = make_shared<Hash> (reinterpret_cast<void*> (0), 0);
+  
   if (hashInTextEncoding.size () == 0)
     {
-      m_buf = 0;
-      m_length = 0;
-      return;
+      return retval;
     }
 
   if (hashInTextEncoding.size () > EVP_MAX_MD_SIZE * 2)
     {
       cerr << "Input hash is too long. Returning an empty hash" << endl;
-      m_buf = 0;
-      m_length = 0;
-      return;
+      return retval;
     }
 
-  m_buf = new unsigned char [EVP_MAX_MD_SIZE];
+  
   
   unsigned char *end = copy (string_to_binary (hashInTextEncoding.begin ()),
                             string_to_binary (hashInTextEncoding.end ()),
-                            m_buf);
+                            retval->m_buf);
 
-  m_length = end-m_buf;
+  retval->m_length = end - retval->m_buf;
+
+  return retval;
 }
 
+HashPtr
+Hash::FromFileContent (const std::string &filename)
+{
+  HashPtr retval = make_shared<Hash> (reinterpret_cast<void*> (0), 0);
+  retval->m_buf = new unsigned char [EVP_MAX_MD_SIZE];
+
+  EVP_MD_CTX *hash_context = EVP_MD_CTX_create ();
+  EVP_DigestInit_ex (hash_context, HASH_FUNCTION (), 0);
+
+  ifstream iff (filename.c_str (), std::ios::in | std::ios::binary);
+  while (iff.good ())
+    {
+      char buf[1024];
+      iff.read (buf, 1024);
+      EVP_DigestUpdate (hash_context, buf, iff.gcount ());
+    }
+
+  retval->m_buf = new unsigned char [EVP_MAX_MD_SIZE];
+
+  EVP_DigestFinal_ex (hash_context,
+                      retval->m_buf, &retval->m_length);
+  
+  EVP_MD_CTX_destroy (hash_context);
+
+  return retval;
+}
