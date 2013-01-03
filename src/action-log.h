@@ -23,29 +23,30 @@
 #define ACTION_LOG_H
 
 #include "sync-log.h"
+#include <boost/tuple/tuple.hpp>
 
 class ActionLog : public SyncLog
 {
 public:
   ActionLog (const std::string &path, const std::string &localName);
 
-  
-  
-  
   void
   AddActionUpdate (const std::string &filename,
-                        const Hash &hash,
-                        const std::string &atime, const std::string &mtime, const std::string &ctime,
-                        int mode);
+                   const Hash &hash,
+                   time_t atime, time_t mtime, time_t ctime,
+                   int mode);
 
   void
   AddActionMove (const std::string &oldFile, const std::string &newFile);
-
+  
   void
   AddActionDelete (const std::string &filename);
+
+private:
+  boost::tuple<sqlite3_int64, sqlite3_int64, sqlite3_int64>
+  GetExistingRecord (const std::string &filename);
   
 protected:
-  std::string m_localName;
 };
 
 #endif // ACTION_LOG_H

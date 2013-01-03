@@ -25,7 +25,7 @@ module ChronoshareClient
   
   interface Notify 
   {
-    void updateFile (string filename, ["cpp:array"] HashBytes fileHash, string atime, string mtime, string ctime, int mode);
+    void updateFile (string filename, ["cpp:array"] HashBytes fileHash, long atime, long mtime, long ctime, int mode);
 
     void moveFile (string origFilename, string newFilename);
 

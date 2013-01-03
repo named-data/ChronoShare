@@ -60,9 +60,8 @@ public:
   static string
   extractName(const unsigned char *data, const ccn_indexbuf *comps);
 
-protected:
   Bytes
-  createContentObject(const string &name, const unsigned char *buf, size_t len, int freshness);
+  createContentObject(const string &name, const unsigned char *buf, size_t len, int freshness = 2147/* max value for ccnx*/);
 
   int
   putToCcnd (const Bytes &contentObject);

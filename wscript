@@ -111,6 +111,7 @@ def build (bld):
                   'src/sync-log.cc',
                   'src/action-log.cc',
                   'src/sync-state.proto',
+                  'src/action-item.proto',
                   ],
         use = "BOOST CCNX SSL SQLITE3 ICE common",
         includes = ['include', 'src'],

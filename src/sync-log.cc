@@ -26,6 +26,51 @@
 using namespace boost;
 using namespace std;
 
+SyncLog::SyncLog (const std::string &path, const std::string &localName)
+  : DbHelper (path)
+  , m_localName (localName)
+{
+  UpdateDeviceSeqno (localName, 0);
+  
+  sqlite3_stmt *stmt;
+  int res = sqlite3_prepare_v2 (m_db, "SELECT device_id, seq_no FROM SyncNodes WHERE device_name=?", -1, &stmt, 0);
+  sqlite3_bind_text (stmt, 1, m_localName.c_str (), m_localName.size (), SQLITE_STATIC);
+
+  if (sqlite3_step (stmt) == SQLITE_ROW)
+    {
+      m_localDeviceId = sqlite3_column_int64 (stmt, 0);
+    }
+  else
+    {
+      BOOST_THROW_EXCEPTION (Error::Db ()
+                             << errmsg_info_str ("Impossible thing in SyncLog::SyncLog"));
+    }
+  sqlite3_finalize (stmt);
+}
+
+
+sqlite3_int64
+SyncLog::GetNextLocalSeqNo ()
+{
+  sqlite3_stmt *stmt_seq;
+  sqlite3_prepare_v2 (m_db, "SELECT seq_no FROM SyncNodes WHERE device_id = ?", -1, &stmt_seq, 0);
+  sqlite3_bind_int64 (stmt_seq, 1, m_localDeviceId);
+
+  if (sqlite3_step (stmt_seq) != SQLITE_ROW)
+    {
+      BOOST_THROW_EXCEPTION (Error::Db ()
+                             << errmsg_info_str ("Impossible thing in ActionLog::AddActionUpdate"));
+    }
+  
+  sqlite3_int64 seq_no = sqlite3_column_int64 (stmt_seq, 0) + 1; 
+  sqlite3_finalize (stmt_seq);
+
+  UpdateDeviceSeqNo (m_localDeviceId, seq_no);
+  
+  return seq_no;
+}
+
+
 HashPtr
 SyncLog::RememberStateInStateLog ()
 {
@@ -130,7 +175,7 @@ SyncLog::LookupSyncLog (const Hash &stateHash)
 }
 
 void
-SyncLog::UpdateDeviceSeqno (const std::string &name, uint64_t seqNo)
+SyncLog::UpdateDeviceSeqno (const std::string &name, sqlite3_int64 seqNo)
 {
   sqlite3_stmt *stmt;
   // update is performed using trigger
@@ -144,10 +189,31 @@ SyncLog::UpdateDeviceSeqno (const std::string &name, uint64_t seqNo)
   if (res != SQLITE_OK)
     {
       BOOST_THROW_EXCEPTION (Error::Db ()
-                             << errmsg_info_str ("Some error with UpdateDeviceSeqno"));
+                             << errmsg_info_str ("Some error with UpdateDeviceSeqno (name)"));
     }
   sqlite3_finalize (stmt);
 }
+
+void
+SyncLog::UpdateDeviceSeqNo (sqlite3_int64 deviceId, sqlite3_int64 seqNo)
+{
+  sqlite3_stmt *stmt;
+  // update is performed using trigger
+  int res = sqlite3_prepare (m_db, "INSERT INTO SyncNodes (device_id, seq_no) VALUES (?,?);", 
+                             -1, &stmt, 0);
+
+  res += sqlite3_bind_int64 (stmt, 1, deviceId);
+  res += sqlite3_bind_int64 (stmt, 2, seqNo);
+  sqlite3_step (stmt);
+  
+  if (res != SQLITE_OK)
+    {
+      BOOST_THROW_EXCEPTION (Error::Db ()
+                             << errmsg_info_str ("Some error with UpdateDeviceSeqNo (id)"));
+    }
+  sqlite3_finalize (stmt);
+}
+
 
 SyncStateMsgPtr
 SyncLog::FindStateDifferences (const std::string &oldHash, const std::string &newHash)

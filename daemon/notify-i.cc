@@ -32,9 +32,9 @@ using namespace std;
 void
 NotifyI::updateFile (const ::std::string &filename,
                      const ::std::pair<const Ice::Byte*, const Ice::Byte*> &hashRaw,
-                     const ::std::string &atime,
-                     const ::std::string &mtime,
-                     const ::std::string &ctime,
+                     ::Ice::Long atime,
+                     ::Ice::Long mtime,
+                     ::Ice::Long ctime,
                      ::Ice::Int mode,
                      const ::Ice::Current&)
 {

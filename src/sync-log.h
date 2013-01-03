@@ -30,14 +30,17 @@ typedef boost::shared_ptr<SyncStateMsg> SyncStateMsgPtr;
 class SyncLog : public DbHelper
 {
 public:
-  SyncLog (const std::string &path)
-    : DbHelper (path)
-  {
-  }
+  SyncLog (const std::string &path, const std::string &localName);
 
+  sqlite3_int64
+  GetNextLocalSeqNo (); // side effect: local seq_no will be increased
+
+  void
+  UpdateDeviceSeqNo (sqlite3_int64 deviceId, sqlite3_int64 seqNo);
+  
   // done
   void
-  UpdateDeviceSeqno (const std::string &name, uint64_t seqNo);
+  UpdateDeviceSeqno (const std::string &name, sqlite3_int64 seqNo);
 
   // std::string
   // LookupForwardingAlias (const std::string &deviceName);
@@ -66,6 +69,11 @@ public:
 
   SyncStateMsgPtr
   FindStateDifferences (const Hash &oldHash, const Hash &newHash);  
+
+protected:
+  std::string m_localName;
+  sqlite3_int64 m_localDeviceId;
+  
 };
 
 

@@ -93,19 +93,13 @@ main (int argc, char **argv)
               if (ok == 0)
                 {
                   // Alex: the following code is platform specific :(
-                  
-                  char atimespec[26], mtimespec[26], ctimespec[26];
-                  ctime_r (&fileStats.st_atime, atimespec);
-                  ctime_r (&fileStats.st_mtime, mtimespec);
-                  ctime_r (&fileStats.st_ctime, ctimespec);
-
                   HashPtr fileHash = Hash::FromFileContent (argv[2]);
                   
                   notify->updateFile (argv[2],
                                       make_pair(reinterpret_cast<const ::Ice::Byte*> (fileHash->GetHash ()),
                                                 reinterpret_cast<const ::Ice::Byte*> (fileHash->GetHash ()) +
                                                 fileHash->GetHashBytes ()),
-                                      atimespec, mtimespec, ctimespec,
+                                      fileStats.st_atime, fileStats.st_mtime, fileStats.st_ctime,
                                       fileStats.st_mode);
                 }
               else
