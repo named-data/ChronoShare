@@ -1,6 +1,12 @@
 #include "object-db-file.h"
 #include <assert.h>
 
+char *
+head(const Bytes &bytes)
+{
+  return (char *)&bytes[0];
+}
+
 void
 writeBytes(ostream &out, const Bytes &bytes)
 {
@@ -26,9 +32,9 @@ ObjectDBFile::ObjectDBFile(const string &filename)
                 , m_filename(filename)
                 // This ensures file with filename exists (assuming having write permission)
                 // This is needed as file_lock only works with existing file
-                , m_ostream(m_filename, ios_base::binary | ios_base::app)
-                , m_istream(m_filename, ios_base::binary | ios_base::in)
-                , m_filelock(m_filename)
+                , m_ostream(m_filename.c_str(), ios_base::binary | ios_base::app)
+                , m_istream(m_filename.c_str(), ios_base::binary | ios_base::binary)
+                , m_filelock(m_filename.c_str())
 {
   int magic;
   ReadLock(m_filelock);
@@ -51,7 +57,7 @@ ObjectDBFile::~ObjectDBFile()
 void
 ObjectDBFile::init(int capacity)
 {
-  WriteLock(m_filelock);
+  WriteLock(*m_filelock);
   if (m_initialized)
   {
     throwException("Trying to init already initialized ObjectDBFile object" + m_filename);
@@ -66,7 +72,7 @@ ObjectDBFile::init(int capacity)
   writeInt(m_ostream, m_size);
   m_initialized = true;
 
-  int count = size;
+  int count = m_cap;
   int offset = 0;
   while (count-- > 0)
   {
@@ -126,7 +132,7 @@ ObjectDBFile::next()
   {
     SLock(m_cacheLock);
     // no need to read file if found in cache
-    if (m_dummyCache.find(m_index) != map::end)
+    if (m_dummyCache.find(m_index) != m_dummyCache.end())
     {
       int index = m_index;
       m_index++;
@@ -177,7 +183,7 @@ ObjectDBFile::size() const
 }
 
 void
-ObjectDBFile::updateSzie()
+ObjectDBFile::updateSize()
 {
   int pos = m_istream.tellg();
   m_istream.seekg(2 * sizeof(int), ios::beg);
@@ -219,7 +225,7 @@ ObjectDBFile::seek(int index)
 }
 
 void
-rewind()
+ObjectDBFile::rewind()
 {
   ReadLock(m_filelock);
   m_index = 0;

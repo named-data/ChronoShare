@@ -4,8 +4,6 @@
 #include "object-db.h"
 #include <stdio.h>
 #include <fstream>
-#include <ifstream>
-#include <ofstream>
 #include <sstream>
 #include <deque>
 #include <boost/thread/locks.hpp>
@@ -50,7 +48,7 @@ public:
   typedef boost::unique_lock<Mutex> ULock;
 
   ObjectDBFile(const string &filename);
-  virtual ~ObjectDBFile(){}
+  virtual ~ObjectDBFile();
 
   // reserve the "address" table for n COs; must reserve before
   // write anything (unless reserved quota has not be consumed yet)
@@ -148,5 +146,8 @@ writeBytes(ostream &out, const Bytes &bytes);
 // read size and then the actual bytes
 void
 readBytes(istream &in, Bytes &bytes);
+
+char *
+head(const Bytes &bytes);
 
 #endif

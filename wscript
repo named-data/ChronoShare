@@ -53,7 +53,7 @@ def configure(conf):
 
     conf.load('protoc')
     conf.load('ice_cxx')
-    
+
     conf.write_config_header('src/config.h')
 
 def build (bld):
@@ -65,11 +65,12 @@ def build (bld):
             'src/ccnx-pco.cpp',
             'src/ccnx-closure.cpp',
             'src/ccnx-tunnel.cpp',
+            'src/object-db-file.cpp'
             ],
         use = 'BOOST BOOST_THREAD SSL CCNX',
         includes = ['include', ],
         )
-        
+
     # Unit tests
     if bld.get_define("_TEST"):
       unittests = bld.program (
