@@ -25,6 +25,9 @@
 #include "sync-log.h"
 #include <boost/tuple/tuple.hpp>
 
+class ActionLog;
+typedef boost::shared_ptr<ActionLog> ActionLogPtr;
+
 class ActionLog : public SyncLog
 {
 public:
@@ -43,7 +46,7 @@ public:
   AddActionDelete (const std::string &filename);
 
 private:
-  boost::tuple<sqlite3_int64, sqlite3_int64, sqlite3_int64>
+  boost::tuple<sqlite3_int64, sqlite3_int64, sqlite3_int64, std::string>
   GetExistingRecord (const std::string &filename);
   
 protected:

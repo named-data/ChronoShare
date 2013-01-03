@@ -30,6 +30,8 @@ SyncLog::SyncLog (const std::string &path, const std::string &localName)
   : DbHelper (path)
   , m_localName (localName)
 {
+  SyncLog::RememberStateInStateLog ();
+
   UpdateDeviceSeqno (localName, 0);
   
   sqlite3_stmt *stmt;
@@ -199,11 +201,11 @@ SyncLog::UpdateDeviceSeqNo (sqlite3_int64 deviceId, sqlite3_int64 seqNo)
 {
   sqlite3_stmt *stmt;
   // update is performed using trigger
-  int res = sqlite3_prepare (m_db, "INSERT INTO SyncNodes (device_id, seq_no) VALUES (?,?);", 
+  int res = sqlite3_prepare (m_db, "UPDATE SyncNodes SET seq_no=MAX(seq_no,?) WHERE device_id=?;", 
                              -1, &stmt, 0);
 
-  res += sqlite3_bind_int64 (stmt, 1, deviceId);
-  res += sqlite3_bind_int64 (stmt, 2, seqNo);
+  res += sqlite3_bind_int64 (stmt, 1, seqNo);
+  res += sqlite3_bind_int64 (stmt, 2, deviceId);
   sqlite3_step (stmt);
   
   if (res != SQLITE_OK)

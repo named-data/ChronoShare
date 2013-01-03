@@ -25,6 +25,7 @@
 #include <Ice/Identity.h>
 
 #include "notify-i.h"
+#include <boost/make_shared.hpp>
 
 using namespace std;
 using namespace boost;
@@ -34,6 +35,12 @@ typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;
 
 class MyService : public Ice::Service
 {
+public:
+  MyService (ActionLogPtr actionLog)
+  : m_actionLog (actionLog)
+  {
+  }
+  
 protected:
   virtual bool start (int, char*[], int&)
   {
@@ -41,7 +48,7 @@ protected:
 
     Ice::Identity identity;
     identity.name="NotifyDaemon";
-    NotifyPtr servant=new NotifyI;
+    NotifyPtr servant=new NotifyI (m_actionLog);
     
     _adapter->add (servant, identity);
     
@@ -51,7 +58,8 @@ protected:
   }
   
 private:
-    Ice::ObjectAdapterPtr _adapter;  
+  Ice::ObjectAdapterPtr _adapter;
+  ActionLogPtr m_actionLog;
 };
 
 int
@@ -62,9 +70,9 @@ main (int argc, char **argv)
   try
     {
       // DbHelper db ("./", "/ndn/ucla.edu/alex");
-      ActionLog bla ("./", "/ndn/ucla.edu/alex");
+      ActionLogPtr actionLog = make_shared<ActionLog> ("./", "/ndn/ucla.edu/alex");
 
-      MyService svc;
+      MyService svc (actionLog);
       status = svc.main (argc, argv);
 
       // HashPtr hash = db.RememberStateInStateLog ();

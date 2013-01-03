@@ -22,12 +22,13 @@
 #ifndef NOTIFY_I_H
 #define NOTIFY_I_H
 
+#include <action-log.h>
 #include <chronoshare-client.ice.h>
 
 class NotifyI : public ChronoshareClient::Notify
 {
 public:
-  // NotifyI (DbHelperPtr &db);
+  NotifyI (ActionLogPtr &actionLog);
   
   virtual void
   updateFile (const ::std::string &filename,
@@ -48,7 +49,7 @@ public:
               const ::Ice::Current& = ::Ice::Current());
 
 private:
-  // DbHelperPtr m_db;
+  ActionLogPtr m_actionLog;
 };
 
 #endif // NOTIFY_I_H

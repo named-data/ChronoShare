@@ -23,11 +23,12 @@
 #include <hash-helper.h>
 
 using namespace std;
+using namespace boost;
 
-// NotifyI::NotifyI (DbHelperPtr &db)
-//   : m_db (db)
-// {
-// }
+NotifyI::NotifyI (ActionLogPtr &actionLog)
+  : m_actionLog (actionLog)
+{
+}
 
 void
 NotifyI::updateFile (const ::std::string &filename,
@@ -40,9 +41,17 @@ NotifyI::updateFile (const ::std::string &filename,
 {
   Hash hash (hashRaw.first, hashRaw.second-hashRaw.first);
 
-  // m_db->AddActionUpdate (filename, hash, atime, mtime, ctime, mode);
-  
-  // cout << "updateFile " << filename << " with hash " << hash << endl;
+  cout << "updateFile " << filename << " with hash " << hash << endl;
+  try
+    {
+      m_actionLog->AddActionUpdate (filename, hash, atime, mtime, ctime, mode);
+
+      m_actionLog->RememberStateInStateLog ();
+    }
+  catch (const boost::exception &e)
+    {
+      cout << "ERRORR: " << *get_error_info<errmsg_info_str> (e) << endl;
+    }
 }
 
 void
@@ -50,16 +59,16 @@ NotifyI::moveFile (const ::std::string &oldFilename,
                    const ::std::string &newFilename,
                    const ::Ice::Current&)
 {
-  // cout << "moveFile from " << oldFilename << " to " << newFilename << endl;
-  // m_db->AddActionMove (filename, oldFilename);
+  cout << "moveFile from " << oldFilename << " to " << newFilename << endl;
+  // m_actionLog->AddActionMove (oldFilename, newFilename);
 }
 
 void
 NotifyI::deleteFile (const ::std::string &filename,
                      const ::Ice::Current&)
 {
-  // m_db->AddActionDelete (filename, oldFilename);
-  
-  // cout << "deleteFile " << filename << endl;
+  cout << "deleteFile " << filename << endl;
+  m_actionLog->AddActionDelete (filename);  
+  m_actionLog->RememberStateInStateLog ();
 }
 

@@ -106,13 +106,13 @@ CREATE TABLE ActionLog (                                                \n\
     parent_device_id INTEGER,                                           \n\
     parent_seq_no    INTEGER,                                           \n\
                                                                         \n\
-    action_name	     TEXT NOT NULL,                                     \n\
-    action_content_object BLOB NOT NULL,                                \n\
+    action_name	     TEXT,                                              \n\
+    action_content_object BLOB,                                         \n\
                                                                         \n\
     PRIMARY KEY (device_id, seq_no),                                    \n\
                                                                         \n\
     FOREIGN KEY (parent_device_id, parent_seq_no)                       \n\
-	REFERENCES ActionLog (device_id, parent_seq_no)                 \n\
+	REFERENCES ActionLog (device_id, seq_no)                        \n\
 	ON UPDATE RESTRICT                                              \n\
 	ON DELETE SET NULL                                              \n\
 );                                                                      \n\
