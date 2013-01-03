@@ -65,7 +65,8 @@ def build (bld):
             'src/ccnx-pco.cpp',
             'src/ccnx-closure.cpp',
             'src/ccnx-tunnel.cpp',
-            'src/object-db-file.cpp'
+            'src/object-db-file.cpp',
+            'src/ccnx-name.cpp',
             ],
         use = 'BOOST BOOST_THREAD SSL CCNX',
         includes = ['include', ],

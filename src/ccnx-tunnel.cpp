@@ -28,9 +28,9 @@ CcnxTunnel::refreshLocalPrefix()
 }
 
 int
-CcnxTunnel::sendInterest (const Interest &interest, Closure *closure)
+CcnxTunnel::sendInterest (const string &interest, Closure *closure)
 {
-  string strInterest = interest.name();
+  string strInterest = interest;
   string tunneledInterest = queryRoutableName(strInterest);
   Closure *cp = new TunnelClosure(closure, this, strInterest);
   sendInterest(tunneledInterest, cp);
