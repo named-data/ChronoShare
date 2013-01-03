@@ -23,6 +23,9 @@
 #define SYNC_LOG_H
 
 #include "db-helper.h"
+#include <sync-state.pb.h>
+
+typedef boost::shared_ptr<SyncStateMsg> SyncStateMsgPtr;
 
 class SyncLog : public DbHelper
 {
@@ -58,10 +61,10 @@ public:
   LookupSyncLog (const Hash &stateHash);
 
   // How difference is exposed will be determined later by the actual protocol
-  void
+  SyncStateMsgPtr
   FindStateDifferences (const std::string &oldHash, const std::string &newHash);
 
-  void
+  SyncStateMsgPtr
   FindStateDifferences (const Hash &oldHash, const Hash &newHash);  
 };
 

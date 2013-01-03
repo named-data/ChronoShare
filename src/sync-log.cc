@@ -149,13 +149,13 @@ SyncLog::UpdateDeviceSeqno (const std::string &name, uint64_t seqNo)
   sqlite3_finalize (stmt);
 }
 
-void
+SyncStateMsgPtr
 SyncLog::FindStateDifferences (const std::string &oldHash, const std::string &newHash)
 {
-  FindStateDifferences (*Hash::FromString (oldHash), *Hash::FromString (newHash));
+  return FindStateDifferences (*Hash::FromString (oldHash), *Hash::FromString (newHash));
 }
 
-void
+SyncStateMsgPtr
 SyncLog::FindStateDifferences (const Hash &oldHash, const Hash &newHash)
 {
   sqlite3_stmt *stmt;
@@ -208,12 +208,29 @@ SELECT sn.device_name, s_old.seq_no, s_new.seq_no                       \
   res += sqlite3_bind_blob  (stmt, 1, oldHash.GetHash (), oldHash.GetHashBytes (), SQLITE_STATIC);
   res += sqlite3_bind_blob  (stmt, 2, newHash.GetHash (), newHash.GetHashBytes (), SQLITE_STATIC);
 
+  SyncStateMsgPtr msg = make_shared<SyncStateMsg> ();
+  
   while (sqlite3_step (stmt) == SQLITE_ROW)
     {
-      std::cout << sqlite3_column_text (stmt, 0) <<
-        ": from "  << sqlite3_column_int64 (stmt, 1) <<
-        " to "     << sqlite3_column_int64 (stmt, 2) <<
-        std::endl;
+      SyncState *state = msg->add_state ();
+
+      state->set_name (reinterpret_cast<const char*> (sqlite3_column_text (stmt, 0)));
+
+      sqlite3_int64 newSeqNo = sqlite3_column_int64 (stmt, 2);
+      if (newSeqNo > 0)
+        {
+          state->set_type (SyncState::UPDATE);
+          state->set_seq (newSeqNo);
+        }
+      else
+        state->set_type (SyncState::DELETE);
+
+      // std::cout << sqlite3_column_text (stmt, 0) <<
+      //   ": from "  << sqlite3_column_int64 (stmt, 1) <<
+      //   " to "     << sqlite3_column_int64 (stmt, 2) <<
+      //   std::endl;
     }
-  sqlite3_finalize (stmt);  
+  sqlite3_finalize (stmt);
+
+  return msg;
 }

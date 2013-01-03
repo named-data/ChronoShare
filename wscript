@@ -11,8 +11,7 @@ def options(opt):
     opt.add_option('--test', action='store_true',default=False,dest='_test',help='''build unit tests''')
     opt.add_option('--yes',action='store_true',default=False) # for autoconf/automake/make compatibility
 
-    opt.load('compiler_cxx boost ccnx protoc')
-    opt.load('ice_cxx', tooldir=["."])
+    opt.load('compiler_cxx boost ccnx protoc ice_cxx')
 
 def configure(conf):
     conf.load("compiler_cxx")
@@ -110,6 +109,7 @@ def build (bld):
                   'src/db-helper.cc',
                   'src/sync-log.cc',
                   'src/action-log.cc',
+                  'src/sync-state.proto',
                   ],
         use = "BOOST CCNX SSL SQLITE3 ICE common",
         includes = ['include', 'src'],
