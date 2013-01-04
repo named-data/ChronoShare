@@ -1,11 +1,15 @@
-#include <boost/test/unit_test.hpp>
+
 #include "ccnx-name.h"
+
+#define BOOST_TEST_MAIN 1
+// #define BOOST_TEST_DYN_LINK
+// #define BOOST_TEST_Module Main
+
+#include <boost/test/unit_test.hpp>
+
 using namespace Ccnx;
 using namespace std;
 using namespace boost;
-//#define BOOST_TEST_MAIN 1
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_Module Main
 
 BOOST_AUTO_TEST_SUITE(CcnxNameTests)
 

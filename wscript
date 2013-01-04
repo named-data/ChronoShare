@@ -49,7 +49,7 @@ def configure(conf):
         conf.env.append_value('CXXFLAGS', ['-O3', '-g'])
 
     if conf.options._test:
-      conf.define('_TEST', 1)
+        conf.env.TEST = 1
 
     conf.load('protoc')
     conf.load('ice_cxx')
@@ -73,7 +73,7 @@ def build (bld):
         )
 
     # Unit tests
-    if bld.get_define("_TEST"):
+    if bld.env['TEST']:
       unittests = bld.program (
           target="unit-tests",
           source = bld.path.ant_glob(['test/**/*.cc']),
