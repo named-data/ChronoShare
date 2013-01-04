@@ -37,8 +37,15 @@ Name::Name(const string &name)
 {
   stringstream ss(name);
   string compStr;
+  bool first = true;
   while(getline(ss, compStr, '/'))
   {
+    // discard the first empty comp before the first '/'
+    if (first)
+    {
+      first = false;
+      continue;
+    }
     Bytes comp(compStr.begin(), compStr.end());
     m_comps.push_back(comp);
   }
@@ -74,13 +81,13 @@ Name::operator=(const Name &other)
   return *this;
 }
 bool
-Name::operator==(const string &str)
+Name::operator==(const string &str) const
 {
   return this->toString() == str;
 }
 
 bool
-Name::operator!=(const string &str)
+Name::operator!=(const string &str) const
 {
   return !(*this == str);
 }

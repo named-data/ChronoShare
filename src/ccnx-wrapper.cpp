@@ -49,10 +49,10 @@ void
 CcnxWrapper::connectCcnd()
 {
   UniqueRecLock(m_mutex);
-  if (m_handle != 0) {
-    ccn_disconnect (m_handle);
-    ccn_destroy (&m_handle);
-  }
+  //if (m_handle != 0) {
+    //ccn_disconnect (m_handle);
+    //ccn_destroy (&m_handle);
+  //}
 
   m_handle = ccn_create ();
   if (ccn_connect(m_handle, NULL) < 0)
@@ -61,14 +61,14 @@ CcnxWrapper::connectCcnd()
   }
   m_connected = true;
 
-  if (!m_registeredInterests.empty())
-  {
-    for (map<Name, InterestCallback>::const_iterator it = m_registeredInterests.begin(); it != m_registeredInterests.end(); ++it)
-    {
+  //if (!m_registeredInterests.empty())
+  //{
+   // for (map<Name, InterestCallback>::const_iterator it = m_registeredInterests.begin(); it != m_registeredInterests.end(); ++it)
+    //{
       // clearInterestFilter(it->first);
-      setInterestFilter(it->first, it->second);
-    }
-  }
+     // setInterestFilter(it->first, it->second);
+    //}
+  //}
 }
 
 CcnxWrapper::~CcnxWrapper()

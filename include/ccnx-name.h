@@ -71,10 +71,10 @@ public:
   operator=(const Name &other);
 
   bool
-  operator==(const string &str);
+  operator==(const string &str) const;
 
   bool
-  operator!=(const string &str);
+  operator!=(const string &str) const;
 
   friend Name
   operator+(const Name &n1, const Name &n2);
