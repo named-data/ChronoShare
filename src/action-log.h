@@ -48,6 +48,9 @@ public:
 private:
   boost::tuple<sqlite3_int64, sqlite3_int64, sqlite3_int64, std::string>
   GetExistingRecord (const std::string &filename);
+
+  static void
+  apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
   
 protected:
 };

@@ -127,10 +127,15 @@ main (int argc, char **argv)
               
               notify->moveFile (argv[2], argv[3]);
             }
+          else
+            {
+              cerr << "ERROR: Unknown command " << cmd << endl;
+              usage ();
+            }
         }
       else
         {
-          cerr << "Cannot connect to the daemon\n";
+          cerr << "ERROR: Cannot connect to the daemon\n";
           status = 1;
         }
     }

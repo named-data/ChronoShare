@@ -28,6 +28,14 @@ using namespace std;
 ActionLog::ActionLog (const std::string &path, const std::string &localName)
   : SyncLog (path, localName)
 {
+  int res = sqlite3_create_function (m_db, "apply_action", -1, SQLITE_ANY, reinterpret_cast<void*> (this),
+                                 ActionLog::apply_action_xFun,
+                                 0, 0);
+  if (res != SQLITE_OK)
+    {
+      BOOST_THROW_EXCEPTION (Error::Db ()
+                             << errmsg_info_str ("Cannot create function ``apply_action''"));
+    }
 }
 
 tuple<sqlite3_int64, sqlite3_int64, sqlite3_int64, string>
@@ -37,7 +45,7 @@ ActionLog::GetExistingRecord (const std::string &filename)
   sqlite3_stmt *stmt;
   int res = sqlite3_prepare_v2 (m_db, "SELECT a.version,a.device_id,a.seq_no,a.action,s.device_name "
                                 "FROM ActionLog a JOIN SyncNodes s ON s.device_id = a.device_id "
-                                "WHERE filename=? ORDER BY a.version DESC,a.device_id DESC LIMIT 1", -1, &stmt, 0);
+                                "WHERE filename=? ORDER BY a.version DESC LIMIT 1", -1, &stmt, 0);
 
   if (res != SQLITE_OK)
     {
@@ -229,4 +237,19 @@ ActionLog::AddActionDelete (const std::string &filename)
   sqlite3_finalize (stmt); 
   
   sqlite3_exec (m_db, "END TRANSACTION;", 0,0,0);    
+}
+
+
+void
+ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value **argv)
+{
+  ActionLog *the = reinterpret_cast<ActionLog*> (sqlite3_user_data (context));
+
+  cout << "apply_function called with " << argc << endl;
+
+  cout << "device_name: " << sqlite3_value_text (argv[0]) << endl;
+  cout << "action: " << sqlite3_value_int (argv[1]) << endl;
+  cout << "filename: " << sqlite3_value_text (argv[2]) << endl;
+  
+  sqlite3_result_null (context);
 }

@@ -9,7 +9,7 @@ using namespace std;
 struct ObjectDBException : virtual boost::exception, virtual exception { };
 typedef boost::error_info<struct tag_errmsg, std::string> error_info_str;
 
-void throwException(const string &msg) { boost::throw_exception(ObjectDBException() << error_info_str(msg)); }
+inline void throwException(const string &msg) { boost::throw_exception(ObjectDBException() << error_info_str(msg)); }
 
 typedef unsigned char Byte;
 typedef vector<Byte> Bytes;

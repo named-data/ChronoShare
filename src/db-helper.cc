@@ -120,6 +120,41 @@ CREATE TABLE ActionLog (                                                \n\
 CREATE INDEX ActionLog_filename_version ON ActionLog (filename,version);        \n\
 CREATE INDEX ActionLog_parent ON ActionLog (parent_device_id, parent_seq_no);   \n\
 CREATE INDEX ActionLog_action_name ON ActionLog (action_name);          \n\
+                                                                        \n\
+CREATE TRIGGER ActionLogInsert_trigger                                  \n\
+    AFTER INSERT ON ActionLog                                           \n\
+    FOR EACH ROW                                                        \n\
+    WHEN (SELECT device_id                                              \n\
+            FROM ActionLog                                              \n\
+            WHERE filename=NEW.filename AND                             \n\
+                  version > NEW.version) IS NULL AND                    \n\
+         (SELECT a.device_id                                            \n\
+            FROM ActionLog a                                            \n\
+                LEFT JOIN SyncNodes s ON s.device_id=a.device_id        \n\
+            WHERE filename=NEW.filename AND                             \n\
+                  version = NEW.version AND                             \n\
+                  a.device_id != NEW.device_id AND                      \n\
+                  s.device_name > (SELECT device_name                   \n\
+                                    FROM SyncNodes                      \n\
+                                    WHERE device_id=NEW.device_id)) IS NULL      \n\
+    BEGIN                                                               \n\
+        SELECT apply_action ((SELECT device_name FROM SyncNodes where device_id=NEW.device_id), \
+                             NEW.action,NEW.filename,NEW.file_hash,     \
+                             NEW.file_atime,NEW.file_mtime,NEW.file_ctime, \
+                             NEW.file_chmod); /* function that applies action and adds record the FileState */  \n \
+    END;                                                                \n\
+                                                                        \n\
+CREATE TABLE FileState (                                                \n\
+    type        INTEGER NOT NULL, /* 0 - newest, 1 - oldest */          \n\
+    filename    TEXT NOT NULL,                                          \n\
+    file_hash   BLOB, /* NULL if action is \"delete\" */                \n\
+    file_atime  TIMESTAMP,                                              \n\
+    file_mtime  TIMESTAMP,                                              \n\
+    file_ctime  TIMESTAMP,                                              \n\
+    file_chmod  INTEGER,                                                \n\
+                                                                        \n\
+    PRIMARY KEY (type, filename)                                        \n\
+);                                                                      \n\
 ";
 
 DbHelper::DbHelper (const std::string &path)

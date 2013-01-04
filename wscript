@@ -72,16 +72,6 @@ def build (bld):
         includes = ['include', ],
         )
 
-    # Unit tests
-    if bld.env['TEST']:
-      unittests = bld.program (
-          target="unit-tests",
-          source = bld.path.ant_glob(['test/**/*.cc']),
-          features=['cxx', 'cxxprogram'],
-          use = 'BOOST_TEST ccnx',
-          includes = ['include', ],
-          )
-
     common = bld.objects (
         target = "common",
         features = ["cxx"],
@@ -92,6 +82,29 @@ def build (bld):
         includes = ['include', 'src'],
         )
 
+    database = bld.objects (
+        target = "database",
+        features = ["cxx"],
+        source = [
+                  'src/db-helper.cc',
+                  'src/sync-log.cc',
+                  'src/action-log.cc',
+                  'src/action-item.proto',
+                  'src/sync-state.proto',
+            ],
+        use = "BOOST SQLITE3 SSL common",
+        includes = ['include', 'src'],
+        )
+
+    # Unit tests
+    if bld.env['TEST']:
+      unittests = bld.program (
+          target="unit-tests",
+          source = bld.path.ant_glob(['test/**/*.cc']),
+          features=['cxx', 'cxxprogram'],
+          use = 'BOOST_TEST ccnx database',
+          includes = ['include', 'src'],
+          )
 
     client = bld (
         target="cs-client",
@@ -108,12 +121,7 @@ def build (bld):
         # source = bld.path.ant_glob(['src/**/*.cc']),
         source = ['daemon/daemon.cc',
                   'daemon/notify-i.cc',
-                  'src/db-helper.cc',
-                  'src/sync-log.cc',
-                  'src/action-log.cc',
-                  'src/sync-state.proto',
-                  'src/action-item.proto',
                   ],
-        use = "BOOST CCNX SSL SQLITE3 ICE common",
+        use = "BOOST CCNX SSL SQLITE3 ICE common database",
         includes = ['include', 'src'],
         )
