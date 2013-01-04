@@ -48,13 +48,13 @@ CcnxWrapper::CcnxWrapper()
 void
 CcnxWrapper::connectCcnd()
 {
-  UniqueRecLock(m_mutex);
   //if (m_handle != 0) {
     //ccn_disconnect (m_handle);
     //ccn_destroy (&m_handle);
   //}
 
   m_handle = ccn_create ();
+  UniqueRecLock(m_mutex);
   if (ccn_connect(m_handle, NULL) < 0)
   {
     BOOST_THROW_EXCEPTION (CcnxOperationException() << errmsg_info_str("connection to ccnd failed"));
@@ -309,8 +309,6 @@ incomingData(ccn_closure *selfp,
   switch (kind)
     {
     case CCN_UPCALL_FINAL:  // effecitve in unit tests
-      delete cp;
-      cp = NULL;
       delete selfp;
       return CCN_UPCALL_RESULT_OK;
 

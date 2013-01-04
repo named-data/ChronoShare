@@ -53,7 +53,7 @@ BOOST_AUTO_TEST_CASE (CcnxWrapperTest)
   c1->sendInterest(Name("/c2/hi"), closure);
   usleep(100000);
   c2->sendInterest(Name("/c1/hi"), closure);
-  sleep(100000);
+  sleep(1);
   delete closure;
 }
 
