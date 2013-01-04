@@ -33,7 +33,7 @@ def configure(conf):
     conf.load ('ccnx')
     conf.load('boost')
 
-    conf.check_boost(lib='system iostreams regex thread')
+    conf.check_boost(lib='system test iostreams regex thread')
 
     boost_version = conf.env.BOOST_VERSION.split('_')
     if int(boost_version[0]) < 1 or int(boost_version[1]) < 46:
@@ -78,7 +78,7 @@ def build (bld):
           target="unit-tests",
           source = bld.path.ant_glob(['test/**/*.cc']),
           features=['cxx', 'cxxprogram'],
-          use = 'BOOST_TEST',
+          use = 'BOOST_TEST ccnx',
           includes = ['include', ],
           )
 
