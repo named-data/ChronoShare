@@ -140,7 +140,7 @@ CREATE TRIGGER ActionLogInsert_trigger                                  \n\
     BEGIN                                                               \n\
         SELECT apply_action ((SELECT device_name FROM SyncNodes where device_id=NEW.device_id), \
                              NEW.action,NEW.filename,NEW.file_hash,     \
-                             NEW.file_atime,NEW.file_mtime,NEW.file_ctime, \
+                             strftime('%s', NEW.file_atime),strftime('%s', NEW.file_mtime),strftime('%s', NEW.file_ctime), \
                              NEW.file_chmod); /* function that applies action and adds record the FileState */  \n \
     END;                                                                \n\
                                                                         \n\

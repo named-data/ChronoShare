@@ -245,11 +245,82 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
 {
   ActionLog *the = reinterpret_cast<ActionLog*> (sqlite3_user_data (context));
 
-  cout << "apply_function called with " << argc << endl;
+  if (argc != 8)
+    {
+      sqlite3_result_error (context, "``apply_action'' expects 8 arguments", -1);
+      return;
+    }
 
-  cout << "device_name: " << sqlite3_value_text (argv[0]) << endl;
-  cout << "action: " << sqlite3_value_int (argv[1]) << endl;
-  cout << "filename: " << sqlite3_value_text (argv[2]) << endl;
+  // cout << "apply_function called with " << argc << endl;
+
+  // cout << "device_name: " << sqlite3_value_text (argv[0]) << endl;
+  // cout << "action: " << sqlite3_value_int (argv[1]) << endl;
+  // cout << "filename: " << sqlite3_value_text (argv[2]) << endl;
+  
+  string device_name = reinterpret_cast<const char*> (sqlite3_value_text (argv[0]));
+  int action         = sqlite3_value_int  (argv[1]);
+  string filename    = reinterpret_cast<const char*> (sqlite3_value_text (argv[2]));
+
+  if (action == 0) // update
+    {
+      Hash hash (sqlite3_value_blob (argv[3]), sqlite3_value_bytes (argv[3]));
+      time_t atime = static_cast<time_t> (sqlite3_value_int64 (argv[4]));
+      time_t mtime = static_cast<time_t> (sqlite3_value_int64 (argv[5]));
+      time_t ctime = static_cast<time_t> (sqlite3_value_int64 (argv[6]));
+      int mode = sqlite3_value_int (argv[7]);
+
+      cout << "Update " << filename << " " << atime << " " << mtime << " " << ctime << endl;
+
+      sqlite3_stmt *stmt;
+      sqlite3_prepare_v2 (the->m_db, "UPDATE FileState "
+                          "SET file_hash=?,"
+                          "file_atime=datetime(?, 'unixepoch'),"
+                          "file_mtime=datetime(?, 'unixepoch'),"
+                          "file_ctime=datetime(?, 'unixepoch'),"
+                          "file_chmod=? "
+                          "WHERE type=0 AND filename=?", -1, &stmt, 0);
+
+      sqlite3_bind_blob  (stmt, 1, hash.GetHash (), hash.GetHashBytes (), SQLITE_TRANSIENT);
+      sqlite3_bind_int64 (stmt, 2, atime);
+      sqlite3_bind_int64 (stmt, 3, mtime);
+      sqlite3_bind_int64 (stmt, 4, ctime);
+      sqlite3_bind_int   (stmt, 5, mode);
+      sqlite3_bind_text  (stmt, 6, filename.c_str (), -1, SQLITE_TRANSIENT);
+      
+      sqlite3_step (stmt);
+      sqlite3_finalize (stmt);
+
+      int affected_rows = sqlite3_changes (the->m_db);
+      if (affected_rows == 0) // file didn't exist
+        {
+          sqlite3_stmt *stmt;
+          sqlite3_prepare_v2 (the->m_db, "INSERT INTO FileState "
+                              "(type,filename,file_hash,file_atime,file_mtime,file_ctime,file_chmod) "
+                              "VALUES (0, ?, ?, "
+                              "datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), ?)", -1, &stmt, 0);
+
+          sqlite3_bind_text  (stmt, 1, filename.c_str (), -1, SQLITE_TRANSIENT);
+          sqlite3_bind_blob  (stmt, 2, hash.GetHash (), hash.GetHashBytes (), SQLITE_TRANSIENT);
+          sqlite3_bind_int64 (stmt, 3, atime);
+          sqlite3_bind_int64 (stmt, 4, mtime);
+          sqlite3_bind_int64 (stmt, 5, ctime);
+          sqlite3_bind_int   (stmt, 6, mode);
+      
+          sqlite3_step (stmt);
+          sqlite3_finalize (stmt);
+        }
+    }
+  else if (action == 1) // delete
+    {
+      sqlite3_stmt *stmt;
+      sqlite3_prepare_v2 (the->m_db, "DELETE FROM FileState WHERE type=0 AND filename=?", -1, &stmt, 0);
+      sqlite3_bind_text (stmt, 1, filename.c_str (), -1, SQLITE_STATIC);
+
+      cout << "Delete " << filename << endl;
+      
+      sqlite3_step (stmt);
+      sqlite3_finalize (stmt);
+    }
   
   sqlite3_result_null (context);
 }
