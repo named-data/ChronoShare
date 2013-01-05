@@ -2,57 +2,62 @@
 
 namespace Ccnx {
 
-ParsedContentObject::ParsedContentObject(const unsigned char *data, size_t len)
+void
+ParsedContentObject::init(const unsigned char *data, size_t len)
 {
-  ccn_indexbuf *comps = ccn_indexbuf_create();
-  ccn_parsed_ContentObject pco;
-  int res = ccn_parse_ContentObject(data, len, &pco, comps);
+  m_comps = ccn_indexbuf_create();
+  int res = ccn_parse_ContentObject(data, len, &m_pco, m_comps);
   if (res < 0)
   {
     boost::throw_exception(MisformedContentObjectException());
   }
+  readRaw(m_bytes, data, len);
+}
 
-  const unsigned char *content;
-  size_t length;
-  res = ccn_content_get_value(data, pco.offset[CCN_PCO_E], &pco, &content, &length);
-  if (res < 0)
-  {
-    boost::throw_exception(MisformedContentObjectException());
-  }
-  readRaw(m_content, content, length);
-
-  m_name = Name(data, comps);
-  cout << "in Constructor: name " << m_name << endl;
-  cout << "content : " << string((const char *)&m_content[0], m_content.size()) << endl;
+ParsedContentObject::ParsedContentObject(const unsigned char *data, size_t len)
+            : m_comps(NULL)
+{
+  init(data, len);
 }
 
 ParsedContentObject::ParsedContentObject(const Bytes &bytes)
+            : m_comps(NULL)
 {
-  ParsedContentObject(head(bytes), bytes.size());
+  init(head(bytes), bytes.size());
 }
 
 ParsedContentObject::ParsedContentObject(const ParsedContentObject &other)
+            : m_comps(NULL)
 {
-  m_content = other.m_content;
-  m_name = other.m_name;
+  init(head(other.m_bytes), other.m_bytes.size());
 }
 
 ParsedContentObject::~ParsedContentObject()
 {
+  ccn_indexbuf_destroy(&m_comps);
+  m_comps = NULL;
 }
 
 Bytes
 ParsedContentObject::content() const
 {
-  cout << "content() : " << string((const char *)&m_content[0], m_content.size()) << endl;
-  return m_content;
+  const unsigned char *content;
+  size_t len;
+  Bytes bytes;
+  int res = ccn_content_get_value(head(m_bytes), m_pco.offset[CCN_PCO_E], &m_pco, &content, &len);
+  if (res < 0)
+  {
+    boost::throw_exception(MisformedContentObjectException());
+  }
+
+  readRaw(bytes, content, len);
+  return bytes;
 }
 
 Name
 ParsedContentObject::name() const
 {
-  cout <<"name() : " << m_name << endl;
-  return m_name;
+  return Name(head(m_bytes), m_comps);
 }
 
 }

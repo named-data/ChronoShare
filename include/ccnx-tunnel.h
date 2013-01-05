@@ -40,7 +40,7 @@ public:
   publishContentObject(const Name &name, const Bytes &contentObject, int freshness);
 
   virtual int
-  sendInterest (const Name &interest, Closure *closure, const Selectors &selectors = Selectors());
+  sendInterest (const Name &interest, const Closure *closure, const Selectors &selectors = Selectors());
 
 
   // prefix is topology-independent
@@ -75,6 +75,9 @@ public:
   void
   handleTunneledData(const Name &name, const Bytes &tunneledData, const Closure::DataCallback &originalDataCallback);
 
+private:
+  CcnxTunnel(const CcnxTunnel &other) {}
+
 protected:
   // need a way to update local prefix, perhaps using macports trick, but eventually we need something more portable
   Name m_localPrefix;
@@ -94,6 +97,9 @@ public:
 
   virtual TimeoutCallbackReturnValue
   runTimeoutCallback(const Name &interest) _OVERRIDE;
+
+  virtual Closure *
+  dup() const _OVERRIDE;
 
 private:
   CcnxTunnel *m_tunnel;

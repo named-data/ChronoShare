@@ -257,6 +257,8 @@ incomingData(ccn_closure *selfp,
   switch (kind)
     {
     case CCN_UPCALL_FINAL:  // effecitve in unit tests
+      delete cp;
+      cp = NULL;
       delete selfp;
       return CCN_UPCALL_RESULT_OK;
 
@@ -303,7 +305,7 @@ incomingData(ccn_closure *selfp,
   return CCN_UPCALL_RESULT_OK;
 }
 
-int CcnxWrapper::sendInterest (const Name &interest, Closure *closure, const Selectors &selectors)
+int CcnxWrapper::sendInterest (const Name &interest, const Closure *closure, const Selectors &selectors)
 {
   UniqueRecLock(m_mutex);
   if (!m_running || !m_connected)
@@ -313,7 +315,8 @@ int CcnxWrapper::sendInterest (const Name &interest, Closure *closure, const Sel
   ccn_charbuf *pname = namePtr->getBuf();
   ccn_closure *dataClosure = new ccn_closure;
 
-  dataClosure->data = (void *)closure;
+  Closure *myClosure = closure->dup();
+  dataClosure->data = (void *)myClosure;
 
   dataClosure->p = &incomingData;
 

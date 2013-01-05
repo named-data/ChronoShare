@@ -36,6 +36,7 @@ class CcnxCharbuf
 public:
   CcnxCharbuf();
   CcnxCharbuf(ccn_charbuf *buf);
+  CcnxCharbuf(const CcnxCharbuf &other);
   ~CcnxCharbuf();
 
   // expose internal data structure, use with caution!!
@@ -51,6 +52,9 @@ public:
   length () const
   { return m_buf->length; }
   
+private:
+  void init(ccn_charbuf *buf);
+
 protected:
   ccn_charbuf *m_buf;
 };

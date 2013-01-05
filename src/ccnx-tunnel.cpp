@@ -8,7 +8,7 @@ CcnxTunnel::CcnxTunnel()
                           : CcnxWrapper()
                           , m_localPrefix("/")
 {
-  //refreshLocalPrefix();
+  refreshLocalPrefix();
 }
 
 CcnxTunnel::~CcnxTunnel()
@@ -28,21 +28,18 @@ CcnxTunnel::refreshLocalPrefix()
 }
 
 int
-CcnxTunnel::sendInterest (const Name &interest, Closure *closure, const Selectors &selectors)
+CcnxTunnel::sendInterest (const Name &interest, const Closure *closure, const Selectors &selectors)
 {
   Name tunneledInterest = queryRoutableName(interest);
   Closure *cp = new TunnelClosure(closure, this, interest);
-  cout << "send interest in Tunnel" << endl;
   CcnxWrapper::sendInterest(tunneledInterest, cp, selectors);
+  delete cp;
 }
 
 void
 CcnxTunnel::handleTunneledData(const Name &name, const Bytes &tunneledData, const Closure::DataCallback &originalDataCallback)
 {
   ParsedContentObject pco(tunneledData);
-  Name n = pco.name();
-  Bytes b = pco.content();
-  cout <<"Parsed ContentObject" << n << b.size() << endl;
   originalDataCallback(pco.name(), pco.content());
 }
 
@@ -59,7 +56,6 @@ int
 CcnxTunnel::publishContentObject(const Name &name, const Bytes &contentObject, int freshness)
 {
   Name tunneledName = m_localPrefix + name;
-  cout << "Outer name " << tunneledName;
   Bytes tunneledCo = createContentObject(tunneledName, head(contentObject), contentObject.size(), freshness);
   return putToCcnd(tunneledCo);
 }
@@ -131,6 +127,13 @@ TunnelClosure::TunnelClosure(const Closure *closure, CcnxTunnel *tunnel, const N
                  : Closure(*closure)
                  , m_tunnel(tunnel)
 {
+}
+
+Closure *
+TunnelClosure::dup() const
+{
+  Closure *closure = new TunnelClosure(m_retry, *m_dataCallback, m_tunnel, m_originalInterest, *m_timeoutCallback);
+  return closure;
 }
 
 void
