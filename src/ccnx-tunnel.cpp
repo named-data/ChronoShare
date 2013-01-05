@@ -8,7 +8,7 @@ CcnxTunnel::CcnxTunnel()
                           : CcnxWrapper()
                           , m_localPrefix("/")
 {
-  refreshLocalPrefix();
+  //refreshLocalPrefix();
 }
 
 CcnxTunnel::~CcnxTunnel()
@@ -32,7 +32,7 @@ CcnxTunnel::sendInterest (const Name &interest, Closure *closure, const Selector
 {
   Name tunneledInterest = queryRoutableName(interest);
   Closure *cp = new TunnelClosure(closure, this, interest);
-  sendInterest(tunneledInterest, cp, selectors);
+  CcnxWrapper::sendInterest(tunneledInterest, cp, selectors);
 }
 
 void
