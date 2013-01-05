@@ -26,8 +26,9 @@ public:
   name() const;
 
 protected:
-  Name m_name;
-  Bytes m_content;
+  ccn_parsed_ContentObject m_pco;
+  ccn_indexbuf *m_comps;
+  Bytes m_bytes;
 };
 
 typedef boost::shared_ptr<ParsedContentObject> PcoPtr;
