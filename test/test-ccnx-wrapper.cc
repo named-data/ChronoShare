@@ -49,6 +49,7 @@ BOOST_AUTO_TEST_CASE (CcnxWrapperTest)
   Name prefix2("/c2");
 
   c1->setInterestFilter(prefix1, bind(publish1, _1));
+  usleep(100000);
   c2->setInterestFilter(prefix2, bind(publish2, _1));
 
   Closure *closure = new Closure(1, bind(dataCallback, _1, _2), bind(timeout, _1));
