@@ -8,7 +8,7 @@ CcnxTunnel::CcnxTunnel()
                           : CcnxWrapper()
                           , m_localPrefix("/")
 {
-  refreshLocalPrefix();
+  //refreshLocalPrefix();
 }
 
 CcnxTunnel::~CcnxTunnel()
@@ -32,13 +32,17 @@ CcnxTunnel::sendInterest (const Name &interest, Closure *closure, const Selector
 {
   Name tunneledInterest = queryRoutableName(interest);
   Closure *cp = new TunnelClosure(closure, this, interest);
-  sendInterest(tunneledInterest, cp, selectors);
+  cout << "send interest in Tunnel" << endl;
+  CcnxWrapper::sendInterest(tunneledInterest, cp, selectors);
 }
 
 void
 CcnxTunnel::handleTunneledData(const Name &name, const Bytes &tunneledData, const Closure::DataCallback &originalDataCallback)
 {
   ParsedContentObject pco(tunneledData);
+  Name n = pco.name();
+  Bytes b = pco.content();
+  cout <<"Parsed ContentObject" << n << b.size() << endl;
   originalDataCallback(pco.name(), pco.content());
 }
 
