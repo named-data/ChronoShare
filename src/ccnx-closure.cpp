@@ -44,4 +44,11 @@ Closure::runDataCallback(const Name &name, const Bytes &content)
   }
 }
 
+Closure *
+Closure::dup() const
+{
+  Closure *closure = new Closure(*this);
+  return closure;
+}
+
 } // Ccnx

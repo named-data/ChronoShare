@@ -40,7 +40,7 @@ public:
   publishContentObject(const Name &name, const Bytes &contentObject, int freshness);
 
   virtual int
-  sendInterest (const Name &interest, Closure *closure, const Selectors &selectors = Selectors());
+  sendInterest (const Name &interest, const Closure *closure, const Selectors &selectors = Selectors());
 
 
   // prefix is topology-independent
@@ -94,6 +94,9 @@ public:
 
   virtual TimeoutCallbackReturnValue
   runTimeoutCallback(const Name &interest) _OVERRIDE;
+
+  virtual Closure *
+  dup() const _OVERRIDE;
 
 private:
   CcnxTunnel *m_tunnel;

@@ -31,6 +31,9 @@ public:
   virtual TimeoutCallbackReturnValue
   runTimeoutCallback(const Name &interest);
 
+  virtual Closure *
+  dup() const;
+
 protected:
   int m_retry;
   TimeoutCallback *m_timeoutCallback;

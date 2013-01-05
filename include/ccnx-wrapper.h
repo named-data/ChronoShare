@@ -37,7 +37,7 @@ public:
   clearInterestFilter (const Name &prefix);
 
   virtual int
-  sendInterest (const Name &interest, Closure *closure, const Selectors &selector = Selectors());
+  sendInterest (const Name &interest, const Closure *closure, const Selectors &selector = Selectors());
 
   virtual int
   publishData (const Name &name, const unsigned char *buf, size_t len, int freshness);
