@@ -6,6 +6,18 @@
 namespace Ccnx{
 CcnxCharbufPtr CcnxCharbuf::Null;
 
+void
+CcnxCharbuf::init(ccn_charbuf *buf)
+{
+  if (buf != NULL)
+  {
+    m_buf = ccn_charbuf_create();
+    ccn_charbuf_reserve(m_buf, buf->length);
+    memcpy(m_buf->buf, buf->buf, buf->length);
+    m_buf->length = buf->length;
+  }
+}
+
 CcnxCharbuf::CcnxCharbuf()
             : m_buf(NULL)
 {
@@ -15,13 +27,13 @@ CcnxCharbuf::CcnxCharbuf()
 CcnxCharbuf::CcnxCharbuf(ccn_charbuf *buf)
             : m_buf(NULL)
 {
-  if (buf != NULL)
-  {
-    m_buf = ccn_charbuf_create();
-    ccn_charbuf_reserve(m_buf, buf->length);
-    memcpy(m_buf->buf, buf->buf, buf->length);
-    m_buf->length = buf->length;
-  }
+  init(buf);
+}
+
+CcnxCharbuf::CcnxCharbuf(const CcnxCharbuf &other)
+            : m_buf (NULL)
+{
+  init(other.m_buf);
 }
 
 CcnxCharbuf::~CcnxCharbuf()

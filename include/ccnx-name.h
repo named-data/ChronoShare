@@ -15,12 +15,16 @@ class CcnxCharbuf
 public:
   CcnxCharbuf();
   CcnxCharbuf(ccn_charbuf *buf);
+  CcnxCharbuf(const CcnxCharbuf &other);
   ~CcnxCharbuf();
 
   // expose internal data structure, use with caution!!
   ccn_charbuf *
   getBuf() { return m_buf; }
   static CcnxCharbufPtr Null;
+
+private:
+  void init(ccn_charbuf *buf);
 
 protected:
   ccn_charbuf *m_buf;
