@@ -55,6 +55,7 @@ int
 CcnxTunnel::publishContentObject(const Name &name, const Bytes &contentObject, int freshness)
 {
   Name tunneledName = m_localPrefix + name;
+  cout << "Outer name " << tunneledName;
   Bytes tunneledCo = createContentObject(tunneledName, head(contentObject), contentObject.size(), freshness);
   return putToCcnd(tunneledCo);
 }
@@ -115,7 +116,7 @@ CcnxTunnel::clearInterestFilter(const Name &prefix)
   m_rit.erase(prefix);
 }
 
-TunnelClosure::TunnelClosure(int retry, const DataCallback &dataCallback, const TimeoutCallback &timeoutCallback, CcnxTunnel *tunnel, const Name &originalInterest)
+TunnelClosure::TunnelClosure(int retry, const DataCallback &dataCallback, CcnxTunnel *tunnel, const Name &originalInterest, const TimeoutCallback &timeoutCallback)
                   : Closure(retry, dataCallback, timeoutCallback)
                   , m_tunnel(tunnel)
                   , m_originalInterest(originalInterest)

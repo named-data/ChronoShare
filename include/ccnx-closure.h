@@ -21,7 +21,7 @@ public:
 
   typedef boost::function<TimeoutCallbackReturnValue (const Name &)> TimeoutCallback;
 
-  Closure(int retry, const DataCallback &dataCallback, const TimeoutCallback &timeoutCallback);
+  Closure(int retry, const DataCallback &dataCallback, const TimeoutCallback &timeoutCallback = TimeoutCallback());
   Closure(const Closure &other);
   int getRetry() {return m_retry;}
   void decRetry() { m_retry--;}

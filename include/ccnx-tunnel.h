@@ -85,7 +85,7 @@ protected:
 class TunnelClosure : public Closure
 {
 public:
-  TunnelClosure(int retry, const DataCallback &dataCallback, const TimeoutCallback &timeoutCallback, CcnxTunnel *tunnel, const Name &originalInterest);
+  TunnelClosure(int retry, const DataCallback &dataCallback, CcnxTunnel *tunnel, const Name &originalInterest, const TimeoutCallback &timeoutCallback = TimeoutCallback());
 
   TunnelClosure(const Closure *closure, CcnxTunnel *tunnel, const Name &originalInterest);
 
