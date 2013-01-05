@@ -25,6 +25,10 @@ public:
   Name
   name() const;
 
+private:
+  void
+  init(const unsigned char *data, size_t len);
+
 protected:
   ccn_parsed_ContentObject m_pco;
   ccn_indexbuf *m_comps;

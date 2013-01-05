@@ -2,8 +2,8 @@
 
 namespace Ccnx {
 
-ParsedContentObject::ParsedContentObject(const unsigned char *data, size_t len)
-            : m_comps(NULL)
+void
+ParsedContentObject::init(const unsigned char *data, size_t len)
 {
   m_comps = ccn_indexbuf_create();
   int res = ccn_parse_ContentObject(data, len, &m_pco, m_comps);
@@ -14,14 +14,22 @@ ParsedContentObject::ParsedContentObject(const unsigned char *data, size_t len)
   readRaw(m_bytes, data, len);
 }
 
-ParsedContentObject::ParsedContentObject(const Bytes &bytes)
+ParsedContentObject::ParsedContentObject(const unsigned char *data, size_t len)
+            : m_comps(NULL)
 {
-  ParsedContentObject(head(bytes), bytes.size());
+  init(data, len);
+}
+
+ParsedContentObject::ParsedContentObject(const Bytes &bytes)
+            : m_comps(NULL)
+{
+  init(head(bytes), bytes.size());
 }
 
 ParsedContentObject::ParsedContentObject(const ParsedContentObject &other)
+            : m_comps(NULL)
 {
-  ParsedContentObject(other.m_bytes);
+  init(head(other.m_bytes), other.m_bytes.size());
 }
 
 ParsedContentObject::~ParsedContentObject()

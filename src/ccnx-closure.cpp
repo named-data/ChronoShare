@@ -3,15 +3,17 @@
 namespace Ccnx {
 
 Closure::Closure(int retry, const DataCallback &dataCallback, const TimeoutCallback &timeoutCallback)
-              : m_retry(retry), m_timeoutCallback(NULL)
+              : m_retry(retry), m_timeoutCallback(NULL), m_dataCallback(NULL)
 {
   m_timeoutCallback = new TimeoutCallback (timeoutCallback);
   m_dataCallback = new DataCallback (dataCallback);
 }
 
 Closure::Closure(const Closure &other)
+            :m_retry(other.m_retry), m_timeoutCallback(NULL), m_dataCallback(NULL)
 {
-  Closure(other.m_retry, *(other.m_dataCallback), *(other.m_timeoutCallback));
+  m_timeoutCallback = new TimeoutCallback(*(other.m_timeoutCallback));
+  m_dataCallback = new DataCallback(*(other.m_dataCallback));
 }
 
 Closure::~Closure ()
