@@ -40,8 +40,6 @@ CcnxWrapper::CcnxWrapper()
   , m_connected (false)
 {
   connectCcnd();
-  initKeyStore ();
-  createKeyLocator ();
   m_thread = thread (&CcnxWrapper::ccnLoop, this);
 }
 
@@ -83,47 +81,6 @@ CcnxWrapper::~CcnxWrapper()
   ccn_destroy (&m_handle);
   ccn_charbuf_destroy (&m_keyLoactor);
   ccn_keystore_destroy (&m_keyStore);
-}
-
-void
-CcnxWrapper::createKeyLocator ()
-{
-  m_keyLoactor = ccn_charbuf_create();
-  ccn_charbuf_append_tt (m_keyLoactor, CCN_DTAG_KeyLocator, CCN_DTAG);
-  ccn_charbuf_append_tt (m_keyLoactor, CCN_DTAG_Key, CCN_DTAG);
-  int res = ccn_append_pubkey_blob (m_keyLoactor, ccn_keystore_public_key(m_keyStore));
-  if (res >= 0)
-    {
-      ccn_charbuf_append_closer (m_keyLoactor); /* </Key> */
-      ccn_charbuf_append_closer (m_keyLoactor); /* </KeyLocator> */
-    }
-}
-
-const ccn_pkey*
-CcnxWrapper::getPrivateKey ()
-{
-  return ccn_keystore_private_key (m_keyStore);
-}
-
-const unsigned char*
-CcnxWrapper::getPublicKeyDigest ()
-{
-  return ccn_keystore_public_key_digest(m_keyStore);
-}
-
-ssize_t
-CcnxWrapper::getPublicKeyDigestLength ()
-{
-  return ccn_keystore_public_key_digest_length(m_keyStore);
-}
-
-void
-CcnxWrapper::initKeyStore ()
-{
-  m_keyStore = ccn_keystore_create ();
-  string keyStoreFile = string(getenv("HOME")) + string("/.ccnx/.ccnx_keystore");
-  if (ccn_keystore_init (m_keyStore, (char *)keyStoreFile.c_str(), (char*)"Th1s1sn0t8g00dp8ssw0rd.") < 0)
-    BOOST_THROW_EXCEPTION(CcnxOperationException() << errmsg_info_str(keyStoreFile.c_str()));
 }
 
 void
@@ -215,28 +172,19 @@ CcnxWrapper::createContentObject(const Name  &name, const unsigned char *buf, si
 {
   CcnxCharbufPtr ptr = name.toCcnxCharbuf();
   ccn_charbuf *pname = ptr->getBuf();
-  ccn_charbuf *signed_info = ccn_charbuf_create();
   ccn_charbuf *content = ccn_charbuf_create();
 
-  ccn_signed_info_create(signed_info,
-			 getPublicKeyDigest(),
-			 getPublicKeyDigestLength(),
-			 NULL,
-			 CCN_CONTENT_DATA,
-			 freshness,
-			 NULL,
-			 m_keyLoactor);
-  if(ccn_encode_ContentObject(content, pname, signed_info,
-			   buf, len,
-			   NULL, getPrivateKey()) < 0)
+  struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+  sp.freshness = freshness;
+
+  if (ccn_sign_content(m_handle, content, pname, &sp, buf, len) != 0)
   {
-    // BOOST_THROW_EXCEPTION(CcnxOperationException() << errmsg_info_str("encode content failed"));
+    BOOST_THROW_EXCEPTION(CcnxOperationException() << errmsg_info_str("sign content failed"));
   }
 
   Bytes bytes;
   readRaw(bytes, content->buf, content->length);
 
-  ccn_charbuf_destroy (&signed_info);
   ccn_charbuf_destroy (&content);
 
   return bytes;

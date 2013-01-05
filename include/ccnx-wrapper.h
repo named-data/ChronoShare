@@ -60,21 +60,6 @@ protected:
 
   /// @cond include_hidden
   void
-  createKeyLocator ();
-
-  void
-  initKeyStore ();
-
-  const ccn_pkey *
-  getPrivateKey ();
-
-  const unsigned char *
-  getPublicKeyDigest ();
-
-  ssize_t
-  getPublicKeyDigestLength ();
-
-  void
   ccnLoop ();
 
   /// @endcond
