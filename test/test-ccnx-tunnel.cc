@@ -24,7 +24,7 @@ public:
 
 };
 
-DummyTunnel::DummyTunnel() : CcnxTunnel() {m_localPrefix = Name("/");}
+DummyTunnel::DummyTunnel() : CcnxTunnel() {m_localPrefix = Name("/local");}
 
 Name
 DummyTunnel::queryRoutableName (const Name &name)
