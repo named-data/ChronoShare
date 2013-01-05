@@ -75,6 +75,9 @@ public:
   void
   handleTunneledData(const Name &name, const Bytes &tunneledData, const Closure::DataCallback &originalDataCallback);
 
+private:
+  CcnxTunnel(const CcnxTunnel &other) {}
+
 protected:
   // need a way to update local prefix, perhaps using macports trick, but eventually we need something more portable
   Name m_localPrefix;

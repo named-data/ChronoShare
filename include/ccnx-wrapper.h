@@ -54,6 +54,9 @@ public:
   int
   putToCcnd (const Bytes &contentObject);
 
+private:
+  CcnxWrapper(const CcnxWrapper &other) {}
+
 protected:
   void
   connectCcnd();
