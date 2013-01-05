@@ -24,6 +24,7 @@
 
 #include "db-helper.h"
 #include <sync-state.pb.h>
+#include <ccnx-name.h>
 
 typedef boost::shared_ptr<SyncStateMsg> SyncStateMsgPtr;
 
@@ -40,7 +41,7 @@ public:
   
   // done
   void
-  UpdateDeviceSeqno (const std::string &name, sqlite3_int64 seqNo);
+  UpdateDeviceSeqno (const Ccnx::Name &name, sqlite3_int64 seqNo);
 
   // std::string
   // LookupForwardingAlias (const std::string &deviceName);
@@ -71,9 +72,10 @@ public:
   FindStateDifferences (const Hash &oldHash, const Hash &newHash);  
 
 protected:
-  std::string m_localName;
-  sqlite3_int64 m_localDeviceId;
+  // std::string m_localName;
+  Ccnx::Name m_localName;
   
+  sqlite3_int64 m_localDeviceId;
 };
 
 

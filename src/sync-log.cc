@@ -36,7 +36,9 @@ SyncLog::SyncLog (const std::string &path, const std::string &localName)
   
   sqlite3_stmt *stmt;
   int res = sqlite3_prepare_v2 (m_db, "SELECT device_id, seq_no FROM SyncNodes WHERE device_name=?", -1, &stmt, 0);
-  sqlite3_bind_text (stmt, 1, m_localName.c_str (), m_localName.size (), SQLITE_STATIC);
+
+  Ccnx::CcnxCharbufPtr name = m_localName;
+  sqlite3_bind_blob (stmt, 1, name->buf (), name->length (), SQLITE_STATIC);
 
   if (sqlite3_step (stmt) == SQLITE_ROW)
     {
@@ -90,7 +92,7 @@ INSERT INTO SyncLog                                     \
   if (res != SQLITE_OK)
     {
       BOOST_THROW_EXCEPTION (Error::Db ()
-                             << errmsg_info_str ("1"));
+                             << errmsg_info_str (sqlite3_errmsg(m_db)));
     }
   
   sqlite3_int64 rowId = sqlite3_last_insert_rowid (m_db);
@@ -109,7 +111,7 @@ INSERT INTO SyncStateNodes                              \
   if (res != SQLITE_OK)
     {
       BOOST_THROW_EXCEPTION (Error::Db ()
-                             << errmsg_info_str ("4"));
+                             << errmsg_info_str (sqlite3_errmsg(m_db)));
     }
   sqlite3_finalize (insertStmt);
   
@@ -177,14 +179,15 @@ SyncLog::LookupSyncLog (const Hash &stateHash)
 }
 
 void
-SyncLog::UpdateDeviceSeqno (const std::string &name, sqlite3_int64 seqNo)
+SyncLog::UpdateDeviceSeqno (const Ccnx::Name &name, sqlite3_int64 seqNo)
 {
   sqlite3_stmt *stmt;
   // update is performed using trigger
   int res = sqlite3_prepare (m_db, "INSERT INTO SyncNodes (device_name, seq_no) VALUES (?,?);", 
                              -1, &stmt, 0);
 
-  res += sqlite3_bind_text  (stmt, 1, name.c_str (), name.size (), SQLITE_STATIC);
+  Ccnx::CcnxCharbufPtr nameBuf = name;
+  res += sqlite3_bind_blob  (stmt, 1, nameBuf->buf (), nameBuf->length (), SQLITE_STATIC);
   res += sqlite3_bind_int64 (stmt, 2, seqNo);
   sqlite3_step (stmt);
   
@@ -282,7 +285,7 @@ SELECT sn.device_name, s_old.seq_no, s_new.seq_no                       \
     {
       SyncState *state = msg->add_state ();
 
-      state->set_name (reinterpret_cast<const char*> (sqlite3_column_text (stmt, 0)));
+      state->set_name (reinterpret_cast<const char*> (sqlite3_column_blob (stmt, 0), sqlite3_column_bytes (stmt, 0)));
 
       sqlite3_int64 newSeqNo = sqlite3_column_int64 (stmt, 2);
       if (newSeqNo > 0)

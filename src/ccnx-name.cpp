@@ -74,6 +74,26 @@ Name::Name(const unsigned char *data, const ccn_indexbuf *comps)
   }
 }
 
+Name::Name (const unsigned char *buf, const size_t length)
+{
+  ccn_indexbuf *idx = ccn_indexbuf_create();
+  const ccn_charbuf namebuf = { length, length, const_cast<unsigned char *> (buf) };
+  ccn_name_split (&namebuf, idx);
+
+  const unsigned char *compPtr = NULL;
+  size_t size = 0;
+  int i = 0;
+  while (ccn_name_comp_get(namebuf.buf, idx, i, &compPtr, &size) == 0)
+    {
+      Bytes comp;
+      readRaw (comp, compPtr, size);
+      m_comps.push_back(comp);
+      i++;
+    }
+  ccn_indexbuf_destroy(&idx);
+}
+
+
 Name &
 Name::operator=(const Name &other)
 {

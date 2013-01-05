@@ -17,6 +17,6 @@ message ActionItem
   optional uint32 ctime = 10;
   optional uint32 mode  = 11;
 
-  optional string parent_device_name = 12;
+  optional bytes  parent_device_name = 12;
   optional uint64 parent_seq_no = 13;
 }

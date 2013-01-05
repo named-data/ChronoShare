@@ -68,7 +68,7 @@ ActionLog::GetExistingRecord (const std::string &filename)
         {
           parent_device_id = sqlite3_column_int64 (stmt, 1);
           parent_seq_no = sqlite3_column_int64 (stmt, 2);
-          parent_device_name = string(reinterpret_cast<const char*> (sqlite3_column_text (stmt, 4)));
+          parent_device_name = string(reinterpret_cast<const char*> (sqlite3_column_blob (stmt, 4), sqlite3_column_bytes (stmt, 4)));
         }
     }
   
@@ -257,7 +257,7 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
   // cout << "action: " << sqlite3_value_int (argv[1]) << endl;
   // cout << "filename: " << sqlite3_value_text (argv[2]) << endl;
   
-  string device_name = reinterpret_cast<const char*> (sqlite3_value_text (argv[0]));
+  string device_name (reinterpret_cast<const char*> (sqlite3_value_blob (argv[0])), sqlite3_value_bytes (argv[0]));
   sqlite3_int64 device_id = sqlite3_value_int64 (argv[1]);
   sqlite3_int64 seq_no    = sqlite3_value_int64 (argv[2]);
   int action         = sqlite3_value_int  (argv[3]);

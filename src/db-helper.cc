@@ -33,7 +33,7 @@ PRAGMA foreign_keys = ON;                                       \n\
 CREATE TABLE                                                    \n\
     SyncNodes(                                                  \n\
         device_id       INTEGER PRIMARY KEY AUTOINCREMENT,      \n\
-        device_name     TEXT NOT NULL,                          \n\
+        device_name     BLOB NOT NULL,                          \n\
         description     TEXT,                                   \n\
         seq_no          INTEGER NOT NULL,                       \n\
         last_known_tdi  TEXT,                                   \n\
@@ -209,11 +209,11 @@ DbHelper::hash_xStep (sqlite3_context *context, int argc, sqlite3_value **argv)
       sqlite3_result_error (context, "Wrong arguments are supplied for ``hash'' function", -1);
       return;
     }
-  if (sqlite3_value_type (argv[0]) != SQLITE_TEXT ||
+  if (sqlite3_value_type (argv[0]) != SQLITE_BLOB ||
       sqlite3_value_type (argv[1]) != SQLITE_INTEGER)
     {
-      // _LOG_ERROR ("Hash expects (text,integer) parameters");
-      sqlite3_result_error (context, "Hash expects (text,integer) parameters", -1);
+      // _LOG_ERROR ("Hash expects (blob,integer) parameters");
+      sqlite3_result_error (context, "Hash expects (blob,integer) parameters", -1);
       return;
     }
   
@@ -231,8 +231,8 @@ DbHelper::hash_xStep (sqlite3_context *context, int argc, sqlite3_value **argv)
       EVP_DigestInit_ex (*hash_context, HASH_FUNCTION (), 0);
     }
   
-  int nameBytes = sqlite3_value_bytes (argv[0]);
-  const unsigned char *name = sqlite3_value_text (argv[0]);
+  int nameBytes       = sqlite3_value_bytes (argv[0]);
+  const void *name    = sqlite3_value_blob  (argv[0]);
   sqlite3_int64 seqno = sqlite3_value_int64 (argv[1]);
 
   EVP_DigestUpdate (*hash_context, name, nameBytes);

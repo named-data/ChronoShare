@@ -2,7 +2,7 @@
 
 VERSION='0.1'
 APPNAME='chronoshare'
-CCNXLIB='ccnx'
+CCNXLIB='ccnxx'
 
 from waflib import Build, Logs
 
@@ -44,7 +44,7 @@ def configure(conf):
 
     if conf.options.debug:
         conf.define ('_DEBUG', 1)
-        conf.env.append_value('CXXFLAGS', ['-O0', '-g3'])
+        conf.env.append_value('CXXFLAGS', ['-O0', '-Wall', '-Wno-unused-variable', '-fcolor-diagnostics', '-g3'])
     else:
         conf.env.append_value('CXXFLAGS', ['-O3', '-g'])
 
@@ -102,7 +102,7 @@ def build (bld):
           target="unit-tests",
           source = bld.path.ant_glob(['test/**/*.cc']),
           features=['cxx', 'cxxprogram'],
-          use = 'BOOST_TEST ccnx database',
+          use = 'BOOST_TEST ccnxx database',
           includes = ['include', 'src'],
           )
 
@@ -122,6 +122,6 @@ def build (bld):
         source = ['daemon/daemon.cc',
                   'daemon/notify-i.cc',
                   ],
-        use = "BOOST CCNX SSL SQLITE3 ICE common database",
+        use = "BOOST CCNX SSL SQLITE3 ICE common database ccnxx",
         includes = ['include', 'src'],
         )

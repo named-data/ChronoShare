@@ -1,12 +1,6 @@
-// message Name
-// {
-//   repeated bytes comp = 1;
-// }
-
 message SyncState
 {
-  // required Name name = 1;
-  required string name = 1;
+  required bytes name = 1;
 
   enum ActionType
   {
