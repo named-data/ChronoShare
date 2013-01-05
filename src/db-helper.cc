@@ -139,6 +139,7 @@ CREATE TRIGGER ActionLogInsert_trigger                                  \n\
                                     WHERE device_id=NEW.device_id)) IS NULL      \n\
     BEGIN                                                               \n\
         SELECT apply_action ((SELECT device_name FROM SyncNodes where device_id=NEW.device_id), \
+                             NEW.device_id, NEW.seq_no,                 \
                              NEW.action,NEW.filename,NEW.file_hash,     \
                              strftime('%s', NEW.file_atime),strftime('%s', NEW.file_mtime),strftime('%s', NEW.file_ctime), \
                              NEW.file_chmod); /* function that applies action and adds record the FileState */  \n \
@@ -147,6 +148,8 @@ CREATE TRIGGER ActionLogInsert_trigger                                  \n\
 CREATE TABLE FileState (                                                \n\
     type        INTEGER NOT NULL, /* 0 - newest, 1 - oldest */          \n\
     filename    TEXT NOT NULL,                                          \n\
+    device_id   INTEGER NOT NULL,                                       \n\
+    seq_no      INTEGER NOT NULL,                                       \n\
     file_hash   BLOB, /* NULL if action is \"delete\" */                \n\
     file_atime  TIMESTAMP,                                              \n\
     file_mtime  TIMESTAMP,                                              \n\
@@ -155,6 +158,8 @@ CREATE TABLE FileState (                                                \n\
                                                                         \n\
     PRIMARY KEY (type, filename)                                        \n\
 );                                                                      \n\
+                                                                        \n\
+CREATE INDEX FileState_device_id_seq_no ON FileState (device_id, seq_no); \n\
 ";
 
 DbHelper::DbHelper (const std::string &path)

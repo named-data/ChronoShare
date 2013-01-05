@@ -245,7 +245,7 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
 {
   ActionLog *the = reinterpret_cast<ActionLog*> (sqlite3_user_data (context));
 
-  if (argc != 8)
+  if (argc != 10)
     {
       sqlite3_result_error (context, "``apply_action'' expects 8 arguments", -1);
       return;
@@ -258,36 +258,45 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
   // cout << "filename: " << sqlite3_value_text (argv[2]) << endl;
   
   string device_name = reinterpret_cast<const char*> (sqlite3_value_text (argv[0]));
-  int action         = sqlite3_value_int  (argv[1]);
-  string filename    = reinterpret_cast<const char*> (sqlite3_value_text (argv[2]));
+  sqlite3_int64 device_id = sqlite3_value_int64 (argv[1]);
+  sqlite3_int64 seq_no    = sqlite3_value_int64 (argv[2]);
+  int action         = sqlite3_value_int  (argv[3]);
+  string filename    = reinterpret_cast<const char*> (sqlite3_value_text (argv[4]));
 
   if (action == 0) // update
     {
-      Hash hash (sqlite3_value_blob (argv[3]), sqlite3_value_bytes (argv[3]));
-      time_t atime = static_cast<time_t> (sqlite3_value_int64 (argv[4]));
-      time_t mtime = static_cast<time_t> (sqlite3_value_int64 (argv[5]));
-      time_t ctime = static_cast<time_t> (sqlite3_value_int64 (argv[6]));
-      int mode = sqlite3_value_int (argv[7]);
+      Hash hash (sqlite3_value_blob (argv[5]), sqlite3_value_bytes (argv[5]));
+      time_t atime = static_cast<time_t> (sqlite3_value_int64 (argv[6]));
+      time_t mtime = static_cast<time_t> (sqlite3_value_int64 (argv[7]));
+      time_t ctime = static_cast<time_t> (sqlite3_value_int64 (argv[8]));
+      int mode = sqlite3_value_int (argv[9]);
 
-      cout << "Update " << filename << " " << atime << " " << mtime << " " << ctime << endl;
+      cout << "Update " << filename << " " << atime << " " << mtime << " " << ctime << " " << hash << endl;
 
       sqlite3_stmt *stmt;
       sqlite3_prepare_v2 (the->m_db, "UPDATE FileState "
-                          "SET file_hash=?,"
+                          "SET "
+                          "device_id=?, seq_no=?, "
+                          "file_hash=?,"
                           "file_atime=datetime(?, 'unixepoch'),"
                           "file_mtime=datetime(?, 'unixepoch'),"
                           "file_ctime=datetime(?, 'unixepoch'),"
                           "file_chmod=? "
                           "WHERE type=0 AND filename=?", -1, &stmt, 0);
 
-      sqlite3_bind_blob  (stmt, 1, hash.GetHash (), hash.GetHashBytes (), SQLITE_TRANSIENT);
-      sqlite3_bind_int64 (stmt, 2, atime);
-      sqlite3_bind_int64 (stmt, 3, mtime);
-      sqlite3_bind_int64 (stmt, 4, ctime);
-      sqlite3_bind_int   (stmt, 5, mode);
-      sqlite3_bind_text  (stmt, 6, filename.c_str (), -1, SQLITE_TRANSIENT);
+      sqlite3_bind_int64 (stmt, 1, device_id);
+      sqlite3_bind_int64 (stmt, 2, seq_no);
+      sqlite3_bind_blob  (stmt, 3, hash.GetHash (), hash.GetHashBytes (), SQLITE_TRANSIENT);
+      sqlite3_bind_int64 (stmt, 4, atime);
+      sqlite3_bind_int64 (stmt, 5, mtime);
+      sqlite3_bind_int64 (stmt, 6, ctime);
+      sqlite3_bind_int   (stmt, 7, mode);
+      sqlite3_bind_text  (stmt, 8, filename.c_str (), -1, SQLITE_TRANSIENT);
       
       sqlite3_step (stmt);
+
+      // cout << sqlite3_errmsg (the->m_db) << endl;
+      
       sqlite3_finalize (stmt);
 
       int affected_rows = sqlite3_changes (the->m_db);
@@ -295,18 +304,21 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
         {
           sqlite3_stmt *stmt;
           sqlite3_prepare_v2 (the->m_db, "INSERT INTO FileState "
-                              "(type,filename,file_hash,file_atime,file_mtime,file_ctime,file_chmod) "
-                              "VALUES (0, ?, ?, "
+                              "(type,filename,device_id,seq_no,file_hash,file_atime,file_mtime,file_ctime,file_chmod) "
+                              "VALUES (0, ?, ?, ?, ?, "
                               "datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), ?)", -1, &stmt, 0);
 
           sqlite3_bind_text  (stmt, 1, filename.c_str (), -1, SQLITE_TRANSIENT);
-          sqlite3_bind_blob  (stmt, 2, hash.GetHash (), hash.GetHashBytes (), SQLITE_TRANSIENT);
-          sqlite3_bind_int64 (stmt, 3, atime);
-          sqlite3_bind_int64 (stmt, 4, mtime);
-          sqlite3_bind_int64 (stmt, 5, ctime);
-          sqlite3_bind_int   (stmt, 6, mode);
+          sqlite3_bind_int64 (stmt, 2, device_id);
+          sqlite3_bind_int64 (stmt, 3, seq_no);
+          sqlite3_bind_blob  (stmt, 4, hash.GetHash (), hash.GetHashBytes (), SQLITE_TRANSIENT);
+          sqlite3_bind_int64 (stmt, 5, atime);
+          sqlite3_bind_int64 (stmt, 6, mtime);
+          sqlite3_bind_int64 (stmt, 7, ctime);
+          sqlite3_bind_int   (stmt, 8, mode);
       
           sqlite3_step (stmt);
+          // cout << sqlite3_errmsg (the->m_db) << endl;
           sqlite3_finalize (stmt);
         }
     }
