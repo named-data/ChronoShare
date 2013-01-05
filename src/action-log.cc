@@ -68,7 +68,7 @@ ActionLog::GetExistingRecord (const std::string &filename)
         {
           parent_device_id = sqlite3_column_int64 (stmt, 1);
           parent_seq_no = sqlite3_column_int64 (stmt, 2);
-          parent_device_name = string(reinterpret_cast<const char*> (sqlite3_column_blob (stmt, 4), sqlite3_column_bytes (stmt, 4)));
+          parent_device_name = string(reinterpret_cast<const char*> (sqlite3_column_blob (stmt, 4)), sqlite3_column_bytes (stmt, 4));
         }
     }
   
@@ -163,6 +163,9 @@ ActionLog::AddActionUpdate (const std::string &filename,
 
   if (parent_device_id > 0 && parent_seq_no > 0)
     {
+      cout << Ccnx::Name (reinterpret_cast<const unsigned char *> (parent_device_name.c_str ()),
+                          parent_device_name.size ()) << endl;
+      
       item.set_parent_device_name (parent_device_name);
       item.set_parent_seq_no (parent_seq_no);
     }
@@ -232,6 +235,9 @@ ActionLog::AddActionDelete (const std::string &filename)
   item.set_parent_device_name (parent_device_name);
   item.set_parent_seq_no (parent_seq_no);
 
+  cout << Ccnx::Name (reinterpret_cast<const unsigned char *> (parent_device_name.c_str ()),
+                      parent_device_name.size ()) << endl;
+  
   // assign name to the action, serialize action, and create content object
   
   sqlite3_finalize (stmt); 
