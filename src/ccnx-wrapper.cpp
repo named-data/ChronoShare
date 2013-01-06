@@ -34,8 +34,6 @@ head(const Bytes &bytes)
 
 CcnxWrapper::CcnxWrapper()
   : m_handle (0)
-  , m_keyStore (0)
-  , m_keyLoactor (0)
   , m_running (true)
   , m_connected (false)
 {
@@ -79,8 +77,6 @@ CcnxWrapper::~CcnxWrapper()
   m_thread.join ();
   ccn_disconnect (m_handle);
   ccn_destroy (&m_handle);
-  ccn_charbuf_destroy (&m_keyLoactor);
-  ccn_keystore_destroy (&m_keyStore);
 }
 
 void

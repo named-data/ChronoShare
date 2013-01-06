@@ -69,9 +69,6 @@ protected:
 
 protected:
   ccn* m_handle;
-  ccn_keystore *m_keyStore;
-  ccn_charbuf *m_keyLoactor;
-  // to lock, use "boost::recursive_mutex::scoped_lock scoped_lock(mutex);
   RecLock m_mutex;
   boost::thread m_thread;
   bool m_running;
