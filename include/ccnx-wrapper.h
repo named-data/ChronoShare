@@ -7,6 +7,7 @@
 
 #include "ccnx-common.h"
 #include "ccnx-name.h"
+#include "ccnx-selectors.h"
 #include "ccnx-closure.h"
 
 using namespace std;

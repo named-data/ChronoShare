@@ -33,10 +33,4 @@ BOOST_AUTO_TEST_CASE (CcnxNameTest)
   // Charbuf related stuff will be checked in other place
 }
 
-BOOST_AUTO_TEST_CASE (SelectorsTest)
-{
-  Selectors s;
-  BOOST_CHECK(s.isEmpty());
-}
-
 BOOST_AUTO_TEST_SUITE_END()

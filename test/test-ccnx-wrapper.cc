@@ -1,6 +1,7 @@
 #include "ccnx-wrapper.h"
 #include "ccnx-closure.h"
 #include "ccnx-name.h"
+#include "ccnx-selectors.h"
 #include "ccnx-pco.h"
 #include <unistd.h>
 
