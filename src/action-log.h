@@ -24,6 +24,7 @@
 
 #include "sync-log.h"
 #include <boost/tuple/tuple.hpp>
+#include <ccnx-wrapper.h>
 
 class ActionLog;
 typedef boost::shared_ptr<ActionLog> ActionLogPtr;
@@ -31,7 +32,7 @@ typedef boost::shared_ptr<ActionLog> ActionLogPtr;
 class ActionLog : public SyncLog
 {
 public:
-  ActionLog (const std::string &path, const std::string &localName);
+  ActionLog (Ccnx::CcnxWrapperPtr ccnx, const std::string &path, const std::string &localName, const std::string &sharedFolder);
 
   void
   AddActionUpdate (const std::string &filename,
@@ -52,7 +53,9 @@ private:
   static void
   apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
   
-protected:
+private:
+  Ccnx::CcnxWrapperPtr m_ccnx;
+  Ccnx::Name m_sharedFolderName;
 };
 
 #endif // ACTION_LOG_H

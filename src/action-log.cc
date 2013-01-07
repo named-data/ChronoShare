@@ -24,9 +24,12 @@
 
 using namespace boost;
 using namespace std;
+using namespace Ccnx;
 
-ActionLog::ActionLog (const std::string &path, const std::string &localName)
+ActionLog::ActionLog (Ccnx::CcnxWrapperPtr ccnx, const std::string &path, const std::string &localName, const std::string &sharedFolder)
   : SyncLog (path, localName)
+  , m_ccnx (ccnx)
+  , m_sharedFolderName (sharedFolder)
 {
   int res = sqlite3_create_function (m_db, "apply_action", -1, SQLITE_ANY, reinterpret_cast<void*> (this),
                                  ActionLog::apply_action_xFun,
@@ -163,8 +166,8 @@ ActionLog::AddActionUpdate (const std::string &filename,
 
   if (parent_device_id > 0 && parent_seq_no > 0)
     {
-      cout << Ccnx::Name (reinterpret_cast<const unsigned char *> (parent_device_name.c_str ()),
-                          parent_device_name.size ()) << endl;
+      cout << Name (reinterpret_cast<const unsigned char *> (parent_device_name.c_str ()),
+                    parent_device_name.size ()) << endl;
       
       item.set_parent_device_name (parent_device_name);
       item.set_parent_seq_no (parent_seq_no);
@@ -222,10 +225,7 @@ ActionLog::AddActionDelete (const std::string &filename)
 
   sqlite3_bind_int64 (stmt, 7, parent_device_id);
   sqlite3_bind_int64 (stmt, 8, parent_seq_no);
-  
-  sqlite3_step (stmt);
 
-  // missing part: creating ContentObject for the action !!!
 
   ActionItem item;
   item.set_action (ActionItem::UPDATE);
@@ -235,8 +235,25 @@ ActionLog::AddActionDelete (const std::string &filename)
   item.set_parent_device_name (parent_device_name);
   item.set_parent_seq_no (parent_seq_no);
 
-  cout << Ccnx::Name (reinterpret_cast<const unsigned char *> (parent_device_name.c_str ()),
-                      parent_device_name.size ()) << endl;
+  string item_msg;
+  item.SerializeToString (&item_msg);
+  Name actionName (m_localName);
+  actionName
+    .appendComp ("action")
+    .appendComp (m_sharedFolderName)
+    .appendComp (reinterpret_cast<void*> (seq_no), sizeof (seq_no));
+  
+  // Bytes actionData = m_ccnx->createContentObject (?name, item_msg.c_str (), item_msg.size ());
+
+  
+  // sqlite3_bind_blob (stmt, 10, item_msg.c_str (), item_msg.size (), SQLITE_TRANSIENT);
+  
+  sqlite3_step (stmt);
+
+
+  
+  // cout << Ccnx::Name (reinterpret_cast<const unsigned char *> (parent_device_name.c_str ()),
+  //                     parent_device_name.size ()) << endl;
   
   // assign name to the action, serialize action, and create content object
   

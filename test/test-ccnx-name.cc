@@ -30,6 +30,19 @@ BOOST_AUTO_TEST_CASE (CcnxNameTest)
   BOOST_CHECK_EQUAL(empty, name);
   BOOST_CHECK_EQUAL(name, Name("/hello") + Name("/world"));
 
+
+  name.appendComp (1);
+  name.appendComp (255);
+  name.appendComp (256);
+  name.appendComp (1234567890);
+
+  BOOST_CHECK_EQUAL (name.toString (), "/hello/world/%00%01/%00%ff/%00%00%01/%00%d2%02%96I");
+
+  BOOST_CHECK_EQUAL (name.getCompAsInt (5), 1234567890);
+  BOOST_CHECK_EQUAL (name.getCompAsInt (4), 256);
+  BOOST_CHECK_EQUAL (name.getCompAsInt (3), 255);
+  BOOST_CHECK_EQUAL (name.getCompAsInt (2), 1);
+  
   // Charbuf related stuff will be checked in other place
 }
 

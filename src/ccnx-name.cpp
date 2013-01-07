@@ -165,8 +165,57 @@ Name &
 Name::appendComp(const string &compStr)
 {
   Bytes comp(compStr.begin(), compStr.end());
-  appendComp(comp);
+  return appendComp(comp);
+}
+
+Name &
+Name::appendComp(const Name &name)
+{
+  for (vector<Bytes>::const_iterator i = name.m_comps.begin (); i != name.m_comps.end (); i++)
+    {
+      appendComp (*i);
+    }
   return *this;
+}
+
+Name &
+Name::appendComp (const void *buf, size_t size)
+{
+  Bytes comp (reinterpret_cast<const unsigned char*> (buf), reinterpret_cast<const unsigned char*> (buf) + size);
+  return appendComp(comp);
+}
+
+Name &
+Name::appendComp(uint64_t number)
+{
+  Bytes comp;
+  comp.push_back (0);
+  
+  while (number > 0)
+    {
+      comp.push_back (static_cast<unsigned char> (number & 0xFF));
+      number >>= 8;
+    }
+  return appendComp (comp);
+}
+
+uint64_t
+Name::getCompAsInt (int index) const
+{
+  Bytes comp = getComp(index);
+  if (comp.size () < 1 ||
+      comp[0] != 0)
+    {
+      boost::throw_exception(NameException()
+                             << error_info_str("Non integer component: " + getCompAsString(index)));
+    }
+  uint64_t ret = 0;
+  for (int i = comp.size () - 1; i >= 1; i--)
+    {
+      ret <<= 8;
+      ret |= comp [i];
+    }
+  return ret;
 }
 
 Bytes
@@ -194,7 +243,7 @@ Name::getCompAsString(int index) const
     }
     else
     {
-      ss << "%" << hex << setfill('0') << setw(2) << ch;
+      ss << "%" << hex << setfill('0') << setw(2) << (unsigned int)ch;
     }
   }
 

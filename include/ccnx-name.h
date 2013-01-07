@@ -85,6 +85,22 @@ public:
   Name &
   appendComp(const string &compStr);
 
+  Name &
+  appendComp(const Name &name);
+
+  Name &
+  appendComp(const void *buf, size_t size); 
+
+  /**
+   * Append int component
+   *
+   * Difference between this and appendComp call is that data is appended in network order
+   *
+   * Also, this function honors naming convention (%00 prefix is added)
+   */
+  Name &
+  appendComp(uint64_t number);
+  
   int
   size() const {return m_comps.size();}
 
@@ -96,6 +112,9 @@ public:
   // if not, print the bytes in hex string format
   string
   getCompAsString(int index) const;
+
+  uint64_t
+  getCompAsInt (int index) const;
 
   Name
   getPartialName(int start, int n = -1) const;
