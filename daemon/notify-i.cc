@@ -33,9 +33,7 @@ NotifyI::NotifyI (ActionLogPtr &actionLog)
 void
 NotifyI::updateFile (const ::std::string &filename,
                      const ::std::pair<const Ice::Byte*, const Ice::Byte*> &hashRaw,
-                     ::Ice::Long atime,
-                     ::Ice::Long mtime,
-                     ::Ice::Long ctime,
+                     ::Ice::Long wtime,
                      ::Ice::Int mode,
                      const ::Ice::Current&)
 {
@@ -44,7 +42,7 @@ NotifyI::updateFile (const ::std::string &filename,
   cout << "updateFile " << filename << " with hash " << hash << endl;
   try
     {
-      m_actionLog->AddActionUpdate (filename, hash, atime, mtime, ctime, mode);
+      m_actionLog->AddActionUpdate (filename, hash, wtime, mode);
 
       m_actionLog->RememberStateInStateLog ();
     }

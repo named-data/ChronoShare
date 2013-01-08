@@ -1,6 +1,6 @@
 /* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2013 University of California, Los Angeles
+ * Copyright (c) 2012-2013 University of California, Los Angeles
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -19,35 +19,35 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#ifndef NOTIFY_I_H
-#define NOTIFY_I_H
+#ifndef OBJECT_MANAGER_H
+#define OBJECT_MANAGER_H
 
-#include <action-log.h>
-#include <chronoshare-client.ice.h>
+#include <string>
+#include <ccnx-wrapper.h>
+#include <hash-helper.h>
+#include <boost/filesystem.hpp>
 
-class NotifyI : public ChronoshareClient::Notify
+// everything related to managing object files
+
+class ObjectManager
 {
 public:
-  NotifyI (ActionLogPtr &actionLog);
-  
-  virtual void
-  updateFile (const ::std::string &filename,
-              const ::std::pair<const Ice::Byte*, const Ice::Byte*> &hash,
-              ::Ice::Long wtime,
-              ::Ice::Int mode,
-              const ::Ice::Current& = ::Ice::Current());
+  ObjectManager (Ccnx::CcnxWrapperPtr ccnx, const Ccnx::Name &localDeviceName, const boost::filesystem::path &folder);
+  virtual ~ObjectManager ();
 
-  virtual void
-  moveFile (const ::std::string &oldFilename,
-            const ::std::string &newFilename,
-            const ::Ice::Current& = ::Ice::Current());
+  HashPtr
+  storeLocalFile (const boost::filesystem::path &file);
   
-  virtual void
-  deleteFile (const ::std::string &filename,
-              const ::Ice::Current& = ::Ice::Current());
-
 private:
-  ActionLogPtr m_actionLog;
+  Ccnx::CcnxWrapperPtr m_ccnx;
+  Ccnx::Name m_localDeviceName;
+  boost::filesystem::path m_folder;
 };
 
-#endif // NOTIFY_I_H
+typedef boost::shared_ptr<ObjectManager> ObjectManagerPtr;
+
+namespace Error {
+struct ObjectManager : virtual boost::exception, virtual std::exception { };
+}
+
+#endif // OBJECT_MANAGER_H

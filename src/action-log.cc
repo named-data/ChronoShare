@@ -26,7 +26,8 @@ using namespace boost;
 using namespace std;
 using namespace Ccnx;
 
-ActionLog::ActionLog (Ccnx::CcnxWrapperPtr ccnx, const std::string &path, const std::string &localName, const std::string &sharedFolder)
+ActionLog::ActionLog (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &path,
+                      const std::string &localName, const std::string &sharedFolder)
   : SyncLog (path, localName)
   , m_ccnx (ccnx)
   , m_sharedFolderName (sharedFolder)
@@ -83,7 +84,7 @@ ActionLog::GetExistingRecord (const std::string &filename)
 void
 ActionLog::AddActionUpdate (const std::string &filename,
                             const Hash &hash,
-                            time_t atime, time_t mtime, time_t ctime,
+                            time_t wtime,
                             int mode)
 {
   sqlite3_exec (m_db, "BEGIN TRANSACTION;", 0,0,0);
@@ -135,9 +136,9 @@ ActionLog::AddActionUpdate (const std::string &filename,
   
   sqlite3_bind_blob  (stmt, 7, hash.GetHash (), hash.GetHashBytes (), SQLITE_TRANSIENT);
   
-  sqlite3_bind_int64 (stmt, 8, atime);
-  sqlite3_bind_int64 (stmt, 9, mtime);
-  sqlite3_bind_int64 (stmt, 10, ctime);
+  // sqlite3_bind_int64 (stmt, 8, atime); // NULL
+  sqlite3_bind_int64 (stmt, 9, wtime);
+  // sqlite3_bind_int64 (stmt, 10, ctime); // NULL
   sqlite3_bind_int   (stmt, 11, mode);
 
   if (parent_device_id > 0 && parent_seq_no > 0)
@@ -159,9 +160,9 @@ ActionLog::AddActionUpdate (const std::string &filename,
   item.set_version (version);
   item.set_timestamp (action_time);
   item.set_file_hash (hash.GetHash (), hash.GetHashBytes ());
-  item.set_atime (atime);
-  item.set_mtime (mtime);
-  item.set_ctime (ctime);
+  // item.set_atime (atime);
+  item.set_mtime (wtime);
+  // item.set_ctime (ctime);
   item.set_mode (mode);
 
   if (parent_device_id > 0 && parent_seq_no > 0)

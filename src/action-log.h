@@ -32,12 +32,13 @@ typedef boost::shared_ptr<ActionLog> ActionLogPtr;
 class ActionLog : public SyncLog
 {
 public:
-  ActionLog (Ccnx::CcnxWrapperPtr ccnx, const std::string &path, const std::string &localName, const std::string &sharedFolder);
+  ActionLog (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &path,
+             const std::string &localName, const std::string &sharedFolder);
 
   void
   AddActionUpdate (const std::string &filename,
                    const Hash &hash,
-                   time_t atime, time_t mtime, time_t ctime,
+                   time_t wtime,
                    int mode);
 
   void

@@ -19,33 +19,34 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#ifndef OBJECT_DB_H
-#define OBJECT_DB_H
+#include "object-manager.h"
 
-#include <string>
-#include <sqlite3.h>
-#include <ccnx-common.h>
-#include <ccnx-name.h>
 #include <boost/filesystem.hpp>
+#include <boost/test/unit_test.hpp>
+#include <unistd.h>
+#include <boost/make_shared.hpp>
+#include <iostream>
 
-class ObjectDb
+using namespace Ccnx;
+using namespace std;
+using namespace boost;
+using namespace boost::filesystem;
+
+BOOST_AUTO_TEST_SUITE(ObjectManagerTests)
+
+BOOST_AUTO_TEST_CASE (ObjectManagerTest)
 {
-public:
-  // database will be create in <folder>/<first-pair-of-hash-bytes>/<rest-of-hash>
-  ObjectDb (const boost::filesystem::path &folder, const std::string &hash);
-  ~ObjectDb ();
+  path tmpdir = unique_path (temp_directory_path () / "%%%%-%%%%-%%%%-%%%%");
+  create_directories (tmpdir);
 
-  void
-  saveContentObject (const Ccnx::Name &deviceName, sqlite3_int64 segment, const Ccnx::Bytes &data);
-
-  Ccnx::BytesPtr
-  fetchSegment (const Ccnx::Name &deviceName, sqlite3_int64 segment);
-
-  // sqlite3_int64
-  // getNumberOfSegments (const Ccnx::Name &deviceName);
+  Name deviceName ("/device");
   
-private:
-  sqlite3 *m_db;
-};
+  CcnxWrapperPtr ccnx = make_shared<CcnxWrapper> ();
+  ObjectManager manager (ccnx, deviceName, tmpdir);
 
-#endif // OBJECT_DB_H
+
+  remove_all (tmpdir);
+}
+
+
+BOOST_AUTO_TEST_SUITE_END()

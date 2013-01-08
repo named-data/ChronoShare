@@ -33,11 +33,12 @@ typedef boost::error_info<struct tag_errmsg, int> errmsg_info_int;
 #include <boost/archive/iterators/transform_width.hpp>
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/archive/iterators/dataflow_exception.hpp>
+#include <boost/filesystem/fstream.hpp>
 
 using namespace boost;
 using namespace boost::archive::iterators;
 using namespace std;
-
+namespace fs = boost::filesystem;
 
 template<class CharType>
 struct hex_from_4_bit
@@ -130,7 +131,7 @@ Hash::FromString (const std::string &hashInTextEncoding)
 }
 
 HashPtr
-Hash::FromFileContent (const std::string &filename)
+Hash::FromFileContent (const fs::path &filename)
 {
   HashPtr retval = make_shared<Hash> (reinterpret_cast<void*> (0), 0);
   retval->m_buf = new unsigned char [EVP_MAX_MD_SIZE];
@@ -138,7 +139,7 @@ Hash::FromFileContent (const std::string &filename)
   EVP_MD_CTX *hash_context = EVP_MD_CTX_create ();
   EVP_DigestInit_ex (hash_context, HASH_FUNCTION (), 0);
 
-  ifstream iff (filename.c_str (), std::ios::in | std::ios::binary);
+  fs::ifstream iff (filename, std::ios::in | std::ios::binary);
   while (iff.good ())
     {
       char buf[1024];

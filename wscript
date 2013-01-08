@@ -33,7 +33,7 @@ def configure(conf):
     conf.load ('ccnx')
     conf.load('boost')
 
-    conf.check_boost(lib='system test iostreams regex thread')
+    conf.check_boost(lib='system test iostreams filesystem regex thread')
 
     boost_version = conf.env.BOOST_VERSION.split('_')
     if int(boost_version[0]) < 1 or int(boost_version[1]) < 46:
@@ -57,6 +57,16 @@ def configure(conf):
     conf.write_config_header('src/config.h')
 
 def build (bld):
+    common = bld.objects (
+        target = "common",
+        features = ["cxx"],
+        source = ['src/hash-helper.cc',
+                  'src/chronoshare-client.ice',
+                  ],
+        use = 'BOOST',
+        includes = ['include', 'src'],
+        )
+
     libccnx = bld (
         target=CCNXLIB,
         features=['cxx', 'cxxshlib'],
@@ -65,21 +75,12 @@ def build (bld):
             'src/ccnx-pco.cpp',
             'src/ccnx-closure.cpp',
             'src/ccnx-tunnel.cpp',
-            'src/object-db-file.cpp',
+            'src/object-db.cc',
+            'src/object-manager.cc',
             'src/ccnx-name.cpp',
             'src/ccnx-selectors.cpp',
             ],
-        use = 'BOOST BOOST_THREAD SSL CCNX',
-        includes = ['include', ],
-        )
-
-    common = bld.objects (
-        target = "common",
-        features = ["cxx"],
-        source = ['src/hash-helper.cc',
-                  'src/chronoshare-client.ice',
-                  ],
-        use = 'BOOST',
+        use = 'BOOST BOOST_THREAD BOOST_FILESYSTEM SSL SQLITE3 CCNX common',
         includes = ['include', 'src'],
         )
 
