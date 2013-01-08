@@ -164,7 +164,7 @@ CcnxWrapper::ccnLoop ()
 }
 
 Bytes
-CcnxWrapper::createContentObject(const Name  &name, const unsigned char *buf, size_t len, int freshness)
+CcnxWrapper::createContentObject(const Name  &name, const void *buf, size_t len, int freshness)
 {
   CcnxCharbufPtr ptr = name.toCcnxCharbuf();
   ccn_charbuf *pname = ptr->getBuf();
@@ -212,7 +212,7 @@ CcnxWrapper::publishData (const Name &name, const unsigned char *buf, size_t len
 int
 CcnxWrapper::publishData (const Name &name, const Bytes &content, int freshness)
 {
-  publishData(name, head(content), content.size(), freshness);
+  return publishData(name, head(content), content.size(), freshness);
 }
 
 
@@ -348,6 +348,8 @@ int CcnxWrapper::setInterestFilter (const Name &prefix, const InterestCallback &
   }
 
   m_registeredInterests.insert(pair<Name, InterestCallback>(prefix, interestCallback));
+
+  return ret;
 }
 
 void

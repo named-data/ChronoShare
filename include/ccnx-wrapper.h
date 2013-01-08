@@ -50,7 +50,7 @@ public:
   getLocalPrefix ();
 
   Bytes
-  createContentObject(const Name &name, const unsigned char *buf, size_t len, int freshness = 2147/* max value for ccnx*/);
+  createContentObject(const Name &name, const void *buf, size_t len, int freshness = 2147/* max value for ccnx*/);
 
   int
   putToCcnd (const Bytes &contentObject);
