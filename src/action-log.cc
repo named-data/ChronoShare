@@ -102,9 +102,11 @@ ActionLog::AddActionUpdate (const std::string &filename,
   int res = sqlite3_prepare_v2 (m_db, "INSERT INTO ActionLog "
                                 "(device_id, seq_no, action, filename, version, action_timestamp, "
                                 "file_hash, file_atime, file_mtime, file_ctime, file_chmod, "
-                                "parent_device_id, parent_seq_no) "
+                                "parent_device_id, parent_seq_no, "
+                                "action_name, action_content_object) "
                                 "VALUES (?, ?, ?, ?, ?, datetime(?, 'unixepoch'),"
                                 "        ?, datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), ?,"
+                                "        ?, ?, "
                                 "        ?, ?);", -1, &stmt, 0);
 
   // cout << "INSERT INTO ActionLog "
@@ -149,8 +151,6 @@ ActionLog::AddActionUpdate (const std::string &filename,
       sqlite3_bind_null (stmt, 13);
     }
   
-  sqlite3_step (stmt);
-
   // missing part: creating ContentObject for the action !!!
 
   ActionItem item;
@@ -174,7 +174,23 @@ ActionLog::AddActionUpdate (const std::string &filename,
     }
 
   // assign name to the action, serialize action, and create content object
+
+  string item_msg;
+  item.SerializeToString (&item_msg);
+  Name actionName (m_localName);
+  actionName
+    .appendComp ("action")
+    .appendComp (m_sharedFolderName)
+    .appendComp (seq_no);
   
+  Bytes actionData = m_ccnx->createContentObject (actionName, item_msg.c_str (), item_msg.size ());
+  CcnxCharbufPtr namePtr = actionName.toCcnxCharbuf ();
+  
+  sqlite3_bind_blob (stmt, 14, namePtr->buf (), namePtr->length (), SQLITE_TRANSIENT);
+  sqlite3_bind_blob (stmt, 15, &actionData[0], actionData.size (), SQLITE_TRANSIENT);
+  
+  sqlite3_step (stmt);
+
   sqlite3_finalize (stmt); 
                           
   sqlite3_exec (m_db, "END TRANSACTION;", 0,0,0);
@@ -212,8 +228,10 @@ ActionLog::AddActionDelete (const std::string &filename)
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "INSERT INTO ActionLog "
                       "(device_id, seq_no, action, filename, version, action_timestamp, "
-                      "parent_device_id, parent_seq_no) "
+                      "parent_device_id, parent_seq_no, "
+                      "action_name, action_content_object) "
                       "VALUES (?, ?, ?, ?, ?, datetime(?, 'unixepoch'),"
+                      "        ?, ?,"
                       "        ?, ?)", -1, &stmt, 0);
 
   sqlite3_bind_int64 (stmt, 1, m_localDeviceId);
@@ -241,16 +259,15 @@ ActionLog::AddActionDelete (const std::string &filename)
   actionName
     .appendComp ("action")
     .appendComp (m_sharedFolderName)
-    .appendComp (reinterpret_cast<void*> (seq_no), sizeof (seq_no));
+    .appendComp (seq_no);
   
-  // Bytes actionData = m_ccnx->createContentObject (?name, item_msg.c_str (), item_msg.size ());
-
+  Bytes actionData = m_ccnx->createContentObject (actionName, item_msg.c_str (), item_msg.size ());
+  CcnxCharbufPtr namePtr = actionName.toCcnxCharbuf ();
   
-  // sqlite3_bind_blob (stmt, 10, item_msg.c_str (), item_msg.size (), SQLITE_TRANSIENT);
+  sqlite3_bind_blob (stmt, 9, namePtr->buf (), namePtr->length (), SQLITE_TRANSIENT);
+  sqlite3_bind_blob (stmt, 10, &actionData[0], actionData.size (), SQLITE_TRANSIENT);
   
   sqlite3_step (stmt);
-
-
   
   // cout << Ccnx::Name (reinterpret_cast<const unsigned char *> (parent_device_name.c_str ()),
   //                     parent_device_name.size ()) << endl;
