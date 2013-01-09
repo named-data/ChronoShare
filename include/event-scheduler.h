@@ -28,6 +28,7 @@
 
 using namespace std;
 
+// callback used by libevent
 static void
 eventCallback(evutil_socket_t fd, short what, void *arg);
 
@@ -46,13 +47,22 @@ public:
   static IntervalGeneratorPtr Null;
 };
 
+
 class Task
 {
 public:
+  // callback of this task
   typedef boost::function<void ()> Callback;
+  // tag identifies this task, should be unique
   typedef string Tag;
+  // used to match tasks
   typedef boost::function<bool (const TaskPtr &task)> TaskMatcher;
 
+  // generator is needed only when this is a periodic task
+  // two simple generators implementation (SimpleIntervalGenerator and RandomIntervalGenerator) are provided;
+  // if user needs more complex pattern in the intervals between calls, extend class IntervalGenerator
+
+  // Task is associated with Schedulers due to the requirement that libevent event is associated with an libevent event_base
   Task(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler, const IntervalGeneratorPtr &generator = IntervalGenerator::Null);
   ~Task();
 
@@ -74,6 +84,7 @@ public:
   bool
   isPeriodic() { return m_generator != IntervalGenerator::Null; }
 
+  // Task needs to be resetted after the callback is invoked if it is to be schedule again; just for safety
   void
   reset();
 
@@ -100,24 +111,39 @@ public:
   Scheduler();
   virtual ~Scheduler();
 
+  // start event scheduling
   virtual void
   start();
 
+  // stop event scheduling
   virtual void
   shutdown();
 
+  // add a one time task, delay is in seconds
+  // if task with the same tag exists, return false
   virtual bool
   addTask(const TaskPtr &task, double delay);
 
+  // add periodic task; task must have an interval generator
+  // if task with the same tag exists, return false
   virtual bool
   addTask(const TaskPtr &task);
 
+  // delete task by tag, regardless of whether it's invoked or not
+  // if no task is found, no effect
   virtual void
   deleteTask(const Task::Tag &tag);
 
+  // delete tasks by matcher, regardless of whether it's invoked or not
+  // this is flexiable in that you can use any form of criteria in finding tasks to delete
+  // but keep in mind this is a linear scan
+
+  // if no task is found, no effect
   virtual void
   deleteTask(const Task::TaskMatcher &matcher);
 
+  // for periodic tasks, reschedule the next invoke
+  // task must already have been added to the scheduler, otherwise this is no effect
   virtual void
   rescheduleTask(const Task::Tag &tag);
 
@@ -147,6 +173,7 @@ protected:
   boost::thread m_thread;
 };
 
+
 class SimpleIntervalGenerator : public IntervalGenerator
 {
 public:
@@ -158,6 +185,7 @@ private:
   double m_interval;
 };
 
+// generates intervals with uniform distribution
 class RandomIntervalGenerator : public IntervalGenerator
 {
 public:
@@ -169,6 +197,10 @@ public:
   } Direction;
 
 public:
+  // percent is random-range/interval; e.g. if interval is 10 and you wish the random-range to be 2
+  // e.g. 9 ~ 11, percent = 0.2
+  // direction shifts the random range; e.g. in the above example, UP would produce a range of
+  // 10 ~ 12, DOWN of 8 ~ 10, and EVEN of 9 ~ 11
   RandomIntervalGenerator(double interval, double percent, Direction direction = EVEN);
   ~RandomIntervalGenerator(){}
   virtual double
