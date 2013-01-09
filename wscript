@@ -19,7 +19,6 @@ def configure(conf):
     conf.define ("CHRONOSHARE_VERSION", VERSION)
 
     conf.check_cfg(package='sqlite3', args=['--cflags', '--libs'], uselib_store='SQLITE3', mandatory=True)
-
     conf.check_cfg(package='libevent', args=['--cflags', '--libs'], uselib_store='LIBEVENT', mandatory=True)
     conf.check_cfg(package='libevent_pthreads', args=['--cflags', '--libs'], uselib_store='LIBEVENT_PTHREADS', mandatory=True)
 
@@ -36,7 +35,7 @@ def configure(conf):
     conf.load ('ccnx')
     conf.load('boost')
 
-    conf.check_boost(lib='system test iostreams regex thread')
+    conf.check_boost(lib='system test iostreams filesystem regex thread')
 
     boost_version = conf.env.BOOST_VERSION.split('_')
     if int(boost_version[0]) < 1 or int(boost_version[1]) < 46:
@@ -60,6 +59,16 @@ def configure(conf):
     conf.write_config_header('src/config.h')
 
 def build (bld):
+    common = bld.objects (
+        target = "common",
+        features = ["cxx"],
+        source = ['src/hash-helper.cc',
+                  'src/chronoshare-client.ice',
+                  ],
+        use = 'BOOST',
+        includes = ['include', 'src'],
+        )
+
     libccnx = bld (
         target=CCNXLIB,
         features=['cxx', 'cxxshlib'],
@@ -68,22 +77,13 @@ def build (bld):
             'src/ccnx-pco.cpp',
             'src/ccnx-closure.cpp',
             'src/ccnx-tunnel.cpp',
-            'src/object-db-file.cpp',
+            'src/object-db.cc',
+            'src/object-manager.cc',
             'src/ccnx-name.cpp',
             'src/ccnx-selectors.cpp',
             'src/event-scheduler.cpp',
             ],
-        use = 'BOOST BOOST_THREAD SSL CCNX LIBEVENT LIBEVENT_PTHREADS',
-        includes = ['include', ],
-        )
-
-    common = bld.objects (
-        target = "common",
-        features = ["cxx"],
-        source = ['src/hash-helper.cc',
-                  'src/chronoshare-client.ice',
-                  ],
-        use = 'BOOST',
+        use = 'BOOST BOOST_THREAD BOOST_FILESYSTEM SSL SQLITE3 CCNX common LIBEVENT LIBEVENT_PTHREADS',
         includes = ['include', 'src'],
         )
 
@@ -107,7 +107,7 @@ def build (bld):
           target="unit-tests",
           source = bld.path.ant_glob(['test/**/*.cc']),
           features=['cxx', 'cxxprogram'],
-          use = 'BOOST_TEST LIBEVENT LIBEVENT_PTHREADS ccnxx database',
+          use = 'BOOST_TEST ccnxx database',
           includes = ['include', 'src'],
           )
 

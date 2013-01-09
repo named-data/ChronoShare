@@ -8,7 +8,7 @@ CcnxTunnel::CcnxTunnel()
                           : CcnxWrapper()
                           , m_localPrefix("/")
 {
-  //refreshLocalPrefix();
+  refreshLocalPrefix();
 }
 
 CcnxTunnel::~CcnxTunnel()
@@ -34,6 +34,8 @@ CcnxTunnel::sendInterest (const Name &interest, const Closure *closure, const Se
   Closure *cp = new TunnelClosure(closure, this, interest);
   CcnxWrapper::sendInterest(tunneledInterest, cp, selectors);
   delete cp;
+
+  return 0;
 }
 
 void

@@ -31,7 +31,7 @@ typedef boost::shared_ptr<SyncStateMsg> SyncStateMsgPtr;
 class SyncLog : public DbHelper
 {
 public:
-  SyncLog (const std::string &path, const std::string &localName);
+  SyncLog (const boost::filesystem::path &path, const std::string &localName);
 
   sqlite3_int64
   GetNextLocalSeqNo (); // side effect: local seq_no will be increased

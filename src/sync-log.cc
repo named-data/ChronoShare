@@ -26,7 +26,7 @@
 using namespace boost;
 using namespace std;
 
-SyncLog::SyncLog (const std::string &path, const std::string &localName)
+SyncLog::SyncLog (const boost::filesystem::path &path, const std::string &localName)
   : DbHelper (path)
   , m_localName (localName)
 {

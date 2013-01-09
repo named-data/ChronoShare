@@ -19,44 +19,37 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#ifndef ACTION_LOG_H
-#define ACTION_LOG_H
+#ifndef OBJECT_MANAGER_H
+#define OBJECT_MANAGER_H
 
-#include "sync-log.h"
-#include <boost/tuple/tuple.hpp>
+#include <string>
 #include <ccnx-wrapper.h>
+#include <hash-helper.h>
+#include <boost/filesystem.hpp>
 
-class ActionLog;
-typedef boost::shared_ptr<ActionLog> ActionLogPtr;
+// everything related to managing object files
 
-class ActionLog : public SyncLog
+class ObjectManager
 {
 public:
-  ActionLog (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &path,
-             const std::string &localName, const std::string &sharedFolder);
+  ObjectManager (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &folder);
+  virtual ~ObjectManager ();
 
-  void
-  AddActionUpdate (const std::string &filename,
-                   const Hash &hash,
-                   time_t wtime,
-                   int mode);
+  HashPtr
+  localFileToObjects (const boost::filesystem::path &file, const Ccnx::Name &deviceName);
 
-  void
-  AddActionMove (const std::string &oldFile, const std::string &newFile);
-  
-  void
-  AddActionDelete (const std::string &filename);
-
-private:
-  boost::tuple<sqlite3_int64, sqlite3_int64, sqlite3_int64, std::string>
-  GetExistingRecord (const std::string &filename);
-
-  static void
-  apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
+  bool
+  objectsToLocalFile (/*in*/const Ccnx::Name &deviceName, /*in*/const Hash &hash, /*out*/ const boost::filesystem::path &file);
   
 private:
   Ccnx::CcnxWrapperPtr m_ccnx;
-  Ccnx::Name m_sharedFolderName;
+  boost::filesystem::path m_folder;
 };
 
-#endif // ACTION_LOG_H
+typedef boost::shared_ptr<ObjectManager> ObjectManagerPtr;
+
+namespace Error {
+struct ObjectManager : virtual boost::exception, virtual std::exception { };
+}
+
+#endif // OBJECT_MANAGER_H

@@ -28,13 +28,14 @@
 #include <boost/exception/all.hpp>
 #include <string>
 #include "hash-helper.h"
+#include <boost/filesystem.hpp>
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str; 
 
 class DbHelper
 {
 public:
-  DbHelper (const std::string &path);
+  DbHelper (const boost::filesystem::path &path);
   virtual ~DbHelper ();
   
 private:

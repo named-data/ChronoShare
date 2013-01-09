@@ -26,19 +26,20 @@
 #include "action-log.h"
 #include <iostream>
 #include <ccnx-name.h>
+#include <boost/filesystem.hpp>
 
 using namespace std;
 using namespace boost;
 using namespace Ccnx;
+namespace fs = boost::filesystem;
 
 BOOST_AUTO_TEST_SUITE(DatabaseTest)
 
 
 BOOST_AUTO_TEST_CASE (BasicDatabaseTest)
 {
-  char dir_tmpl [] = "/tmp/tmp-chornoshare-XXXXXXXXXXX";
-  string tmp_dir = mkdtemp (dir_tmpl);
-  SyncLog db (tmp_dir, "/alex");
+  fs::path tmpdir = fs::unique_path (fs::temp_directory_path () / "%%%%-%%%%-%%%%-%%%%");
+  SyncLog db (tmpdir, "/alex");
 
   HashPtr hash = db.RememberStateInStateLog ();
   // should be empty
@@ -77,6 +78,7 @@ BOOST_AUTO_TEST_CASE (BasicDatabaseTest)
   // db.FindStateDifferences ("86b51f1f98662583b295b61385ae4450ff8fac955981f1ca4381144ab1d7a4e0",
   //                          "d001d4680fd9adcb48e34a795e3cc3d5d36f209fbab34fd57f70f362c2085310");
 
+  remove_all (tmpdir);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

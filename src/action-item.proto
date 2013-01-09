@@ -12,9 +12,9 @@ message ActionItem
   required uint32 timestamp = 6;
 
   optional bytes  file_hash = 7;
-  optional uint32 atime = 8;
+  // optional uint32 atime = 8;
   optional uint32 mtime = 9;
-  optional uint32 ctime = 10;
+  // optional uint32 ctime = 10;
   optional uint32 mode  = 11;
 
   optional bytes  parent_device_name = 12;

@@ -254,7 +254,7 @@ Name
 Name::getPartialName(int start, int n) const
 {
   int size = m_comps.size();
-  if (start < 0 || start >= size || n > 0 && start + n > size)
+  if (start < 0 || start >= size || (n > 0 && start + n > size))
   {
     stringstream ss(stringstream::out);
     ss << "getPartialName() parameter out of range! ";

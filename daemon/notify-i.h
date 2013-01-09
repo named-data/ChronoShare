@@ -33,9 +33,7 @@ public:
   virtual void
   updateFile (const ::std::string &filename,
               const ::std::pair<const Ice::Byte*, const Ice::Byte*> &hash,
-              ::Ice::Long atime,
-              ::Ice::Long mtime,
-              ::Ice::Long ctime,
+              ::Ice::Long wtime,
               ::Ice::Int mode,
               const ::Ice::Current& = ::Ice::Current());
 

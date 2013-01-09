@@ -31,6 +31,7 @@
 using namespace std;
 using namespace boost;
 using namespace ChronoshareClient;
+namespace fs = boost::filesystem;
 
 void
 usage ()
@@ -88,19 +89,20 @@ main (int argc, char **argv)
                   usage ();
                 }
 
-              struct stat fileStats;
-              int ok = stat (argv[2], &fileStats);
-              if (ok == 0)
+              fs::path file (argv[2]);
+              fs::file_status fileStatus = fs::status (file);
+              if (is_regular_file (fileStatus))
                 {
                   // Alex: the following code is platform specific :(
-                  HashPtr fileHash = Hash::FromFileContent (argv[2]);
+                  HashPtr fileHash = Hash::FromFileContent (file);
                   
-                  notify->updateFile (argv[2],
+                  notify->updateFile (file.generic_string (),
                                       make_pair(reinterpret_cast<const ::Ice::Byte*> (fileHash->GetHash ()),
                                                 reinterpret_cast<const ::Ice::Byte*> (fileHash->GetHash ()) +
                                                 fileHash->GetHashBytes ()),
-                                      fileStats.st_atime, fileStats.st_mtime, fileStats.st_ctime,
-                                      fileStats.st_mode);
+                                      fs::last_write_time (file),
+                                      // fileStats.st_atime, fileStats.st_mtime, fileStats.st_ctime,
+                                      fileStatus.permissions ());
                 }
               else
                 {
@@ -124,8 +126,10 @@ main (int argc, char **argv)
                   usage ();
                 }
 
+              fs::path srcFile (argv[2]);
+              fs::path dstFile (argv[3]);
               
-              notify->moveFile (argv[2], argv[3]);
+              notify->moveFile (srcFile.generic_string (), dstFile.generic_string ());
             }
           else
             {
