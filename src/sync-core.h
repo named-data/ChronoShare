@@ -24,6 +24,7 @@
 
 #include "sync-log.h"
 #include <ccnx-wrapper.h>
+#include <event-scheduler.h>
 
 using namespace std;
 using namespace Ccnx;
@@ -31,12 +32,13 @@ using namespace Ccnx;
 class SyncCore
 {
 public:
-  SyncCore(const string &path, const Name &localName, CcnxWrapperPtr handle);
+  SyncCore(const string &path, const Name &localName, CcnxWrapperPtr handle, SchedulerPtr scheduler);
   ~SyncCore();
 
 protected:
   SyncLog m_log;
   CcnxWrapperPtr m_handle;
+  SchedulerPtr m_scheduler;
 };
 
 #endif // SYNC_CORE_H

@@ -42,33 +42,29 @@ BOOST_AUTO_TEST_CASE(SchedulerTest)
   string tag2 = "world";
   string tag3 = "period";
 
-  TaskPtr task1(new Task(boost::bind(func, tag1), tag1, scheduler));
-  TaskPtr task2(new Task(boost::bind(func, tag2), tag2, scheduler));
-  TaskPtr task3(new Task(boost::bind(func, tag3), tag3, scheduler, generator));
+  TaskPtr task1(new OneTimeTask(boost::bind(func, tag1), tag1, scheduler, 0.5));
+  TaskPtr task2(new OneTimeTask(boost::bind(func, tag2), tag2, scheduler, 0.5));
+  TaskPtr task3(new PeriodicTask(boost::bind(func, tag3), tag3, scheduler, generator));
 
   scheduler->start();
-  scheduler->addTask(task1, 0.5);
-  scheduler->addTask(task2, 0.5);
+  scheduler->addTask(task1);
+  scheduler->addTask(task2);
   scheduler->addTask(task3);
   BOOST_CHECK_EQUAL(scheduler->size(), 3);
   usleep(600000);
   BOOST_CHECK_EQUAL(scheduler->size(), 1);
-  task1->reset();
-  scheduler->addTask(task1, 0.5);
+  scheduler->addTask(task1);
   BOOST_CHECK_EQUAL(scheduler->size(), 2);
   usleep(600000);
-  task1->reset();
-  scheduler->addTask(task1, 0.5);
+  scheduler->addTask(task1);
   BOOST_CHECK_EQUAL(scheduler->size(), 2);
   usleep(400000);
   scheduler->deleteTask(task1->tag());
   BOOST_CHECK_EQUAL(scheduler->size(), 1);
   usleep(200000);
 
-  task1->reset();
-  task2->reset();
-  scheduler->addTask(task1, 0.5);
-  scheduler->addTask(task2, 0.5);
+  scheduler->addTask(task1);
+  scheduler->addTask(task2);
   BOOST_CHECK_EQUAL(scheduler->size(), 3);
   usleep(100000);
   scheduler->deleteTask(bind(matcher, _1));

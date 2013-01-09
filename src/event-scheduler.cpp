@@ -14,14 +14,13 @@ eventCallback(evutil_socket_t fd, short what, void *arg)
   task = NULL;
 }
 
-Task::Task(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler, const IntervalGeneratorPtr &generator)
+Task::Task(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler)
      : m_callback(callback)
      , m_tag(tag)
      , m_scheduler(scheduler)
      , m_invoked(false)
      , m_event(NULL)
      , m_tv(NULL)
-     , m_generator(generator)
 {
   m_event = evtimer_new(scheduler->base(), eventCallback, this);
   m_tv = new timeval;
@@ -43,48 +42,66 @@ Task::~Task()
 }
 
 void
-Task::run()
-{
-  if (!m_invoked)
-  {
-    m_callback();
-    m_invoked = true;
-  }
-  if (isPeriodic())
-  {
-    reset();
-    m_scheduler->rescheduleTask(m_tag);
-  }
-  else
-  {
-    selfClean();
-  }
-}
-
-void
-Task::selfClean()
-{
-  m_scheduler->deleteTask(m_tag);
-}
-
-void
-Task::reset()
-{
-  m_invoked = false;
-  if (isPeriodic())
-  {
-    double interval = m_generator->nextInterval();
-    setTv(interval);
-  }
-}
-
-void
 Task::setTv(double delay)
 {
   double intPart, fraction;
   fraction = modf(abs(delay), &intPart);
   m_tv->tv_sec = static_cast<int>(intPart);
   m_tv->tv_usec = static_cast<int>((fraction * 1000000));
+}
+
+OneTimeTask::OneTimeTask(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler, double delay)
+            : Task(callback, tag, scheduler)
+{
+  setTv(delay);
+}
+
+void
+OneTimeTask::run()
+{
+  if (!m_invoked)
+  {
+    m_callback();
+    m_invoked = true;
+    deregisterSelf();
+  }
+}
+
+void
+OneTimeTask::deregisterSelf()
+{
+  m_scheduler->deleteTask(m_tag);
+}
+
+void
+OneTimeTask::reset()
+{
+  m_invoked = false;
+}
+
+PeriodicTask::PeriodicTask(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler, const IntervalGeneratorPtr &generator)
+             : Task(callback, tag, scheduler)
+             , m_generator(generator)
+{
+}
+
+void
+PeriodicTask::run()
+{
+  if (!m_invoked)
+  {
+    m_callback();
+    m_invoked = true;
+    m_scheduler->rescheduleTask(m_tag);
+  }
+}
+
+void
+PeriodicTask::reset()
+{
+  m_invoked = false;
+  double interval = m_generator->nextInterval();
+  setTv(interval);
 }
 
 RandomIntervalGenerator::RandomIntervalGenerator(double interval, double percent, Direction direction)
@@ -144,26 +161,9 @@ Scheduler::shutdown()
 }
 
 bool
-Scheduler::addTask(const TaskPtr &task, double delay)
-{
-  TaskPtr newTask = task;
-  newTask->setTv(delay);
-  if (addToMap(newTask))
-  {
-    evtimer_add(newTask->ev(), newTask->tv());
-    return true;
-  }
-  return false;
-}
-
-bool
 Scheduler::addTask(const TaskPtr &task)
 {
   TaskPtr newTask = task;
-  if (!newTask->isPeriodic())
-  {
-    return false;
-  }
 
   if (addToMap(newTask))
   {
@@ -183,10 +183,8 @@ Scheduler::rescheduleTask(const Task::Tag &tag)
   if (it != m_taskMap.end())
   {
     TaskPtr task = it->second;
-    if (task->isPeriodic())
-    {
-      evtimer_add(task->ev(), task->tv());
-    }
+    task->reset();
+    evtimer_add(task->ev(), task->tv());
   }
 }
 

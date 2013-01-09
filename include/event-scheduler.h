@@ -58,16 +58,13 @@ public:
   // used to match tasks
   typedef boost::function<bool (const TaskPtr &task)> TaskMatcher;
 
-  // generator is needed only when this is a periodic task
-  // two simple generators implementation (SimpleIntervalGenerator and RandomIntervalGenerator) are provided;
-  // if user needs more complex pattern in the intervals between calls, extend class IntervalGenerator
 
   // Task is associated with Schedulers due to the requirement that libevent event is associated with an libevent event_base
-  Task(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler, const IntervalGeneratorPtr &generator = IntervalGenerator::Null);
-  ~Task();
+  Task(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler);
+  virtual ~Task();
 
   virtual void
-  run();
+  run() = 0;
 
   Tag
   tag() { return m_tag; }
@@ -78,19 +75,16 @@ public:
   timeval *
   tv() { return m_tv; }
 
+  // Task needs to be resetted after the callback is invoked if it is to be schedule again; just for safety
+  // it's called by scheduler automatically when addTask or rescheduleTask is called;
+  // Tasks should do preparation work here (e.g. set up new delay, etc. )
+  virtual void
+  reset() = 0;
+
+  // set delay
+  // This overrides whatever delay kept in m_tv
   void
   setTv(double delay);
-
-  bool
-  isPeriodic() { return m_generator != IntervalGenerator::Null; }
-
-  // Task needs to be resetted after the callback is invoked if it is to be schedule again; just for safety
-  void
-  reset();
-
-protected:
-  void
-  selfClean();
 
 protected:
   Callback m_callback;
@@ -99,9 +93,49 @@ protected:
   bool m_invoked;
   event *m_event;
   timeval *m_tv;
-  IntervalGeneratorPtr m_generator;
 };
 
+class OneTimeTask : public Task
+{
+public:
+  OneTimeTask(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler, double delay);
+  virtual ~OneTimeTask(){}
+
+  // invoke callback and mark self as invoked and deregister self from scheduler
+  virtual void
+  run() _OVERRIDE;
+
+  // after reset, the task is marked as un-invoked and can be add to scheduler again, with same delay
+  // if not invoked yet, no effect
+  virtual void
+  reset() _OVERRIDE;
+
+private:
+  // this is to deregister itself from scheduler automatically after invoke
+  void
+  deregisterSelf();
+};
+
+class PeriodicTask : public Task
+{
+public:
+  // generator is needed only when this is a periodic task
+  // two simple generators implementation (SimpleIntervalGenerator and RandomIntervalGenerator) are provided;
+  // if user needs more complex pattern in the intervals between calls, extend class IntervalGenerator
+  PeriodicTask(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler, const IntervalGeneratorPtr &generator);
+  virtual ~PeriodicTask(){}
+
+  // invoke callback, reset self and ask scheduler to schedule self with the next delay interval
+  virtual void
+  run() _OVERRIDE;
+
+  // set the next delay and mark as un-invoke
+  virtual void
+  reset() _OVERRIDE;
+
+private:
+  IntervalGeneratorPtr m_generator;
+};
 
 struct SchedulerException : virtual boost::exception, virtual exception { };
 
@@ -119,13 +153,7 @@ public:
   virtual void
   shutdown();
 
-  // add a one time task, delay is in seconds
-  // if task with the same tag exists, return false
-  virtual bool
-  addTask(const TaskPtr &task, double delay);
-
-  // add periodic task; task must have an interval generator
-  // if task with the same tag exists, return false
+  // if task with the same tag exists, the task is not added and return false
   virtual bool
   addTask(const TaskPtr &task);
 
@@ -142,8 +170,8 @@ public:
   virtual void
   deleteTask(const Task::TaskMatcher &matcher);
 
-  // for periodic tasks, reschedule the next invoke
   // task must already have been added to the scheduler, otherwise this is no effect
+  // this is usually used by PeriodicTask
   virtual void
   rescheduleTask(const Task::Tag &tag);
 
