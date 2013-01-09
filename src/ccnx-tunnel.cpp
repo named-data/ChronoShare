@@ -8,7 +8,7 @@ CcnxTunnel::CcnxTunnel()
                           : CcnxWrapper()
                           , m_localPrefix("/")
 {
-  refreshLocalPrefix();
+  //refreshLocalPrefix();
 }
 
 CcnxTunnel::~CcnxTunnel()

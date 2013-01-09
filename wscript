@@ -20,6 +20,9 @@ def configure(conf):
 
     conf.check_cfg(package='sqlite3', args=['--cflags', '--libs'], uselib_store='SQLITE3', mandatory=True)
 
+    conf.check_cfg(package='libevent', args=['--cflags', '--libs'], uselib_store='LIBEVENT', mandatory=True)
+    conf.check_cfg(package='libevent_pthreads', args=['--cflags', '--libs'], uselib_store='LIBEVENT_PTHREADS', mandatory=True)
+
     if not conf.check_cfg(package='openssl', args=['--cflags', '--libs'], uselib_store='SSL', mandatory=False):
         libcrypto = conf.check_cc(lib='crypto',
                                   header_name='openssl/crypto.h',
@@ -68,8 +71,9 @@ def build (bld):
             'src/object-db-file.cpp',
             'src/ccnx-name.cpp',
             'src/ccnx-selectors.cpp',
+            'src/event-scheduler.cpp',
             ],
-        use = 'BOOST BOOST_THREAD SSL CCNX',
+        use = 'BOOST BOOST_THREAD SSL CCNX LIBEVENT LIBEVENT_PTHREADS',
         includes = ['include', ],
         )
 
@@ -103,7 +107,7 @@ def build (bld):
           target="unit-tests",
           source = bld.path.ant_glob(['test/**/*.cc']),
           features=['cxx', 'cxxprogram'],
-          use = 'BOOST_TEST ccnxx database',
+          use = 'BOOST_TEST LIBEVENT LIBEVENT_PTHREADS ccnxx database',
           includes = ['include', 'src'],
           )
 

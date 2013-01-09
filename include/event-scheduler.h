@@ -1,7 +1,9 @@
 #ifndef EVENT_SCHEDULER_H
 #define EVENT_SCHEDULER_H
+
+// use pthread
+
 #include <event2/event.h>
-#include <event2/event_struct.h>
 #include <event2/thread.h>
 
 #include <boost/function.hpp>
@@ -10,8 +12,11 @@
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/variate_generator.hpp>
 #include <boost/exception/all.hpp>
+#include <boost/thread/shared_mutex.hpp>
+#include <boost/thread/thread.hpp>
 #include <math.h>
-#include <multimap>
+#include <map>
+#include <sys/time.h>
 
 #define _OVERRIDE
 #ifdef __GNUC__
@@ -23,36 +28,72 @@
 
 using namespace std;
 
+static void
+eventCallback(evutil_socket_t fd, short what, void *arg);
+
+class Scheduler;
+typedef boost::shared_ptr<Scheduler> SchedulerPtr;
+class IntervalGenerator;
+typedef boost::shared_ptr<IntervalGenerator> IntervalGeneratorPtr;
+class Task;
+typedef boost::shared_ptr<Task> TaskPtr;
+
+class IntervalGenerator
+{
+public:
+  virtual double
+  nextInterval() = 0;
+  static IntervalGeneratorPtr Null;
+};
 
 class Task
 {
 public:
-  typedef boost::function<void (void *)> Callback;
+  typedef boost::function<void ()> Callback;
   typedef string Tag;
-  typedef boost::function<bool (const Task &task)> TaskMatcher;
+  typedef boost::function<bool (const TaskPtr &task)> TaskMatcher;
 
-  Task(const Callback &callback, void *arg, const Tag &tag);
-  Task(const Task &other);
-  Task &
-  operator=(const Task &other);
+  Task(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler, const IntervalGeneratorPtr &generator = IntervalGenerator::Null);
+  ~Task();
 
   virtual void
-  run() { m_callback(m_arg); }
+  run();
 
   Tag
   tag() { return m_tag; }
 
+  event *
+  ev() { return m_event; }
+
+  timeval *
+  tv() { return m_tv; }
+
+  void
+  setTv(double delay);
+
+  bool
+  isPeriodic() { return m_generator != IntervalGenerator::Null; }
+
+  void
+  reset();
+
+protected:
+  void
+  selfClean();
 
 protected:
   Callback m_callback;
   Tag m_tag;
-  void *arg;
+  SchedulerPtr m_scheduler;
+  bool m_invoked;
+  event *m_event;
+  timeval *m_tv;
+  IntervalGeneratorPtr m_generator;
 };
+
 
 struct SchedulerException : virtual boost::exception, virtual exception { };
 
-class IntervalGenerator;
-typedef boost::shared_ptr<IntervalGenerator> IntervalGeneratorPtr;
 class Scheduler
 {
 public:
@@ -65,34 +106,48 @@ public:
   virtual void
   shutdown();
 
-  virtual void
-  addTask(const Task &task, double delay);
+  virtual bool
+  addTask(const TaskPtr &task, double delay);
+
+  virtual bool
+  addTask(const TaskPtr &task);
 
   virtual void
-  addTimeoutTask(const Task &task, double timeout);
+  deleteTask(const Task::Tag &tag);
 
   virtual void
-  addPeriodicTask(const Task &task, const IntervalGeneratorPtr &generator);
+  deleteTask(const Task::TaskMatcher &matcher);
 
   virtual void
-  deleteTask(const Tag &tag);
+  rescheduleTask(const Task::Tag &tag);
 
-  virtual void
-  deleteTask(const TaskMatcher &matcher);
+  void
+  eventLoop();
+
+  event_base *
+  base() { return m_base; }
+
+  // used in test
+  int
+  size();
 
 protected:
-  typedef multimap<Tag, Task> TaskMap;
+  bool
+  addToMap(const TaskPtr &task);
+
+protected:
+  typedef map<Task::Tag, TaskPtr> TaskMap;
+  typedef map<Task::Tag, TaskPtr>::iterator TaskMapIt;
+  typedef boost::shared_mutex Mutex;
+  typedef boost::unique_lock<Mutex> WriteLock;
+  typedef boost::shared_lock<Mutex> ReadLock;
   TaskMap m_taskMap;
+  Mutex m_mutex;
+  event_base *m_base;
+  boost::thread m_thread;
 };
 
-class IntervalGenerator
-{
-public:
-  virtual double
-  nextInterval() = 0;
-};
-
-class SimpleIntervalGenerator : IntervalGenerator
+class SimpleIntervalGenerator : public IntervalGenerator
 {
 public:
   SimpleIntervalGenerator(double interval) : m_interval(interval) {}
@@ -100,18 +155,17 @@ public:
   virtual double
   nextInterval() _OVERRIDE { return m_interval; }
 private:
-  SimpleIntervalGenerator(const SimpleIntervalGenerator &other){};
-private:
   double m_interval;
 };
 
-class RandomIntervalGenerator : IntervalGenerator
+class RandomIntervalGenerator : public IntervalGenerator
 {
+public:
   typedef enum
   {
-    UP,
-    DOWN,
-    EVEN
+    UP = 1,
+    DOWN = 2,
+    EVEN = 3
   } Direction;
 
 public:
@@ -121,14 +175,13 @@ public:
   nextInterval() _OVERRIDE;
 
 private:
-  RandomIntervalGenerator(const RandomIntervalGenerator &other){};
   inline double fractional(double x) { double dummy; return abs(modf(x, &dummy)); }
 
 private:
   typedef boost::mt19937 RNG_TYPE;
   RNG_TYPE m_rng;
   boost::uniform_real<> m_dist;
-  boost::rariate_generator<RNG_TYPE &, boost::uniform_real<> > m_random;
+  boost::variate_generator<RNG_TYPE &, boost::uniform_real<> > m_random;
   Direction m_direction;
   double m_interval;
   double m_percent;
