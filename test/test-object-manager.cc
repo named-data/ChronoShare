@@ -22,29 +22,46 @@
 #include "object-manager.h"
 
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
+
 #include <boost/test/unit_test.hpp>
 #include <unistd.h>
 #include <boost/make_shared.hpp>
 #include <iostream>
+#include <iterator>
 
 using namespace Ccnx;
 using namespace std;
 using namespace boost;
-using namespace boost::filesystem;
+namespace fs = boost::filesystem;
 
 BOOST_AUTO_TEST_SUITE(ObjectManagerTests)
 
 BOOST_AUTO_TEST_CASE (ObjectManagerTest)
 {
-  path tmpdir = unique_path (temp_directory_path () / "%%%%-%%%%-%%%%-%%%%");
-  create_directories (tmpdir);
-
+  fs::path tmpdir = fs::unique_path (fs::temp_directory_path () / "%%%%-%%%%-%%%%-%%%%");
+  cout << tmpdir << endl;
   Name deviceName ("/device");
   
   CcnxWrapperPtr ccnx = make_shared<CcnxWrapper> ();
-  ObjectManager manager (ccnx, deviceName, tmpdir);
+  ObjectManager manager (ccnx, tmpdir);
 
+  HashPtr hash = manager.localFileToObjects (fs::path("test") / "test-object-manager.cc", deviceName);
 
+  bool ok = manager.objectsToLocalFile (deviceName, *hash, tmpdir / "test.cc");
+  BOOST_CHECK_EQUAL (ok, true);
+
+  {
+    fs::ifstream origFile (fs::path("test") / "test-object-manager.cc");
+    fs::ifstream newFile (tmpdir / "test.cc");
+
+    istream_iterator<char> eof,
+      origFileI (origFile),
+      newFileI (newFile);
+
+    BOOST_CHECK_EQUAL_COLLECTIONS (origFileI, eof, newFileI, eof);
+  }
+  
   remove_all (tmpdir);
 }
 

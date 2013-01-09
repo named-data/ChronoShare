@@ -22,6 +22,9 @@ public:
   Bytes
   content() const;
 
+  BytesPtr
+  contentPtr() const;
+  
   Name
   name() const;
 

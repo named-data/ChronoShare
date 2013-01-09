@@ -39,6 +39,7 @@ CREATE TABLE                                                            \n\
                                                                         \
         PRIMARY KEY (device_name, segment)                              \n\
     );                                                                  \n\
+CREATE INDEX device ON File(device_name);                               \n\
 ";
 
 ObjectDb::ObjectDb (const fs::path &folder, const std::string &hash)
@@ -61,10 +62,49 @@ ObjectDb::ObjectDb (const fs::path &folder, const std::string &hash)
   res = sqlite3_exec (m_db, INIT_DATABASE.c_str (), NULL, NULL, &errmsg);
   if (res != SQLITE_OK && errmsg != 0)
     {
-      std::cerr << "DEBUG: " << errmsg << std::endl;
+      // std::cerr << "DEBUG: " << errmsg << std::endl;
       sqlite3_free (errmsg);
     }  
 }
+
+bool
+ObjectDb::DoesExist (const boost::filesystem::path &folder, const Ccnx::Name &deviceName, const std::string &hash)
+{
+  fs::path actualFolder = folder / "objects" / hash.substr (0, 2);
+  bool retval = false;
+
+  sqlite3 *db;
+  int res = sqlite3_open((actualFolder / hash.substr (2, hash.size () - 2)).c_str (), &db);
+  if (res == SQLITE_OK)
+    {
+      sqlite3_stmt *stmt;
+      sqlite3_prepare_v2 (db, "SELECT count(*), count(nullif(content_object,0)) FROM File WHERE device_name=?", -1, &stmt, 0);
+
+      CcnxCharbufPtr buf = deviceName.toCcnxCharbuf ();
+      sqlite3_bind_blob (stmt, 1, buf->buf (), buf->length (), SQLITE_TRANSIENT);
+
+      int res = sqlite3_step (stmt);
+      if (res == SQLITE_ROW)
+        {
+          int countAll = sqlite3_column_int (stmt, 0);
+          int countNonNull = sqlite3_column_int (stmt, 1);
+
+          cout << countAll << ", " << countNonNull << endl;
+
+          if (countAll > 0 && countAll==countNonNull)
+            {
+              cout << "2" << endl;
+              retval = true;
+            }
+        }
+
+      sqlite3_finalize (stmt);      
+    }
+
+  sqlite3_close (db);
+  return retval;
+}
+
 
 ObjectDb::~ObjectDb ()
 {
@@ -83,6 +123,8 @@ ObjectDb::saveContentObject (const Ccnx::Name &deviceName, sqlite3_int64 segment
                       "(device_name, segment, content_object) "
                       "VALUES (?, ?, ?)", -1, &stmt, 0);
 
+  cout << deviceName << endl;
+  
   CcnxCharbufPtr buf = deviceName.toCcnxCharbuf ();
   sqlite3_bind_blob (stmt, 1, buf->buf (), buf->length (), SQLITE_TRANSIENT);
   sqlite3_bind_int64 (stmt, 2, segment);
@@ -118,7 +160,20 @@ ObjectDb::fetchSegment (const Ccnx::Name &deviceName, sqlite3_int64 segment)
   return ret;
 }
 
+
 // sqlite3_int64
 // ObjectDb::getNumberOfSegments (const Ccnx::Name &deviceName)
 // {
+//   sqlite3_stmt *stmt;
+//   sqlite3_prepare_v2 (m_db, "SELECT count(*) FROM File WHERE device_name=?", -1, &stmt, 0); 
+
+//   bool retval = false;
+//   int res = sqlite3_step (stmt);
+//   if (res == SQLITE_ROW)
+//     {
+//       retval = true; 
+//     }
+//   sqlite3_finalize (stmt);
+
+//   return retval;
 // }

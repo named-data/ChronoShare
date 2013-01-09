@@ -16,22 +16,6 @@ using namespace boost;
 
 namespace Ccnx {
 
-void
-readRaw(Bytes &bytes, const unsigned char *src, size_t len)
-{
-  if (len > 0)
-  {
-    bytes.resize(len);
-    memcpy(&bytes[0], src, len);
-  }
-}
-
-const unsigned char *
-head(const Bytes &bytes)
-{
-  return &bytes[0];
-}
-
 CcnxWrapper::CcnxWrapper()
   : m_handle (0)
   , m_running (true)

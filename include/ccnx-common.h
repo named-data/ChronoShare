@@ -38,6 +38,7 @@ extern "C" {
 #include <sstream>
 #include <map>
 #include <utility>
+#include <string.h>
 
 using namespace std;
 namespace Ccnx {
@@ -45,13 +46,45 @@ typedef vector<unsigned char> Bytes;
 typedef vector<string>Comps;
 
 typedef boost::shared_ptr<Bytes> BytesPtr;
- 
-// --- Bytes operations start ---
-void
-readRaw(Bytes &bytes, const unsigned char *src, size_t len);
 
+inline
 const unsigned char *
-head(const Bytes &bytes);
+head(const Bytes &bytes)
+{
+  return &bytes[0];
+}
+
+inline
+unsigned char *
+head (Bytes &bytes)
+{
+  return &bytes[0];
+}
+
+// --- Bytes operations start ---
+inline void
+readRaw(Bytes &bytes, const unsigned char *src, size_t len)
+{
+  if (len > 0)
+  {
+    bytes.resize(len);
+    memcpy (head (bytes), src, len);
+  }
+}
+
+inline BytesPtr
+readRawPtr (const unsigned char *src, size_t len)
+{
+  if (len > 0)
+    {
+      BytesPtr ret (new Bytes (len));
+      memcpy (head (*ret), src, len);
+
+      return ret;
+    }
+  else
+    return BytesPtr ();
+}
 
 // --- Bytes operations end ---
 

@@ -43,6 +43,9 @@ public:
 
   // sqlite3_int64
   // getNumberOfSegments (const Ccnx::Name &deviceName);
+
+  static bool
+  DoesExist (const boost::filesystem::path &folder, const Ccnx::Name &deviceName, const std::string &hash);
   
 private:
   sqlite3 *m_db;

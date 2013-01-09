@@ -32,15 +32,17 @@
 class ObjectManager
 {
 public:
-  ObjectManager (Ccnx::CcnxWrapperPtr ccnx, const Ccnx::Name &localDeviceName, const boost::filesystem::path &folder);
+  ObjectManager (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &folder);
   virtual ~ObjectManager ();
 
   HashPtr
-  storeLocalFile (const boost::filesystem::path &file);
+  localFileToObjects (const boost::filesystem::path &file, const Ccnx::Name &deviceName);
+
+  bool
+  objectsToLocalFile (/*in*/const Ccnx::Name &deviceName, /*in*/const Hash &hash, /*out*/ const boost::filesystem::path &file);
   
 private:
   Ccnx::CcnxWrapperPtr m_ccnx;
-  Ccnx::Name m_localDeviceName;
   boost::filesystem::path m_folder;
 };
 

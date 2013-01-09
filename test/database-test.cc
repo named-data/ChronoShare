@@ -39,8 +39,6 @@ BOOST_AUTO_TEST_SUITE(DatabaseTest)
 BOOST_AUTO_TEST_CASE (BasicDatabaseTest)
 {
   fs::path tmpdir = fs::unique_path (fs::temp_directory_path () / "%%%%-%%%%-%%%%-%%%%");
-  fs::create_directories (tmpdir);
-  
   SyncLog db (tmpdir, "/alex");
 
   HashPtr hash = db.RememberStateInStateLog ();
