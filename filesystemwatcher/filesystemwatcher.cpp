@@ -89,3 +89,8 @@ void filesystemwatcher::dirChangedSlot(QString dirPath)
     // update gui with list of files in this directory
     m_listViewModel->setStringList(fileList);
 }
+
+#if WAF
+#include "filesystemwatcher.moc"
+#include "filesystemwatcher.cpp.moc"
+#endif
