@@ -11,7 +11,7 @@ def options(opt):
     opt.add_option('--test', action='store_true',default=False,dest='_test',help='''build unit tests''')
     opt.add_option('--yes',action='store_true',default=False) # for autoconf/automake/make compatibility
 
-    opt.load('compiler_cxx boost ccnx protoc ice_cxx')
+    opt.load('compiler_cxx boost ccnx protoc ice_cxx qt4')
 
 def configure(conf):
     conf.load("compiler_cxx")
@@ -33,6 +33,12 @@ def configure(conf):
         conf.fatal ("Cannot find SSL libraries")
 
     conf.load ('ccnx')
+
+    conf.load('protoc')
+    conf.load('ice_cxx')
+
+    conf.load('qt4')
+
     conf.load('boost')
 
     conf.check_boost(lib='system test iostreams filesystem regex thread')
@@ -52,9 +58,6 @@ def configure(conf):
 
     if conf.options._test:
         conf.env.TEST = 1
-
-    conf.load('protoc')
-    conf.load('ice_cxx')
 
     conf.write_config_header('src/config.h')
 
@@ -129,4 +132,12 @@ def build (bld):
                   ],
         use = "BOOST CCNX SSL SQLITE3 ICE common database ccnxx",
         includes = ['include', 'src'],
+        )
+    
+    qt = bld (
+        target = "gui",
+        features = "qt4 cxx cxxprogram",
+        source = "filesystemwatcher/filesystemwatcher.cpp filesystemwatcher/filesystemwatcher.ui filesystemwatcher/main.cpp",
+        includes = "filesystemwatcher src include .",
+        use = "QTCORE QTGUI"
         )
