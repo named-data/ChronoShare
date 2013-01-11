@@ -3,3 +3,8 @@
 build/
 .lock*
 chronoshare.db
+Makefile
+*.o
+moc_*
+ui_*
+*.app
