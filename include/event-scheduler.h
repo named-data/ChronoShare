@@ -122,7 +122,7 @@ public:
   // generator is needed only when this is a periodic task
   // two simple generators implementation (SimpleIntervalGenerator and RandomIntervalGenerator) are provided;
   // if user needs more complex pattern in the intervals between calls, extend class IntervalGenerator
-  PeriodicTask(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler, const IntervalGeneratorPtr &generator);
+  PeriodicTask(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler, const IntervalGeneratorPtr &generator, int repeat = -1);
   virtual ~PeriodicTask(){}
 
   // invoke callback, reset self and ask scheduler to schedule self with the next delay interval
@@ -133,8 +133,18 @@ public:
   virtual void
   reset() _OVERRIDE;
 
+  void
+  setRepeatTimes(int repeat) { m_repeat = repeat; m_indefinite = (m_repeat > 0); }
+
+private:
+  // this is to deregister itself from scheduler automatically if not indefinite
+  void
+  deregisterSelf();
+
 private:
   IntervalGeneratorPtr m_generator;
+  int m_repeat;
+  bool m_indefinite;
 };
 
 struct SchedulerException : virtual boost::exception, virtual exception { };

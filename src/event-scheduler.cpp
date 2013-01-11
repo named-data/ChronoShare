@@ -79,9 +79,11 @@ OneTimeTask::reset()
   m_invoked = false;
 }
 
-PeriodicTask::PeriodicTask(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler, const IntervalGeneratorPtr &generator)
+PeriodicTask::PeriodicTask(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler, const IntervalGeneratorPtr &generator, int repeat)
              : Task(callback, tag, scheduler)
              , m_generator(generator)
+             , m_repeat(repeat)
+             , m_indefinite(m_repeat > 0)
 {
 }
 
@@ -92,7 +94,22 @@ PeriodicTask::run()
   {
     m_callback();
     m_invoked = true;
-    m_scheduler->rescheduleTask(m_tag);
+    if (m_indefinite)
+    {
+      m_scheduler->rescheduleTask(m_tag);
+    }
+    else
+    {
+      m_repeat--;
+      if (m_repeat > 0)
+      {
+        m_scheduler->rescheduleTask(m_tag);
+      }
+      else
+      {
+        deregisterSelf();
+      }
+    }
   }
 }
 
@@ -102,6 +119,12 @@ PeriodicTask::reset()
   m_invoked = false;
   double interval = m_generator->nextInterval();
   setTv(interval);
+}
+
+void
+PeriodicTask::deregisterSelf()
+{
+  m_scheduler->deleteTask(m_tag);
 }
 
 RandomIntervalGenerator::RandomIntervalGenerator(double interval, double percent, Direction direction)

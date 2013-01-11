@@ -37,14 +37,17 @@ BOOST_AUTO_TEST_CASE(SchedulerTest)
 {
   SchedulerPtr scheduler(new Scheduler());
   IntervalGeneratorPtr generator(new SimpleIntervalGenerator(0.2));
+  IntervalGeneratorPtr randomGen(new RandomIntervalGenerator(0.05, 0.5));
 
   string tag1 = "hello";
   string tag2 = "world";
   string tag3 = "period";
+  string tag4 = "haha";
 
   TaskPtr task1(new OneTimeTask(boost::bind(func, tag1), tag1, scheduler, 0.5));
   TaskPtr task2(new OneTimeTask(boost::bind(func, tag2), tag2, scheduler, 0.5));
   TaskPtr task3(new PeriodicTask(boost::bind(func, tag3), tag3, scheduler, generator));
+  TaskPtr task4(new PeriodicTask(boost::bind(func, tag4), tag4, scheduler, randomGen, 5));
 
   scheduler->start();
   scheduler->addTask(task1);
@@ -69,11 +72,14 @@ BOOST_AUTO_TEST_CASE(SchedulerTest)
   usleep(100000);
   scheduler->deleteTask(bind(matcher, _1));
   BOOST_CHECK_EQUAL(scheduler->size(), 1);
-  usleep(1000000);
+  usleep(500000);
+
+  scheduler->addTask(task4);
+  usleep(500000);
 
   scheduler->shutdown();
 
-  int hello = 0, world = 0, period = 0;
+  int hello = 0, world = 0, period = 0, haha = 0;
 
   map<string, int>::iterator it;
   it = table.find(tag1);
@@ -92,12 +98,20 @@ BOOST_AUTO_TEST_CASE(SchedulerTest)
     period = it->second;
   }
 
+  it = table.find(tag4);
+  if (it != table.end())
+  {
+    haha = it->second;
+  }
+
   // added four times, canceled once before invoking callback
   BOOST_CHECK_EQUAL(hello, 3);
   // added two times, canceled once by matcher before invoking callback
   BOOST_CHECK_EQUAL(world, 1);
   // invoked every 0.2 seconds before deleted by matcher
   BOOST_CHECK_EQUAL(period, static_cast<int>((0.6 + 0.6 + 0.4 + 0.2 + 0.1) / 0.2));
+  // should be invoked 5 times exactly
+  BOOST_CHECK_EQUAL(haha, 5);
 
 }
 

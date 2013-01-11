@@ -30,8 +30,6 @@ SyncLog::SyncLog (const boost::filesystem::path &path, const std::string &localN
   : DbHelper (path)
   , m_localName (localName)
 {
-  SyncLog::RememberStateInStateLog ();
-
   UpdateDeviceSeqno (localName, 0);
   
   sqlite3_stmt *stmt;
