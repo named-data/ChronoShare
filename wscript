@@ -142,5 +142,5 @@ def build (bld):
         defines = "WAF",
         source = "filesystemwatcher/filesystemwatcher.cpp filesystemwatcher/filesystemwatcher.ui filesystemwatcher/main.cpp",
         includes = "filesystemwatcher src include .",
-        use = "QTCORE QTGUI"
+        use = "QTCORE QTGUI QTSQL"
         )

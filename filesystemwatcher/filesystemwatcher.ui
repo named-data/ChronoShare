@@ -1,6 +1,6 @@
 <ui version="4.0">
- <class>filesystemwatcher</class>
- <widget class="QMainWindow" name="filesystemwatcher" >
+ <class>FileSystemWatcher</class>
+ <widget class="QMainWindow" name="FileSystemWatcher" >
   <property name="geometry" >
    <rect>
     <x>0</x>
@@ -10,7 +10,7 @@
    </rect>
   </property>
   <property name="windowTitle" >
-   <string>filesystemwatcher</string>
+   <string>FileSystemWatcher</string>
   </property>
   <widget class="QMenuBar" name="menuBar" />
   <widget class="QToolBar" name="mainToolBar" />
