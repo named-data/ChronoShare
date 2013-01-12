@@ -7,6 +7,7 @@ FileSystemWatcher::FileSystemWatcher(QString dirPath, QWidget *parent) :
     m_watcher(new QFileSystemWatcher()),
     m_listViewModel(new QStringListModel()),
     m_listView(new QListView()),
+    m_timer(new QTimer(this)),
     m_dirPath(dirPath)
 {
     // setup user interface
@@ -22,27 +23,15 @@ FileSystemWatcher::FileSystemWatcher(QString dirPath, QWidget *parent) :
     // set title
     setWindowTitle("ChronoShare");
 
-    // open database
-    m_db = QSqlDatabase::addDatabase("QSQLITE");
-    m_db.setDatabaseName("filesystem.db");
-
-    if(!m_db.open())
-    {
-        qDebug() << "Error: Could not open database.";
-        return;
-    }
-
-    if(!createFileTable())
-    {
-        qDebug() << "Error: Could not create table.";
-        return;
-    }
-
     // register signals (callback functions)
-    connect(m_watcher, SIGNAL(directoryChanged(QString)),this,SLOT(dirChangedSlot(QString)));
+    connect(m_watcher, SIGNAL(directoryChanged(QString)), this, SLOT(handleCallback()));
+    connect(m_timer, SIGNAL(timeout()), this, SLOT(handleCallback()));
 
-    // bootstrap file list
-    dirChangedSlot(m_dirPath);
+    // bootstrap
+    handleCallback();
+
+    // start timer
+    m_timer->start(10000);
 }
 
 FileSystemWatcher::~FileSystemWatcher()
@@ -52,26 +41,27 @@ FileSystemWatcher::~FileSystemWatcher()
     delete m_watcher;
     delete m_listViewModel;
     delete m_listView;
-
-    // close database
-    m_db.close();
+    delete m_timer;
 }
 
-void FileSystemWatcher::dirChangedSlot(QString dirPath)
+void FileSystemWatcher::handleCallback()
 {
     // scan directory and populate file list
-    QHash<QString, QFileInfo> fileList = scanDirectory(dirPath);
+    QHash<QString, sFileInfo> currentState = scanDirectory(m_dirPath);
 
-    QStringList dirChanges = reconcileDirectory(fileList);
+    QStringList dirChanges = reconcileDirectory(currentState);
 
     // update gui with list of changes in this directory
-    m_listViewModel->setStringList(dirChanges);
+    qDebug() << endl << m_watcher->directories() << endl;
+
+    if(!dirChanges.isEmpty())
+        m_listViewModel->setStringList(dirChanges);
 }
 
-QHash<QString, QFileInfo> FileSystemWatcher::scanDirectory(QString dirPath)
-{
+QHash<QString, sFileInfo> FileSystemWatcher::scanDirectory(QString dirPath)
+{   
     // list of files in directory
-    QHash<QString, QFileInfo> fileList;
+    QHash<QString, sFileInfo> currentState;
 
     // directory iterator (recursive)
     QDirIterator dirIterator(dirPath, QDirIterator::Subdirectories |
@@ -89,142 +79,109 @@ QHash<QString, QFileInfo> FileSystemWatcher::scanDirectory(QString dirPath)
         // if not this directory or previous directory
         if(fileInfo.absoluteFilePath() != ".." && fileInfo.absoluteFilePath() != ".")
         {
+            QString absFilePath = fileInfo.absoluteFilePath();
+
             // if this is a directory
             if(fileInfo.isDir())
             {
                 QStringList dirList = m_watcher->directories();
 
                 // if the directory is not already being watched
-                if (!dirList.contains(fileInfo.absoluteFilePath()))
+                if (absFilePath.startsWith(m_dirPath) && !dirList.contains(absFilePath))
                 {
                     // add this directory to the watch list
-                    m_watcher->addPath(fileInfo.absoluteFilePath());
+                    m_watcher->addPath(absFilePath);
                 }
             }
             else
             {
+                // construct struct
+                sFileInfo fileInfoStruct;
+                fileInfoStruct.fileInfo = fileInfo;
+
+                // initialize checksum
+                QCryptographicHash crypto(QCryptographicHash::Md5);
+
+                // open file
+                QFile file(fileInfo.absoluteFilePath());
+                file.open(QFile::ReadOnly);
+
+                // calculate checksum
+                while(!file.atEnd())
+                {
+                    crypto.addData(file.read(8192));
+                }
+
+                fileInfoStruct.hash = crypto.result();
+
                 // add this file to the file list
-                fileList.insert(fileInfo.absoluteFilePath(), fileInfo);
+                currentState.insert(absFilePath, fileInfoStruct);
             }
         }
     }
 
-    return fileList;
+    return currentState;
 }
 
-QStringList FileSystemWatcher::reconcileDirectory(QHash<QString, QFileInfo> fileList)
+QStringList FileSystemWatcher::reconcileDirectory(QHash<QString, sFileInfo> currentState)
 {
+    // list of files changed
     QStringList dirChanges;
 
-    // setup database query
-    QSqlQuery storedRecord(m_db);
-
-    // query database for list of files
-    storedRecord.exec("SELECT absFilePath, lastModified FROM files");
-
-    // Debug
-    qDebug() << storedRecord.lastQuery();
-
     // compare result (database/stored snapshot) to fileList (current snapshot)
-    while(storedRecord.next())
+    QMutableHashIterator<QString, sFileInfo> i(m_storedState);
+    while(i.hasNext())
     {
-        QString absFilePath = storedRecord.value(0).toString();
-        qint64 lMStored = storedRecord.value(1).toLongLong();
+        i.next();
 
-        // debug
-        qDebug() << absFilePath << ", " << lMStored;
+        QString absFilePath = i.key();
+
+        sFileInfo storedFileInfoStruct = i.value();
+        QFileInfo storedFileInfo = storedFileInfoStruct.fileInfo;
+        QByteArray storedHash = storedFileInfoStruct.hash;
 
         // check file existence
-        /*if(fileList.contains(absFilePath))
+        if(currentState.contains(absFilePath))
         {
-            QFileInfo fileInfo = fileList.value(absFilePath);
+            sFileInfo currentFileInfoStruct = currentState.value(absFilePath);
+            QFileInfo currentFileInfo = currentFileInfoStruct.fileInfo;
+            QByteArray currentHash = currentFileInfoStruct.hash;
 
-            // last Modified
-            qint64 lMCurrent = fileInfo.lastModified().currentMSecsSinceEpoch();
-
-            if(lMStored != lMCurrent)
+            if((storedFileInfo != currentFileInfo) || (storedHash != currentHash))
             {
-                storedRecord.prepare("UPDATE files SET lastModified = :lastModified "
-                              "WHERE absFilePath= :absFilePath");
-                storedRecord.bindValue(":lastModified", lMCurrent);
-                storedRecord.bindValue(":absFilePath", absFilePath);
-                storedRecord.exec();
-
-                // Debug
-                qDebug() << storedRecord.lastQuery();
+                // update stored state
+                i.setValue(currentFileInfoStruct);
 
                 // this file has been modified
                 dirChanges.append(absFilePath);
             }
 
-            // delete this file from fileList, we have processed it
-            fileList.remove(absFilePath);
+            // delete this file from fileList we have processed it
+            currentState.remove(absFilePath);
         }
         else
         {
-            storedRecord.prepare("DELETE FROM files WHERE absFilePath= :absFilePath");
-            storedRecord.bindValue(":absFilePath", absFilePath);
-            storedRecord.exec();
-
-            // Debug
-            qDebug() << storedRecord.lastQuery();
+            // delete from stored state
+            i.remove();
 
             // this file has been deleted
             dirChanges.append(absFilePath);
-        }*/
+        }
     }
 
-    /*storedRecord.prepare("INSERT INTO files (absFilePath, lastModified) "
-                  "VALUES (:absFilePath, :lastModified)");
-
     // any files left in fileList have been added
-    for(QHash<QString, QFileInfo>::iterator i = fileList.begin(); i != fileList.end(); ++i)
+    for(QHash<QString, sFileInfo>::iterator i = currentState.begin(); i != currentState.end(); ++i)
     {
         QString absFilePath = i.key();
-        qint64 lastModified = i.value().lastModified().currentMSecsSinceEpoch();
+        sFileInfo currentFileInfoStruct = i.value();
 
-        storedRecord.bindValue(":absFilePath", absFilePath);
-        storedRecord.bindValue(":lastModified", lastModified);
-        storedRecord.exec();
+        m_storedState.insert(absFilePath, currentFileInfoStruct);
 
         // this file has been added
         dirChanges.append(absFilePath);
-    }*/
-
-    // close query
-    storedRecord.finish();
-
-    return dirChanges;
-}
-
-bool FileSystemWatcher::createFileTable()
-{
-    bool success = false;
-
-    if(m_db.isOpen())
-    {
-        if(m_db.tables().contains("files"))
-        {
-            success = true;
-        }
-        else
-        {
-            QSqlQuery query(m_db);
-
-            // create file table
-            success = query.exec("CREATE TABLE files "
-                                 "(absFilePath TEXT primary key, "
-                                 "lastModified UNSIGNED BIG INT, "
-                                 "fileSize UNSIGNED BIG INT)");
-
-            // Debug
-            qDebug() << query.lastQuery();
-
-            query.finish();
-        }
     }
 
-    return success;
+    return dirChanges;
 }
 
 #if WAF

@@ -5,8 +5,15 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlResult>
+#include <QSqlError>
 #include <QDebug>
 #include <QHash>
+#include <QCryptographicHash>
+
+struct sFileInfo {
+    QByteArray hash;
+    QFileInfo fileInfo;
+};
 
 namespace Ui {
 class FileSystemWatcher;
@@ -24,27 +31,25 @@ public:
     ~FileSystemWatcher();
 
 private slots:
-    // signal for changes to monitored directories
-    void dirChangedSlot(QString dirPath);
+    // handle callback from either the watcher or timer
+    void handleCallback();
 
 private:
     // scan directory and populate file list
-    QHash<QString, QFileInfo> scanDirectory(QString filePath);
+    QHash<QString, sFileInfo> scanDirectory(QString filePath);
 
     // reconcile directory, find changes
-    QStringList reconcileDirectory(QHash<QString, QFileInfo> fileList);
-
-    // create file table in database
-    bool createFileTable();
+    QStringList reconcileDirectory(QHash<QString, sFileInfo> fileList);
 
 private:
     Ui::FileSystemWatcher* m_ui; // user interface
     QFileSystemWatcher* m_watcher; // filesystem watcher
     QStringListModel* m_listViewModel; // list view model
     QListView* m_listView; // list
-    QString m_dirPath; // monitored path
+    QTimer* m_timer; // timer
 
-    QSqlDatabase m_db; // filesystem database
+    QString m_dirPath; // monitored path
+    QHash<QString, sFileInfo> m_storedState; // stored state of directory
 };
 
 #endif // FILESYSTEMWATCHER_H
