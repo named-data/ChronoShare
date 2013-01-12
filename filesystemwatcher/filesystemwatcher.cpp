@@ -24,14 +24,14 @@ FileSystemWatcher::FileSystemWatcher(QString dirPath, QWidget *parent) :
     setWindowTitle("ChronoShare");
 
     // register signals (callback functions)
-    connect(m_watcher, SIGNAL(directoryChanged(QString)), this, SLOT(handleCallback()));
-    connect(m_timer, SIGNAL(timeout()), this, SLOT(handleCallback()));
+    connect(m_watcher, SIGNAL(directoryChanged(QString)), this, SLOT(watcherCallbackSlot(QString)));
+    connect(m_timer, SIGNAL(timeout()), this, SLOT(timerCallbackSlot()));
 
     // bootstrap
-    handleCallback();
+    timerCallbackSlot();
 
     // start timer
-    m_timer->start(10000);
+    m_timer->start(60000);
 }
 
 FileSystemWatcher::~FileSystemWatcher()
@@ -44,49 +44,32 @@ FileSystemWatcher::~FileSystemWatcher()
     delete m_timer;
 }
 
-void FileSystemWatcher::handleCallback()
+void FileSystemWatcher::watcherCallbackSlot(QString dirPath)
+{
+    // watcher specific steps
+    qDebug() << endl << "[WATCHER] Triggered Path: " << dirPath;
+
+    handleCallback(dirPath);
+}
+
+void FileSystemWatcher::timerCallbackSlot()
+{
+    // timer specific steps
+    qDebug() << endl << "[TIMER] Triggered Path: " << m_dirPath;
+
+    handleCallback(m_dirPath);
+}
+
+void FileSystemWatcher::handleCallback(QString dirPath)
 {
     // scan directory and populate file list
-    QHash<QString, sFileInfo> currentState = scanDirectory(m_dirPath);
+    QHash<QString, sFileInfo> currentState = scanDirectory(dirPath);
 
     // reconcile directory and report changes
-    QVector<sEventInfo> dirChanges = reconcileDirectory(currentState);
-
-    // update gui with list of changes in this directory
-    qDebug() << endl << m_watcher->directories() << endl;
+    QVector<sEventInfo> dirChanges = reconcileDirectory(currentState, dirPath);
 
     // DEBUG: Print to Gui
-    if(!dirChanges.isEmpty())
-    {
-        QStringList dirChangesList;
-
-        for(int i = 0; i < dirChanges.size(); i++)
-        {
-            QString tempString;
-
-            eEvent event = dirChanges[i].event;
-            QString absFilePath = dirChanges[i].absFilePath;
-
-            switch(event)
-            {
-            case ADDED:
-                tempString.append("ADDED: ");
-                break;
-            case MODIFIED:
-                tempString.append("MODIFIED: ");
-                break;
-            case DELETED:
-                tempString.append("DELETED: ");
-                break;
-            }
-
-            tempString.append(absFilePath);
-
-            dirChangesList.append(tempString);
-        }
-
-        m_listViewModel->setStringList(dirChangesList);
-    }
+    printToGui(dirChanges);
 }
 
 QHash<QString, sFileInfo> FileSystemWatcher::scanDirectory(QString dirPath)
@@ -129,21 +112,7 @@ QHash<QString, sFileInfo> FileSystemWatcher::scanDirectory(QString dirPath)
                 // construct struct
                 sFileInfo fileInfoStruct;
                 fileInfoStruct.fileInfo = fileInfo;
-
-                // initialize checksum
-                QCryptographicHash crypto(QCryptographicHash::Md5);
-
-                // open file
-                QFile file(fileInfo.absoluteFilePath());
-                file.open(QFile::ReadOnly);
-
-                // calculate checksum
-                while(!file.atEnd())
-                {
-                    crypto.addData(file.read(8192));
-                }
-
-                fileInfoStruct.hash = crypto.result();
+                fileInfoStruct.hash = calcChecksum(absFilePath);
 
                 // add this file to the file list
                 currentState.insert(absFilePath, fileInfoStruct);
@@ -154,7 +123,7 @@ QHash<QString, sFileInfo> FileSystemWatcher::scanDirectory(QString dirPath)
     return currentState;
 }
 
-QVector<sEventInfo> FileSystemWatcher::reconcileDirectory(QHash<QString, sFileInfo> currentState)
+QVector<sEventInfo> FileSystemWatcher::reconcileDirectory(QHash<QString, sFileInfo> currentState, QString dirPath)
 {
     // list of files changed
     QVector<sEventInfo> dirChanges;
@@ -167,6 +136,11 @@ QVector<sEventInfo> FileSystemWatcher::reconcileDirectory(QHash<QString, sFileIn
         i.next();
 
         QString absFilePath = i.key();
+
+        if(!absFilePath.startsWith(dirPath))
+        {
+            continue;
+        }
 
         sFileInfo storedFileInfoStruct = i.value();
         QFileInfo storedFileInfo = storedFileInfoStruct.fileInfo;
@@ -223,6 +197,61 @@ QVector<sEventInfo> FileSystemWatcher::reconcileDirectory(QHash<QString, sFileIn
     }
 
     return dirChanges;
+}
+
+QByteArray FileSystemWatcher::calcChecksum(QString absFilePath)
+{
+    // initialize checksum
+    QCryptographicHash crypto(QCryptographicHash::Md5);
+
+    // open file
+    QFile file(absFilePath);
+    file.open(QFile::ReadOnly);
+
+    // calculate checksum
+    while(!file.atEnd())
+    {
+        crypto.addData(file.read(8192));
+    }
+
+    return crypto.result();
+}
+
+void FileSystemWatcher::printToGui(QVector<sEventInfo> dirChanges)
+{
+    if(!dirChanges.isEmpty())
+    {
+        QStringList dirChangesList;
+
+        for(int i = 0; i < dirChanges.size(); i++)
+        {
+            QString tempString;
+
+            eEvent event = dirChanges[i].event;
+            QString absFilePath = dirChanges[i].absFilePath;
+
+            switch(event)
+            {
+            case ADDED:
+                tempString.append("ADDED: ");
+                break;
+            case MODIFIED:
+                tempString.append("MODIFIED: ");
+                break;
+            case DELETED:
+                tempString.append("DELETED: ");
+                break;
+            }
+
+            tempString.append(absFilePath);
+
+            dirChangesList.append(tempString);
+
+            qDebug() << "\t" << tempString;
+        }
+
+        m_listViewModel->setStringList(dirChangesList);
+    }
 }
 
 #if WAF

@@ -43,15 +43,27 @@ public:
     ~FileSystemWatcher();
 
 private slots:
-    // handle callback from either the watcher or timer
-    void handleCallback();
+    // handle callback from watcher
+    void watcherCallbackSlot(QString dirPath);
+
+    // handle callback from timer
+    void timerCallbackSlot();
 
 private:
+    // handle callback from either the watcher or timer
+    void handleCallback(QString dirPath);
+
     // scan directory and populate file list
-    QHash<QString, sFileInfo> scanDirectory(QString filePath);
+    QHash<QString, sFileInfo> scanDirectory(QString dirPath);
 
     // reconcile directory, find changes
-    QVector<sEventInfo> reconcileDirectory(QHash<QString, sFileInfo> fileList);
+    QVector<sEventInfo> reconcileDirectory(QHash<QString, sFileInfo> fileList, QString dirPath);
+
+    // calculate checksum
+    QByteArray calcChecksum(QString absFilePath);
+
+    // print to GUI (DEBUG)
+    void printToGui(QVector<sEventInfo> dirChanges);
 
 private:
     Ui::FileSystemWatcher* m_ui; // user interface
