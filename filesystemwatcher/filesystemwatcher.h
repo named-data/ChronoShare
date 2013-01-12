@@ -19,12 +19,7 @@ enum eEvent {
 
 struct sEventInfo {
     eEvent event;
-    QString absFilePath;
-};
-
-struct sFileInfo {
-    QByteArray hash;
-    QFileInfo fileInfo;
+    std::string absFilePath;
 };
 
 namespace Ui {
@@ -54,10 +49,10 @@ private:
     void handleCallback(QString dirPath);
 
     // scan directory and populate file list
-    QHash<QString, sFileInfo> scanDirectory(QString dirPath);
+    QHash<QString, qint64> scanDirectory(QString dirPath);
 
     // reconcile directory, find changes
-    QVector<sEventInfo> reconcileDirectory(QHash<QString, sFileInfo> fileList, QString dirPath);
+    QVector<sEventInfo> reconcileDirectory(QHash<QString, qint64> fileList, QString dirPath);
 
     // calculate checksum
     QByteArray calcChecksum(QString absFilePath);
@@ -73,7 +68,7 @@ private:
     QTimer* m_timer; // timer
 
     QString m_dirPath; // monitored path
-    QHash<QString, sFileInfo> m_storedState; // stored state of directory
+    QHash<QString, qint64> m_storedState; // stored state of directory
 };
 
 #endif // FILESYSTEMWATCHER_H
