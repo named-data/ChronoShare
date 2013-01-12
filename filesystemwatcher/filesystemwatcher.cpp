@@ -49,13 +49,44 @@ void FileSystemWatcher::handleCallback()
     // scan directory and populate file list
     QHash<QString, sFileInfo> currentState = scanDirectory(m_dirPath);
 
-    QStringList dirChanges = reconcileDirectory(currentState);
+    // reconcile directory and report changes
+    QVector<sEventInfo> dirChanges = reconcileDirectory(currentState);
 
     // update gui with list of changes in this directory
     qDebug() << endl << m_watcher->directories() << endl;
 
+    // DEBUG: Print to Gui
     if(!dirChanges.isEmpty())
-        m_listViewModel->setStringList(dirChanges);
+    {
+        QStringList dirChangesList;
+
+        for(int i = 0; i < dirChanges.size(); i++)
+        {
+            QString tempString;
+
+            eEvent event = dirChanges[i].event;
+            QString absFilePath = dirChanges[i].absFilePath;
+
+            switch(event)
+            {
+            case ADDED:
+                tempString.append("ADDED: ");
+                break;
+            case MODIFIED:
+                tempString.append("MODIFIED: ");
+                break;
+            case DELETED:
+                tempString.append("DELETED: ");
+                break;
+            }
+
+            tempString.append(absFilePath);
+
+            dirChangesList.append(tempString);
+        }
+
+        m_listViewModel->setStringList(dirChangesList);
+    }
 }
 
 QHash<QString, sFileInfo> FileSystemWatcher::scanDirectory(QString dirPath)
@@ -123,13 +154,14 @@ QHash<QString, sFileInfo> FileSystemWatcher::scanDirectory(QString dirPath)
     return currentState;
 }
 
-QStringList FileSystemWatcher::reconcileDirectory(QHash<QString, sFileInfo> currentState)
+QVector<sEventInfo> FileSystemWatcher::reconcileDirectory(QHash<QString, sFileInfo> currentState)
 {
     // list of files changed
-    QStringList dirChanges;
+    QVector<sEventInfo> dirChanges;
 
     // compare result (database/stored snapshot) to fileList (current snapshot)
     QMutableHashIterator<QString, sFileInfo> i(m_storedState);
+
     while(i.hasNext())
     {
         i.next();
@@ -153,7 +185,10 @@ QStringList FileSystemWatcher::reconcileDirectory(QHash<QString, sFileInfo> curr
                 i.setValue(currentFileInfoStruct);
 
                 // this file has been modified
-                dirChanges.append(absFilePath);
+                sEventInfo eventInfo;
+                eventInfo.event = MODIFIED;
+                eventInfo.absFilePath = absFilePath;
+                dirChanges.push_back(eventInfo);
             }
 
             // delete this file from fileList we have processed it
@@ -165,7 +200,10 @@ QStringList FileSystemWatcher::reconcileDirectory(QHash<QString, sFileInfo> curr
             i.remove();
 
             // this file has been deleted
-            dirChanges.append(absFilePath);
+            sEventInfo eventInfo;
+            eventInfo.event = DELETED;
+            eventInfo.absFilePath = absFilePath;
+            dirChanges.push_back(eventInfo);
         }
     }
 
@@ -178,7 +216,10 @@ QStringList FileSystemWatcher::reconcileDirectory(QHash<QString, sFileInfo> curr
         m_storedState.insert(absFilePath, currentFileInfoStruct);
 
         // this file has been added
-        dirChanges.append(absFilePath);
+        sEventInfo eventInfo;
+        eventInfo.event = ADDED;
+        eventInfo.absFilePath = absFilePath;
+        dirChanges.push_back(eventInfo);
     }
 
     return dirChanges;

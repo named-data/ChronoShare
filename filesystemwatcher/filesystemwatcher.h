@@ -9,6 +9,18 @@
 #include <QDebug>
 #include <QHash>
 #include <QCryptographicHash>
+#include <QVector>
+
+enum eEvent {
+    ADDED = 0,
+    MODIFIED,
+    DELETED
+};
+
+struct sEventInfo {
+    eEvent event;
+    QString absFilePath;
+};
 
 struct sFileInfo {
     QByteArray hash;
@@ -39,7 +51,7 @@ private:
     QHash<QString, sFileInfo> scanDirectory(QString filePath);
 
     // reconcile directory, find changes
-    QStringList reconcileDirectory(QHash<QString, sFileInfo> fileList);
+    QVector<sEventInfo> reconcileDirectory(QHash<QString, sFileInfo> fileList);
 
 private:
     Ui::FileSystemWatcher* m_ui; // user interface
