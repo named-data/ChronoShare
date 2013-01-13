@@ -18,20 +18,18 @@
  * Author: Jared Lindblom <lindblom@cs.ucla.edu>
  */
 
-#include "filesystemwatcher.h"
-#include "simpleeventcatcher.h"
-#include <QApplication>
-#include <iostream>
+#ifndef STRUCTS_H
+#define STRUCTS_H
 
-int main(int argc, char *argv[])
-{
-    QApplication app(argc, argv);
+enum eEvent {
+    ADDED = 0,
+    MODIFIED,
+    DELETED
+};
 
-    // invoke file system watcher on specified path
-    FileSystemWatcher watcher("/Users/jared/Desktop");
+struct sEventInfo {
+    eEvent event;
+    std::string absFilePath;
+};
 
-    // class that will utilize these signals
-    SimpleEventCatcher dirEventCatcher(&watcher);
-
-    return app.exec();
-}
+#endif // STRUCTS_H

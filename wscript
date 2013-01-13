@@ -137,10 +137,10 @@ def build (bld):
 
 
     qt = bld (
-        target = "gui",
+        target = "filewatcher",
         features = "qt4 cxx cxxprogram",
         defines = "WAF",
-        source = "filesystemwatcher/filesystemwatcher.cpp filesystemwatcher/filesystemwatcher.ui filesystemwatcher/main.cpp",
+        source = "filesystemwatcher/filesystemwatcher.cpp filesystemwatcher/simpleeventcatcher.cpp filesystemwatcher/main.cpp",
         includes = "filesystemwatcher src include .",
         use = "QTCORE QTGUI"
         )

@@ -18,20 +18,24 @@
  * Author: Jared Lindblom <lindblom@cs.ucla.edu>
  */
 
+#ifndef SIMPLEEVENTCATCHER_H
+#define SIMPLEEVENTCATCHER_H
+
 #include "filesystemwatcher.h"
-#include "simpleeventcatcher.h"
-#include <QApplication>
-#include <iostream>
+#include <QObject>
+#include <QDebug>
+#include <vector>
+#include <structs.h>
 
-int main(int argc, char *argv[])
+class SimpleEventCatcher : public QObject
 {
-    QApplication app(argc, argv);
+    Q_OBJECT
+public:
+    explicit SimpleEventCatcher(FileSystemWatcher* watcher, QObject *parent = 0);
 
-    // invoke file system watcher on specified path
-    FileSystemWatcher watcher("/Users/jared/Desktop");
+public slots:
+    // handle signal
+    void handleDirEvent(std::vector<sEventInfo> dirChanges);
+};
 
-    // class that will utilize these signals
-    SimpleEventCatcher dirEventCatcher(&watcher);
-
-    return app.exec();
-}
+#endif // SIMPLEEVENTCATCHER_H
