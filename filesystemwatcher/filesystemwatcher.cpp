@@ -47,16 +47,18 @@ FileSystemWatcher::~FileSystemWatcher()
 void FileSystemWatcher::watcherCallbackSlot(QString dirPath)
 {
     // watcher specific steps
+#if DEBUG
     qDebug() << endl << "[WATCHER] Triggered Path: " << dirPath;
-
+#endif
     handleCallback(dirPath);
 }
 
 void FileSystemWatcher::timerCallbackSlot()
 {
     // timer specific steps
+#if DEBUG
     qDebug() << endl << "[TIMER] Triggered Path: " << m_dirPath;
-
+#endif
     handleCallback(m_dirPath);
 }
 
@@ -66,10 +68,14 @@ void FileSystemWatcher::handleCallback(QString dirPath)
     QHash<QString, qint64> currentState = scanDirectory(dirPath);
 
     // reconcile directory and report changes
-    QVector<sEventInfo> dirChanges = reconcileDirectory(currentState, dirPath);
+    std::vector<sEventInfo> dirChanges = reconcileDirectory(currentState, dirPath);
 
-    // DEBUG: Print to Gui
-    printToGui(dirChanges);
+    emit dirEventSignal(dirChanges);
+
+#if DEBUG
+    // DEBUG: Print Changes
+    printChanges(dirChanges);
+#endif
 }
 
 QHash<QString, qint64> FileSystemWatcher::scanDirectory(QString dirPath)
@@ -118,10 +124,10 @@ QHash<QString, qint64> FileSystemWatcher::scanDirectory(QString dirPath)
     return currentState;
 }
 
-QVector<sEventInfo> FileSystemWatcher::reconcileDirectory(QHash<QString, qint64> currentState, QString dirPath)
+std::vector<sEventInfo> FileSystemWatcher::reconcileDirectory(QHash<QString, qint64> currentState, QString dirPath)
 {
     // list of files changed
-    QVector<sEventInfo> dirChanges;
+    std::vector<sEventInfo> dirChanges;
 
     // compare result (database/stored snapshot) to fileList (current snapshot)
     QMutableHashIterator<QString, qint64> i(m_storedState);
@@ -209,13 +215,13 @@ QByteArray FileSystemWatcher::calcChecksum(QString absFilePath)
     return crypto.result();
 }
 
-void FileSystemWatcher::printToGui(QVector<sEventInfo> dirChanges)
+void FileSystemWatcher::printChanges(std::vector<sEventInfo> dirChanges)
 {
-    if(!dirChanges.isEmpty())
+    if(!dirChanges.empty())
     {
         QStringList dirChangesList;
 
-        for(int i = 0; i < dirChanges.size(); i++)
+        for(size_t i = 0; i < dirChanges.size(); i++)
         {
             QString tempString;
 
@@ -236,13 +242,19 @@ void FileSystemWatcher::printToGui(QVector<sEventInfo> dirChanges)
             }
 
             tempString.append(absFilePath);
-
-            dirChangesList.append(tempString);
-
+#if DEBUG
             qDebug() << "\t" << tempString;
+#endif
+            dirChangesList.append(tempString);
         }
 
         m_listViewModel->setStringList(dirChangesList);
+    }
+    else
+    {
+#if DEBUG
+        qDebug() << "\t[EMPTY]";
+#endif
     }
 }
 

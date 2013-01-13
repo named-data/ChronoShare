@@ -2,14 +2,11 @@
 #define FILESYSTEMWATCHER_H
 
 #include <QtGui>
-#include <QSqlDatabase>
-#include <QSqlQuery>
-#include <QSqlResult>
-#include <QSqlError>
 #include <QDebug>
 #include <QHash>
 #include <QCryptographicHash>
-#include <QVector>
+
+#define DEBUG 1
 
 enum eEvent {
     ADDED = 0,
@@ -37,6 +34,10 @@ public:
     // destructor
     ~FileSystemWatcher();
 
+signals:
+    // directory event signal
+    void dirEventSignal(std::vector<sEventInfo> dirChanges);
+
 private slots:
     // handle callback from watcher
     void watcherCallbackSlot(QString dirPath);
@@ -52,13 +53,13 @@ private:
     QHash<QString, qint64> scanDirectory(QString dirPath);
 
     // reconcile directory, find changes
-    QVector<sEventInfo> reconcileDirectory(QHash<QString, qint64> fileList, QString dirPath);
+    std::vector<sEventInfo> reconcileDirectory(QHash<QString, qint64> fileList, QString dirPath);
 
     // calculate checksum
     QByteArray calcChecksum(QString absFilePath);
 
-    // print to GUI (DEBUG)
-    void printToGui(QVector<sEventInfo> dirChanges);
+    // print Changes (DEBUG)
+    void printChanges(std::vector<sEventInfo> dirChanges);
 
 private:
     Ui::FileSystemWatcher* m_ui; // user interface
