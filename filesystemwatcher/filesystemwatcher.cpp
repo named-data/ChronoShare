@@ -50,7 +50,13 @@ FileSystemWatcher::~FileSystemWatcher()
 void FileSystemWatcher::bootstrap()
 {
     // bootstrap specific steps
+#if DEBUG
+    qDebug() << endl << "[BOOTSTRAP]";
+#endif
     timerCallbackSlot();
+#if DEBUG
+    qDebug() << endl << "[\\BOOTSTRAP]";
+#endif
 }
 
 void FileSystemWatcher::watcherCallbackSlot(QString dirPath)
@@ -82,8 +88,9 @@ void FileSystemWatcher::handleCallback(QString dirPath)
     // DEBUG: Print Changes
     printChanges(dirChanges);
 #endif
-    // emit the signal
-    emit dirEventSignal(dirChanges);
+    // emit the signal if not empty
+    if(!dirChanges.empty())
+        emit dirEventSignal(dirChanges);
 }
 
 QHash<QString, qint64> FileSystemWatcher::scanDirectory(QString dirPath)
