@@ -1,34 +1,40 @@
-#include "filesystemwatcher.h"
-#include "ui_filesystemwatcher.h"
+/* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
+/*
+ * Copyright (c) 2012-2013 University of California, Los Angeles
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Author: Jared Lindblom <lindblom@cs.ucla.edu>
+ */
 
-FileSystemWatcher::FileSystemWatcher(QString dirPath, QWidget *parent) :
-    QMainWindow(parent),
-    m_ui(new Ui::FileSystemWatcher),
+#include "filesystemwatcher.h"
+
+FileSystemWatcher::FileSystemWatcher(QString dirPath, QObject* parent) :
+    QObject(parent),
     m_watcher(new QFileSystemWatcher()),
-    m_listViewModel(new QStringListModel()),
-    m_listView(new QListView()),
-    m_timer(new QTimer(this)),
+    m_timer(new QTimer()),
     m_dirPath(dirPath)
 {
-    // setup user interface
-    m_ui->setupUi(this);
-
     // add main directory to monitor
     m_watcher->addPath(m_dirPath);
-
-    // create the view
-    m_listView->setModel(m_listViewModel);
-    setCentralWidget(m_listView);
-
-    // set title
-    setWindowTitle("ChronoShare");
 
     // register signals (callback functions)
     connect(m_watcher, SIGNAL(directoryChanged(QString)), this, SLOT(watcherCallbackSlot(QString)));
     connect(m_timer, SIGNAL(timeout()), this, SLOT(timerCallbackSlot()));
 
     // bootstrap
-    timerCallbackSlot();
+    QTimer::singleShot(1000, this, SLOT(bootstrap()));
 
     // start timer
     m_timer->start(300000);
@@ -37,11 +43,14 @@ FileSystemWatcher::FileSystemWatcher(QString dirPath, QWidget *parent) :
 FileSystemWatcher::~FileSystemWatcher()
 {
     // clean up
-    delete m_ui;
     delete m_watcher;
-    delete m_listViewModel;
-    delete m_listView;
     delete m_timer;
+}
+
+void FileSystemWatcher::bootstrap()
+{
+    // bootstrap specific steps
+    timerCallbackSlot();
 }
 
 void FileSystemWatcher::watcherCallbackSlot(QString dirPath)
@@ -69,13 +78,12 @@ void FileSystemWatcher::handleCallback(QString dirPath)
 
     // reconcile directory and report changes
     std::vector<sEventInfo> dirChanges = reconcileDirectory(currentState, dirPath);
-
-    emit dirEventSignal(dirChanges);
-
 #if DEBUG
     // DEBUG: Print Changes
     printChanges(dirChanges);
 #endif
+    // emit the signal
+    emit dirEventSignal(dirChanges);
 }
 
 QHash<QString, qint64> FileSystemWatcher::scanDirectory(QString dirPath)
@@ -219,8 +227,6 @@ void FileSystemWatcher::printChanges(std::vector<sEventInfo> dirChanges)
 {
     if(!dirChanges.empty())
     {
-        QStringList dirChangesList;
-
         for(size_t i = 0; i < dirChanges.size(); i++)
         {
             QString tempString;
@@ -242,19 +248,13 @@ void FileSystemWatcher::printChanges(std::vector<sEventInfo> dirChanges)
             }
 
             tempString.append(absFilePath);
-#if DEBUG
-            qDebug() << "\t" << tempString;
-#endif
-            dirChangesList.append(tempString);
-        }
 
-        m_listViewModel->setStringList(dirChangesList);
+            qDebug() << "\t" << tempString;
+        }
     }
     else
     {
-#if DEBUG
         qDebug() << "\t[EMPTY]";
-#endif
     }
 }
 
