@@ -87,6 +87,9 @@ SyncCore::updateLocalState(sqlite3_int64 seqno)
   HashPtr oldHash = m_rootHash;
   m_rootHash = m_log.RememberStateInStateLog();
 
+  cout << "Old hash: " << *oldHash << endl;
+  cout << "New hash: " << *m_rootHash << endl;
+
   SyncStateMsgPtr msg = m_log.FindStateDifferences(*oldHash, *m_rootHash);
 
   // reply sync Interest with oldHash as last component

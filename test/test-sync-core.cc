@@ -25,6 +25,8 @@ void callback2(const SyncStateMsgPtr &ptr)
 BOOST_AUTO_TEST_CASE(SyncCoreTest)
 {
   string dir = "./SyncCoreTest";
+  string dir1 = "./SyncCoreTest/1";
+  string dir2 = "./SyncCoreTest/2";
   Name user1("/joker");
   Name loc1("/gotham1");
   Name user2("/darkknight");
@@ -42,9 +44,9 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
     remove_all(d);
   }
 
-  SyncCore *core1 = new SyncCore(dir, user1, loc1, syncPrefix, bind(callback1, _1), c1, scheduler);
+  SyncCore *core1 = new SyncCore(dir1, user1, loc1, syncPrefix, bind(callback1, _1), c1, scheduler);
   usleep(10000);
-  SyncCore *core2 = new SyncCore(dir, user2, loc2, syncPrefix, bind(callback2, _1), c2, scheduler);
+  SyncCore *core2 = new SyncCore(dir2, user2, loc2, syncPrefix, bind(callback2, _1), c2, scheduler);
   usleep(10000);
 
   SyncState state;
