@@ -38,13 +38,13 @@ SyncCore::SyncCore(const string &path, const Name &userName, const Name &localPr
   m_recoverClosure = new Closure(0, boost::bind(&SyncCore::handleRecoverData, this, _1, _2), boost::bind(&SyncCore::handleRecoverInterestTimeout, this, _1));
   m_handle->setInterestFilter(m_syncPrefix, boost::bind(&SyncCore::handleInterest, this, _1));
   m_log.initYP(m_yp);
-  m_scheduler->start();
+  //m_scheduler->start();
   sendSyncInterest();
 }
 
 SyncCore::~SyncCore()
 {
-  m_scheduler->shutdown();
+  //m_scheduler->shutdown();
   if (m_syncClosure != 0)
   {
     delete m_syncClosure;
@@ -153,6 +153,9 @@ SyncCore::handleSyncInterest(const Name &name)
   else if (m_log.LookupSyncLog(*hash) > 0)
   {
     // we know something more
+    cout << "SyncInterest: " << name << endl;
+    cout << "hash: " << *hash << endl;
+    cout << "root hash: " << *m_rootHash << endl;
     SyncStateMsgPtr msg = m_log.FindStateDifferences(*hash, *m_rootHash);
 
     Bytes syncData;

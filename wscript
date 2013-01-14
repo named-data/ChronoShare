@@ -111,7 +111,7 @@ def build (bld):
           target="unit-tests",
           source = bld.path.ant_glob(['test/**/*.cc']),
           features=['cxx', 'cxxprogram'],
-          use = 'BOOST_TEST ccnxx database',
+          use = 'BOOST_TEST BOOST_FILESYSTEM ccnxx database',
           includes = ['include', 'src'],
           )
 

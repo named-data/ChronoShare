@@ -60,7 +60,7 @@ CcnxWrapper::~CcnxWrapper()
 
   m_thread.join ();
   ccn_disconnect (m_handle);
-  ccn_destroy (&m_handle);
+  //ccn_destroy (&m_handle);
 }
 
 void
