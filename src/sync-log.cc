@@ -20,17 +20,19 @@
  */
 
 #include "sync-log.h"
+#include <utility>
 
 #include <boost/make_shared.hpp>
 
 using namespace boost;
 using namespace std;
+using namespace Ccnx;
 
 SyncLog::SyncLog (const boost::filesystem::path &path, const std::string &localName)
   : DbHelper (path)
   , m_localName (localName)
 {
-  UpdateDeviceSeqno (localName, 0);
+  UpdateDeviceSeqNo (localName, 0);
   
   sqlite3_stmt *stmt;
   int res = sqlite3_prepare_v2 (m_db, "SELECT device_id, seq_no FROM SyncNodes WHERE device_name=?", -1, &stmt, 0);
@@ -50,6 +52,25 @@ SyncLog::SyncLog (const boost::filesystem::path &path, const std::string &localN
   sqlite3_finalize (stmt);
 }
 
+void
+SyncLog::initYP(map<Name, Name> &yp)
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2(m_db, "SELECT device_name, last_known_locator FROM SyncNodes;", -1, &stmt, 0);
+
+  while (sqlite3_step(stmt) == SQLITE_ROW)
+  {
+    Name deviceName((const unsigned char *)sqlite3_column_blob(stmt, 0), sqlite3_column_bytes(stmt, 0));
+    Name locator;
+    if (sqlite3_column_type(stmt, 1) == SQLITE_BLOB)
+    {
+      locator = Name((const unsigned char *)sqlite3_column_blob(stmt, 1), sqlite3_column_bytes(stmt, 1));
+    }
+    yp.insert(make_pair(deviceName, locator));
+  }
+
+  sqlite3_finalize(stmt);
+}
 
 sqlite3_int64
 SyncLog::GetNextLocalSeqNo ()
@@ -177,7 +198,7 @@ SyncLog::LookupSyncLog (const Hash &stateHash)
 }
 
 void
-SyncLog::UpdateDeviceSeqno (const Ccnx::Name &name, sqlite3_int64 seqNo)
+SyncLog::UpdateDeviceSeqNo (const Ccnx::Name &name, sqlite3_int64 seqNo)
 {
   sqlite3_stmt *stmt;
   // update is performed using trigger
@@ -192,7 +213,7 @@ SyncLog::UpdateDeviceSeqno (const Ccnx::Name &name, sqlite3_int64 seqNo)
   if (res != SQLITE_OK)
     {
       BOOST_THROW_EXCEPTION (Error::Db ()
-                             << errmsg_info_str ("Some error with UpdateDeviceSeqno (name)"));
+                             << errmsg_info_str ("Some error with UpdateDeviceSeqNo (name)"));
     }
   sqlite3_finalize (stmt);
 }
@@ -217,6 +238,49 @@ SyncLog::UpdateDeviceSeqNo (sqlite3_int64 deviceId, sqlite3_int64 seqNo)
   sqlite3_finalize (stmt);
 }
 
+Name
+SyncLog::LookupLocator(const Name &deviceName)
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "SELECT last_known_locator FROM SyncNodes WHERE device_name=?;", -1, &stmt, 0);
+  Ccnx::CcnxCharbufPtr nameBuf = deviceName;
+  sqlite3_bind_blob (stmt, 1, nameBuf->buf(), nameBuf->length(), SQLITE_STATIC);
+  int res = sqlite3_step (stmt);
+  Name locator;
+  switch (res)
+  {
+  case SQLITE_ROW:
+    {
+      locator = Name((const unsigned char *)sqlite3_column_blob(stmt, 0), sqlite3_column_bytes(stmt, 0));
+    }
+  case SQLITE_DONE: break;
+  default:
+    BOOST_THROW_EXCEPTION(Error::Db() << errmsg_info_str("Error in LookupLocator()"));
+  }
+
+  sqlite3_finalize(stmt);
+
+  return locator;
+}
+
+void
+SyncLog::UpdateLocator(const Name &deviceName, const Name &locator)
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "UPDATE SyncNodes SET last_known_locator=? WHERE device_name=?;", -1, &stmt, 0);
+  Ccnx::CcnxCharbufPtr nameBuf = deviceName;
+  Ccnx::CcnxCharbufPtr locatorBuf = locator;
+  sqlite3_bind_blob (stmt, 1, nameBuf->buf(), nameBuf->length(), SQLITE_STATIC);
+  sqlite3_bind_blob (stmt, 2, locatorBuf->buf(), locatorBuf->length(), SQLITE_STATIC);
+  int res = sqlite3_step (stmt);
+
+  if (res != SQLITE_OK && res != SQLITE_DONE)
+  {
+    BOOST_THROW_EXCEPTION(Error::Db() << errmsg_info_str("Error in UpdateLoactor()"));
+  }
+
+  sqlite3_finalize(stmt);
+}
 
 SyncStateMsgPtr
 SyncLog::FindStateDifferences (const std::string &oldHash, const std::string &newHash)
@@ -230,7 +294,7 @@ SyncLog::FindStateDifferences (const Hash &oldHash, const Hash &newHash)
   sqlite3_stmt *stmt;
 
   int res = sqlite3_prepare_v2 (m_db, "\
-SELECT sn.device_name, s_old.seq_no, s_new.seq_no                       \
+SELECT sn.device_name, sn.last_known_locator, s_old.seq_no, s_new.seq_no\
     FROM (SELECT *                                                      \
             FROM SyncStateNodes                                         \
             WHERE state_id=(SELECT state_id                             \
@@ -250,7 +314,7 @@ SELECT sn.device_name, s_old.seq_no, s_new.seq_no                       \
                                                                         \
 UNION ALL                                                               \
                                                                         \
-SELECT sn.device_name, s_old.seq_no, s_new.seq_no                       \
+SELECT sn.device_name, sn.last_known_locator, s_old.seq_no, s_new.seq_no\
     FROM (SELECT *                                                      \
             FROM SyncStateNodes                                         \
             WHERE state_id=(SELECT state_id                             \
@@ -285,7 +349,13 @@ SELECT sn.device_name, s_old.seq_no, s_new.seq_no                       \
 
       state->set_name (reinterpret_cast<const char*> (sqlite3_column_blob (stmt, 0), sqlite3_column_bytes (stmt, 0)));
 
-      sqlite3_int64 newSeqNo = sqlite3_column_int64 (stmt, 2);
+      // locator is optional, so must check if it is null
+      if (sqlite3_column_type(stmt, 1) == SQLITE_BLOB)
+      {
+        state->set_locator (reinterpret_cast<const char*> (sqlite3_column_blob (stmt, 1), sqlite3_column_bytes (stmt, 1)));
+      }
+
+      sqlite3_int64 newSeqNo = sqlite3_column_int64 (stmt, 3);
       if (newSeqNo > 0)
         {
           state->set_type (SyncState::UPDATE);

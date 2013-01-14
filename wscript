@@ -99,6 +99,7 @@ def build (bld):
                   'src/action-log.cc',
                   'src/action-item.proto',
                   'src/sync-state.proto',
+                  'src/sync-core.cc',
             ],
         use = "BOOST SQLITE3 SSL common",
         includes = ['include', 'src'],

@@ -37,6 +37,8 @@ typedef boost::shared_ptr<Hash> HashPtr;
 class Hash
 {
 public:
+  static unsigned char _origin;
+  static HashPtr Origin;
   Hash (const void *buf, unsigned int length)
     : m_length (length)
   {

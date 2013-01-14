@@ -103,6 +103,9 @@ operator << (std::ostream &os, const Hash &hash)
   return os;
 }
 
+unsigned char Hash::_origin = 0;
+HashPtr Hash::Origin(new Hash(&Hash::_origin, sizeof(unsigned char)));
+
 HashPtr
 Hash::FromString (const std::string &hashInTextEncoding)
 {

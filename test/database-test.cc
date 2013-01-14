@@ -45,20 +45,20 @@ BOOST_AUTO_TEST_CASE (BasicDatabaseTest)
   // should be empty
   BOOST_CHECK_EQUAL (lexical_cast<string> (*hash), "7a6f2c1eefd539560d2dc3e5542868a79810d0867db15d9b87e41ec105899405");
 
-  db.UpdateDeviceSeqno (Name ("Alex"), 1);
+  db.UpdateDeviceSeqNo (Name ("Alex"), 1);
   hash = db.RememberStateInStateLog ();
 
   BOOST_CHECK_EQUAL (lexical_cast<string> (*hash), "bf19308cb2c2ddab7bcce66e9074cd0eed74893be0813ca67a95e97c55d65896");
 
-  db.UpdateDeviceSeqno (Name ("Alex"), 2);
+  db.UpdateDeviceSeqNo (Name ("Alex"), 2);
   hash = db.RememberStateInStateLog ();
   BOOST_CHECK_EQUAL (lexical_cast<string> (*hash), "86b51f1f98662583b295b61385ae4450ff8fac955981f1ca4381144ab1d7a4e0");
 
-  db.UpdateDeviceSeqno (Name ("Alex"), 2);
+  db.UpdateDeviceSeqNo (Name ("Alex"), 2);
   hash = db.RememberStateInStateLog ();
   BOOST_CHECK_EQUAL (lexical_cast<string> (*hash), "86b51f1f98662583b295b61385ae4450ff8fac955981f1ca4381144ab1d7a4e0");
 
-  db.UpdateDeviceSeqno (Name ("Alex"), 1);
+  db.UpdateDeviceSeqNo (Name ("Alex"), 1);
   hash = db.RememberStateInStateLog ();
   BOOST_CHECK_EQUAL (lexical_cast<string> (*hash), "86b51f1f98662583b295b61385ae4450ff8fac955981f1ca4381144ab1d7a4e0");
 
@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE (BasicDatabaseTest)
   // db.FindStateDifferences ("86b51f1f98662583b295b61385ae4450ff8fac955981f1ca4381144ab1d7a4e0",
   //                          "869c38c6dffe8911ced320aecc6d9244904d13d3e8cd21081311f2129b4557ce");
 
-  // db.UpdateDeviceSeqno (Name ("Bob"), 1);
+  // db.UpdateDeviceSeqNo (Name ("Bob"), 1);
   // hash = db.RememberStateInStateLog ();
   // BOOST_CHECK_EQUAL (lexical_cast<string> (*hash), "d001d4680fd9adcb48e34a795e3cc3d5d36f209fbab34fd57f70f362c2085310");
 

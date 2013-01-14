@@ -35,13 +35,15 @@ class SyncCore
 {
 public:
   typedef boost::function<void (const SyncStateMsgPtr & stateMsg) > StateMsgCallback;
-  typedef sqlite3_int64 seqno_t;
-  typedef Map<Name, Name> YellowPage;
+  typedef map<Name, Name> YellowPage;
   typedef boost::shared_mutex Mutex;
   typedef boost::shared_lock<Mutex> ReadLock;
   typedef boost::unique_lock<Mutex> WriteLock;
 
-  static const int FRESHNESS = 2;
+  static const int FRESHNESS = 2; // seconds
+  static const string RECOVER;
+  static const double WAIT; // seconds;
+  static const double RANDOM_PERCENT; // seconds;
 
 public:
   SyncCore(const string &path                   // path where SyncLog is stored
@@ -59,26 +61,44 @@ public:
   updateLocalPrefix(const Name &localPrefix);
 
   void
-  updateLocalState(seqno_t);
+  updateLocalState(sqlite3_int64);
 
   Name
   yp(const Name &name);
 
   void
-  handleSyncInterest(const Name &name);
-
-  Closure::TimeoutCallbackReturnValue
-  handleSyncInterestTimeout(const Name &name);
+  handleInterest(const Name &name);
 
   void
   handleSyncData(const Name &name, const Bytes &content);
 
   void
-  deregister();
+  handleRecoverData(const Name &name, const Bytes &content);
+
+  Closure::TimeoutCallbackReturnValue
+  handleSyncInterestTimeout(const Name &name);
+
+  Closure::TimeoutCallbackReturnValue
+  handleRecoverInterestTimeout(const Name &name);
+
+  void
+  deregister(const Name &name);
+
+  void
+  recover(const HashPtr &hash);
 
 protected:
   void
   sendSyncInterest();
+
+  void
+  handleSyncInterest(const Name &name);
+
+  void
+  handleRecoverInterest(const Name &name);
+
+  void
+  handleStateData(const Bytes &content);
 
   Name
   constructSyncName(const HashPtr &hash);
@@ -97,7 +117,8 @@ protected:
   YellowPage m_yp;
   Mutex m_ypMutex;
   CcnxWrapperPtr m_handle;
-  Closure *m_interestClosure;
+  Closure *m_syncClosure;
+  Closure *m_recoverClosure;
 
 };
 

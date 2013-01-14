@@ -25,6 +25,7 @@
 #include "db-helper.h"
 #include <sync-state.pb.h>
 #include <ccnx-name.h>
+#include <map>
 
 typedef boost::shared_ptr<SyncStateMsg> SyncStateMsgPtr;
 
@@ -33,21 +34,22 @@ class SyncLog : public DbHelper
 public:
   SyncLog (const boost::filesystem::path &path, const std::string &localName);
 
+  // fill in the map with device-name <-> locator pairs
+  void
+  initYP(map<Ccnx::Name, Ccnx::Name> &yp);
+
   sqlite3_int64
   GetNextLocalSeqNo (); // side effect: local seq_no will be increased
 
-  void
-  UpdateDeviceSeqNo (sqlite3_int64 deviceId, sqlite3_int64 seqNo);
-  
   // done
   void
-  UpdateDeviceSeqno (const Ccnx::Name &name, sqlite3_int64 seqNo);
+  UpdateDeviceSeqNo (const Ccnx::Name &name, sqlite3_int64 seqNo);
 
-  // std::string
-  // LookupForwardingAlias (const std::string &deviceName);
+  Ccnx::Name
+  LookupLocator (const Ccnx::Name &deviceName);
 
-  // void
-  // UpdateForwardingAlias ();
+  void
+  UpdateLocator (const Ccnx::Name &deviceName, const Ccnx::Name &locator);
 
   // done
   /**
@@ -70,6 +72,11 @@ public:
 
   SyncStateMsgPtr
   FindStateDifferences (const Hash &oldHash, const Hash &newHash);  
+
+protected:
+  void
+  UpdateDeviceSeqNo (sqlite3_int64 deviceId, sqlite3_int64 seqNo);
+  
 
 protected:
   // std::string m_localName;

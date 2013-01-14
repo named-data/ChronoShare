@@ -37,7 +37,7 @@ CREATE TABLE                                                    \n\
         device_name     BLOB NOT NULL,                          \n\
         description     TEXT,                                   \n\
         seq_no          INTEGER NOT NULL,                       \n\
-        last_known_tdi  TEXT,                                   \n\
+        last_known_locator  BLOB,                               \n\
         last_update     TIMESTAMP                               \n\
     );                                                          \n\
                                                                 \n\
