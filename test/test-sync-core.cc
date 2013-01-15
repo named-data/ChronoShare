@@ -9,18 +9,44 @@ using namespace boost::filesystem;
 
 BOOST_AUTO_TEST_SUITE(SyncCoreTests)
 
-SyncStateMsgPtr msg1;
-SyncStateMsgPtr msg2;
-
-void callback1(const SyncStateMsgPtr &ptr)
+typedef struct
 {
-  msg1 = ptr;
+  Name deviceName;
+  Name locator;
+  int64_t seq;
+} Result;
+
+Result result1;
+Result result2;
+
+void setResult(const SyncStateMsgPtr &msg, Result &result)
+{
+  if (msg->state_size() > 0)
+  {
+    SyncState state = msg->state(0);
+    string strName = state.name();
+    result.deviceName = Name((const unsigned char *)strName.c_str(), strName.size());
+    string strLoc = state.locator();
+    result.locator = Name((const unsigned char *)strLoc.c_str(), strName.size());
+    result.seq = state.seq();
+  }
+  else
+  {
+    cout << "Msg state size: " << msg->state_size() << endl;
+  }
 }
 
-void callback2(const SyncStateMsgPtr &ptr)
+void callback1(const SyncStateMsgPtr &msg)
 {
-  msg2 = ptr;
+  setResult(msg, result1);
 }
+
+void callback2(const SyncStateMsgPtr &msg)
+{
+  setResult(msg, result2);
+}
+
+
 
 BOOST_AUTO_TEST_CASE(SyncCoreTest)
 {
@@ -34,8 +60,6 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   Name syncPrefix("/broadcast/darkknight");
   CcnxWrapperPtr c1(new CcnxWrapper());
   CcnxWrapperPtr c2(new CcnxWrapper());
-  SchedulerPtr scheduler(new Scheduler());
-  scheduler->start();
 
   // clean the test dir
   path d(dir);
@@ -44,39 +68,38 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
     remove_all(d);
   }
 
-  SyncCore *core1 = new SyncCore(dir1, user1, loc1, syncPrefix, bind(callback1, _1), c1, scheduler);
+  SyncCore *core1 = new SyncCore(dir1, user1, loc1, syncPrefix, bind(callback1, _1), c1);
   usleep(10000);
-  SyncCore *core2 = new SyncCore(dir2, user2, loc2, syncPrefix, bind(callback2, _1), c2, scheduler);
-  usleep(10000);
+  SyncCore *core2 = new SyncCore(dir2, user2, loc2, syncPrefix, bind(callback2, _1), c2);
+  usleep(1000000);
 
   SyncState state;
 
+  HashPtr root1 = core1->root();
+  HashPtr root2 = core2->root();
+  BOOST_CHECK_EQUAL(*root1, *root2);
   core1->updateLocalState(1);
   usleep(100000);
-  BOOST_CHECK_EQUAL(msg2->state_size(), 1);
-  state = msg2->state(0);
-  BOOST_CHECK_EQUAL(state.seq(), 1);
-  BOOST_CHECK_EQUAL(user1, state.name());
-  BOOST_CHECK_EQUAL(loc1, state.locator());
+  BOOST_CHECK_EQUAL(result2.seq, 1);
+  BOOST_CHECK_EQUAL(result2.deviceName, user1);
+  BOOST_CHECK_EQUAL(result2.locator, loc1);
 
   core1->updateLocalState(5);
   usleep(100000);
-  state = msg2->state(0);
-  BOOST_CHECK_EQUAL(state.seq(), 5);
+  BOOST_CHECK_EQUAL(result2.seq, 5);
 
   core2->updateLocalState(10);
   usleep(100000);
-  state = msg1->state(0);
-  BOOST_CHECK_EQUAL(state.seq(), 10);
+  BOOST_CHECK_EQUAL(result1.seq, 10);
+  BOOST_CHECK_EQUAL(result1.deviceName, user2);
+  BOOST_CHECK_EQUAL(result1.locator, loc2);
 
   // simple simultaneous data generation
   core1->updateLocalState(11);
   core2->updateLocalState(12);
-  usleep(100000);
-  state = msg1->state(0);
-  BOOST_CHECK_EQUAL(state.seq(), 12);
-  state = msg2->state(0);
-  BOOST_CHECK_EQUAL(state.seq(), 11);
+  usleep(1000000);
+  BOOST_CHECK_EQUAL(result1.seq, 12);
+  BOOST_CHECK_EQUAL(result2.seq, 11);
 
   // clean the test dir
   if (exists(d))

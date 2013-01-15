@@ -354,8 +354,6 @@ SELECT sn.device_name, sn.last_known_locator, s_old.seq_no, s_new.seq_no\
     {
       SyncState *state = msg->add_state ();
 
-      cout << "Bytes: " << sqlite3_column_bytes (stmt, 0)  << endl;
-      cout << "Pointer: " << sqlite3_column_blob (stmt, 0) << endl;
       state->set_name (reinterpret_cast<const char*> (sqlite3_column_blob (stmt, 0)), sqlite3_column_bytes (stmt, 0));
 
       // locator is optional, so must check if it is null
@@ -365,7 +363,7 @@ SELECT sn.device_name, sn.last_known_locator, s_old.seq_no, s_new.seq_no\
       }
 
       sqlite3_int64 newSeqNo = sqlite3_column_int64 (stmt, 3);
-      if (newSeqNo > 0)
+      if (newSeqNo >= 0)
         {
           state->set_type (SyncState::UPDATE);
           state->set_seq (newSeqNo);

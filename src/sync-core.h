@@ -51,8 +51,7 @@ public:
            , const Name &localPrefix            // routable name used by the local user
            , const Name &syncPrefix             // the prefix for the sync collection
            , const StateMsgCallback &callback   // callback when state change is detected
-           , CcnxWrapperPtr handle
-           , SchedulerPtr scheduler);
+           , CcnxWrapperPtr handle);
   ~SyncCore();
 
   // some other code should call this fuction when local prefix
@@ -87,6 +86,9 @@ public:
   void
   recover(const HashPtr &hash);
 
+  HashPtr
+  root() { return m_rootHash; }
+
 protected:
   void
   sendSyncInterest();
@@ -119,6 +121,8 @@ protected:
   CcnxWrapperPtr m_handle;
   Closure *m_syncClosure;
   Closure *m_recoverClosure;
+
+  IntervalGeneratorPtr m_recoverWaitGenerator;
 
 };
 
