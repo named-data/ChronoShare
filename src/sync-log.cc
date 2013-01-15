@@ -288,6 +288,11 @@ SyncLog::FindStateDifferences (const std::string &oldHash, const std::string &ne
   return FindStateDifferences (*Hash::FromString (oldHash), *Hash::FromString (newHash));
 }
 
+// void xTrace (void*, const char* q)
+// {
+//   cout << q << endl;
+// }
+
 SyncStateMsgPtr
 SyncLog::FindStateDifferences (const Hash &oldHash, const Hash &newHash)
 {
@@ -342,17 +347,21 @@ SELECT sn.device_name, sn.last_known_locator, s_old.seq_no, s_new.seq_no\
   res += sqlite3_bind_blob  (stmt, 2, newHash.GetHash (), newHash.GetHashBytes (), SQLITE_STATIC);
 
   SyncStateMsgPtr msg = make_shared<SyncStateMsg> ();
+
+  // sqlite3_trace(m_db, xTrace, NULL);
   
   while (sqlite3_step (stmt) == SQLITE_ROW)
     {
       SyncState *state = msg->add_state ();
 
-      state->set_name (reinterpret_cast<const char*> (sqlite3_column_blob (stmt, 0), sqlite3_column_bytes (stmt, 0)));
+      cout << "Bytes: " << sqlite3_column_bytes (stmt, 0)  << endl;
+      cout << "Pointer: " << sqlite3_column_blob (stmt, 0) << endl;
+      state->set_name (reinterpret_cast<const char*> (sqlite3_column_blob (stmt, 0)), sqlite3_column_bytes (stmt, 0));
 
       // locator is optional, so must check if it is null
       if (sqlite3_column_type(stmt, 1) == SQLITE_BLOB)
       {
-        state->set_locator (reinterpret_cast<const char*> (sqlite3_column_blob (stmt, 1), sqlite3_column_bytes (stmt, 1)));
+        state->set_locator (reinterpret_cast<const char*> (sqlite3_column_blob (stmt, 1)), sqlite3_column_bytes (stmt, 1));
       }
 
       sqlite3_int64 newSeqNo = sqlite3_column_int64 (stmt, 3);
@@ -370,6 +379,8 @@ SELECT sn.device_name, sn.last_known_locator, s_old.seq_no, s_new.seq_no\
       //   std::endl;
     }
   sqlite3_finalize (stmt);
+
+  // sqlite3_trace(m_db, NULL, NULL);
 
   return msg;
 }

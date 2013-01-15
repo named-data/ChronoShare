@@ -27,11 +27,12 @@ const double SyncCore::RANDOM_PERCENT = 0.5;
 
 SyncCore::SyncCore(const string &path, const Name &userName, const Name &localPrefix, const Name &syncPrefix, const StateMsgCallback &callback, CcnxWrapperPtr handle, SchedulerPtr scheduler)
          : m_log(path, userName.toString())
+         , m_scheduler(scheduler)
+         , m_stateMsgCallback(callback)
+         , m_userName(userName)
          , m_localPrefix(localPrefix)
          , m_syncPrefix(syncPrefix)
-         , m_stateMsgCallback(callback)
          , m_handle(handle)
-         , m_scheduler(scheduler)
 {
   m_rootHash = m_log.RememberStateInStateLog();
   m_syncClosure = new Closure(0, boost::bind(&SyncCore::handleSyncData, this, _1, _2), boost::bind(&SyncCore::handleSyncInterestTimeout, this, _1));
@@ -81,6 +82,7 @@ SyncCore::updateLocalPrefix(const Name &localPrefix)
 void
 SyncCore::updateLocalState(sqlite3_int64 seqno)
 {
+  cout << "User name: " << m_userName << endl;
   m_log.UpdateDeviceSeqNo(m_userName, seqno);
   // choose to update locator everytime
   m_log.UpdateLocator(m_userName, m_localPrefix);
