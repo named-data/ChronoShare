@@ -62,6 +62,10 @@ BOOST_AUTO_TEST_CASE (BasicDatabaseTest)
   hash = db.RememberStateInStateLog ();
   BOOST_CHECK_EQUAL (lexical_cast<string> (*hash), "86b51f1f98662583b295b61385ae4450ff8fac955981f1ca4381144ab1d7a4e0");
 
+  db.UpdateLocator(Name ("Alex"), Name("Hawaii"));
+
+  BOOST_CHECK_EQUAL(db.LookupLocator(Name ("Alex")), Name ("Hawaii"));
+
   
   // db.FindStateDifferences ("00", "95284d3132a7a88b85c5141ca63efa68b7a7daf37315def69e296a0c24692833");
   // db.FindStateDifferences ("86b51f1f98662583b295b61385ae4450ff8fac955981f1ca4381144ab1d7a4e0", "00");

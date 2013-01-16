@@ -105,6 +105,7 @@ CcnxWrapper::ccnLoop ()
         catch (CcnxOperationException &e)
         {
           // do not try reconnect for now
+          cout << *get_error_info<errmsg_info_str> (e) << endl;
           throw e;
           /*
           m_connected = false;

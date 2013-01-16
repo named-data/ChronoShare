@@ -27,7 +27,7 @@ void setResult(const SyncStateMsgPtr &msg, Result &result)
     string strName = state.name();
     result.deviceName = Name((const unsigned char *)strName.c_str(), strName.size());
     string strLoc = state.locator();
-    result.locator = Name((const unsigned char *)strLoc.c_str(), strName.size());
+    result.locator = Name((const unsigned char *)strLoc.c_str(), strLoc.size());
     result.seq = state.seq();
   }
   else
@@ -78,6 +78,8 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   HashPtr root1 = core1->root();
   HashPtr root2 = core2->root();
   BOOST_CHECK_EQUAL(*root1, *root2);
+
+  cout << "\n\n\n\n\n\n----------\n";
   core1->updateLocalState(1);
   usleep(100000);
   BOOST_CHECK_EQUAL(result2.seq, 1);

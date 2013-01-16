@@ -96,12 +96,13 @@ SyncCore::updateLocalState(sqlite3_int64 seqno)
   Bytes syncData;
   msgToBytes(msg, syncData);
   m_handle->publishData(syncName, syncData, FRESHNESS);
+  cout << m_userName << " publishes: " << *oldHash << endl;
 
   // no hurry in sending out new Sync Interest; if others send the new Sync Interest first, no problem, we know the new root hash already;
   // this is trying to avoid the situation that the order of SyncData and new Sync Interest gets reversed at receivers
   ostringstream ss;
   ss << *m_rootHash;
-  TaskPtr task(new OneTimeTask(boost::bind(&SyncCore::sendSyncInterest, this), ss.str(), m_scheduler, 0.05));
+  TaskPtr task(new OneTimeTask(boost::bind(&SyncCore::sendSyncInterest, this), ss.str(), m_scheduler, 0.1));
   m_scheduler->addTask(task);
   sendSyncInterest();
 }
@@ -134,6 +135,7 @@ SyncCore::handleRecoverInterest(const Name &name)
     // we know the hash, should reply everything
     SyncStateMsgPtr msg = m_log.FindStateDifferences(*(Hash::Origin), *m_rootHash);
     // DEBUG
+    /*
     assert(msg->state_size() > 0);
     int size = msg->state_size();
     int index = 0;
@@ -154,10 +156,12 @@ SyncCore::handleRecoverInterest(const Name &name)
       }
       index++;
     }
+    */
     // END DEBUG
     Bytes syncData;
     msgToBytes(msg, syncData);
     m_handle->publishData(name, syncData, FRESHNESS);
+    cout << m_userName << " publishes " << hash << endl;
   }
   else
   {
@@ -192,6 +196,7 @@ SyncCore::handleSyncInterest(const Name &name)
     ostringstream ss;
     ss << *hash;
     double wait = m_recoverWaitGenerator->nextInterval();
+    cout << m_userName << ", rootHash: " << *m_rootHash << ", hash: " << *hash << endl;
     cout << "recover task scheduled after wait: " << wait << endl;
     TaskPtr task(new OneTimeTask(boost::bind(&SyncCore::recover, this, hash), ss.str(), m_scheduler, wait));
     m_scheduler->addTask(task);
@@ -220,8 +225,9 @@ SyncCore::handleRecoverInterestTimeout(const Name &name)
 void
 SyncCore::handleRecoverData(const Name &name, const Bytes &content)
 {
-  cout << "handle recover data" << endl;
+  //cout << "handle recover data" << endl;
   handleStateData(content);
+  sendSyncInterest();
 }
 
 void
@@ -253,17 +259,17 @@ SyncCore::handleStateData(const Bytes &content)
     SyncState state = msg->state(index);
     string devStr = state.name();
     Name deviceName((const unsigned char *)devStr.c_str(), devStr.size());
-    cout << "Got Name: " << deviceName;
+  //  cout << "Got Name: " << deviceName;
     if (state.type() == SyncState::UPDATE)
     {
       sqlite3_int64 seqno = state.seq();
-      cout << ", Got seq: " << seqno << endl;
+   //   cout << ", Got seq: " << seqno << endl;
       m_log.UpdateDeviceSeqNo(deviceName, seqno);
       if (state.has_locator())
       {
         string locStr = state.locator();
         Name locatorName((const unsigned char *)locStr.c_str(), locStr.size());
-        cout << ", Got loc: " << locatorName << endl;
+    //    cout << ", Got loc: " << locatorName << endl;
         m_log.UpdateLocator(deviceName, locatorName);
         WriteLock(m_ypMutex);
         m_yp[deviceName] = locatorName;
@@ -281,7 +287,7 @@ SyncCore::handleStateData(const Bytes &content)
   HashPtr oldHash = m_rootHash;
   m_rootHash = m_log.RememberStateInStateLog();
   SyncStateMsgPtr diff = m_log.FindStateDifferences(*oldHash, *m_rootHash);
-  cout << "OldHash: " << *oldHash << ", Newhash: " << *m_rootHash << endl;
+
   m_stateMsgCallback(diff);
 }
 
@@ -290,14 +296,15 @@ SyncCore::sendSyncInterest()
 {
   Name syncInterest = constructSyncName(m_rootHash);
   m_handle->sendInterest(syncInterest, m_syncClosure);
+  cout << m_userName << " send SYNC interest: " << *m_rootHash << endl;
 }
 
 void
 SyncCore::recover(const HashPtr &hash)
 {
-  cout << "Recover for: " << *hash << endl;
   if (!(*hash == *m_rootHash) && m_log.LookupSyncLog(*hash) <= 0)
   {
+    cout << m_userName << ", Recover for: " << *hash << endl;
     // unfortunately we still don't recognize this hash
     Bytes bytes;
     readRaw(bytes, (const unsigned char *)hash->GetHash(), hash->GetHashBytes());
@@ -306,6 +313,7 @@ SyncCore::recover(const HashPtr &hash)
     // append the unknown hash
     recoverInterest.appendComp(bytes);
     m_handle->sendInterest(recoverInterest, m_recoverClosure);
+    cout << m_userName << " send RECOVER Interest: " << *hash << endl;
   }
   else
   {

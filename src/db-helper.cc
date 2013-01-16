@@ -239,8 +239,6 @@ DbHelper::hash_xStep (sqlite3_context *context, int argc, sqlite3_value **argv)
   const void *name    = sqlite3_value_blob  (argv[0]);
   sqlite3_int64 seqno = sqlite3_value_int64 (argv[1]);
 
-  std::cout << context << ": nameBytes " << nameBytes << " seqno " << seqno << std::endl;
-  
   EVP_DigestUpdate (*hash_context, name, nameBytes);
   EVP_DigestUpdate (*hash_context, &seqno, sizeof(sqlite3_int64));
 }
