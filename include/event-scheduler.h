@@ -246,8 +246,8 @@ private:
   boost::uniform_real<> m_dist;
   boost::variate_generator<RNG_TYPE &, boost::uniform_real<> > m_random;
   Direction m_direction;
-  double m_interval;
   double m_percent;
+  double m_interval;
 
 };
 #endif // EVENT_SCHEDULER_H

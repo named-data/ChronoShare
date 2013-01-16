@@ -100,12 +100,12 @@ SyncLog::RememberStateInStateLog ()
   int res = sqlite3_exec (m_db, "BEGIN TRANSACTION;", 0,0,0);
 
   res += sqlite3_exec (m_db, "\
-INSERT INTO SyncLog                                     \
-    (state_hash, last_update)                           \
-    SELECT                                              \
-       hash(device_name, seq_no), datetime('now')       \
-    FROM SyncNodes                                      \
-    ORDER BY device_name;                               \
+INSERT INTO SyncLog                                                \
+    (state_hash, last_update)                                      \
+    SELECT                                                         \
+       hash(device_name, seq_no), datetime('now')                  \
+    FROM (SELECT * FROM SyncNodes                                  \
+              ORDER BY device_name);                               \
 ", 0,0,0);
 
   if (res != SQLITE_OK)
@@ -263,6 +263,11 @@ SyncLog::LookupLocator(const Name &deviceName)
   return locator;
 }
 
+// void xTrace (void*, const char* q)
+// {
+//   cout << q << endl;
+// }
+
 void
 SyncLog::UpdateLocator(const Name &deviceName, const Name &locator)
 {
@@ -270,8 +275,8 @@ SyncLog::UpdateLocator(const Name &deviceName, const Name &locator)
   sqlite3_prepare_v2 (m_db, "UPDATE SyncNodes SET last_known_locator=? WHERE device_name=?;", -1, &stmt, 0);
   Ccnx::CcnxCharbufPtr nameBuf = deviceName;
   Ccnx::CcnxCharbufPtr locatorBuf = locator;
-  sqlite3_bind_blob (stmt, 1, nameBuf->buf(), nameBuf->length(), SQLITE_STATIC);
-  sqlite3_bind_blob (stmt, 2, locatorBuf->buf(), locatorBuf->length(), SQLITE_STATIC);
+  sqlite3_bind_blob (stmt, 1, locatorBuf->buf(), locatorBuf->length(), SQLITE_STATIC);
+  sqlite3_bind_blob (stmt, 2, nameBuf->buf(), nameBuf->length(),       SQLITE_STATIC);
   int res = sqlite3_step (stmt);
 
   if (res != SQLITE_OK && res != SQLITE_DONE)
@@ -287,11 +292,6 @@ SyncLog::FindStateDifferences (const std::string &oldHash, const std::string &ne
 {
   return FindStateDifferences (*Hash::FromString (oldHash), *Hash::FromString (newHash));
 }
-
-// void xTrace (void*, const char* q)
-// {
-//   cout << q << endl;
-// }
 
 SyncStateMsgPtr
 SyncLog::FindStateDifferences (const Hash &oldHash, const Hash &newHash)
@@ -362,14 +362,16 @@ SELECT sn.device_name, sn.last_known_locator, s_old.seq_no, s_new.seq_no\
         state->set_locator (reinterpret_cast<const char*> (sqlite3_column_blob (stmt, 1)), sqlite3_column_bytes (stmt, 1));
       }
 
-      sqlite3_int64 newSeqNo = sqlite3_column_int64 (stmt, 3);
-      if (newSeqNo >= 0)
+      if (sqlite3_column_type (stmt, 3) == SQLITE_NULL)
         {
+        state->set_type (SyncState::DELETE);
+        }
+      else
+        {
+          sqlite3_int64 newSeqNo = sqlite3_column_int64 (stmt, 3);
           state->set_type (SyncState::UPDATE);
           state->set_seq (newSeqNo);
         }
-      else
-        state->set_type (SyncState::DELETE);
 
       // std::cout << sqlite3_column_text (stmt, 0) <<
       //   ": from "  << sqlite3_column_int64 (stmt, 1) <<
