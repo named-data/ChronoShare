@@ -97,7 +97,10 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   BOOST_CHECK_EQUAL(result1.locator, loc2);
 
   // simple simultaneous data generation
+  cout << "\n\n\n\n\n\n----------Simultaneous\n";
   core1->updateLocalState(11);
+  // change the value here 100, 2000, 3000, 5000, each with different error (for 2000 and 3000 run at least 3 times)
+  usleep(6000);
   core2->updateLocalState(12);
   usleep(1000000);
   BOOST_CHECK_EQUAL(result1.seq, 12);
