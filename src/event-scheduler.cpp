@@ -14,6 +14,11 @@ eventCallback(evutil_socket_t fd, short what, void *arg)
   task = NULL;
 }
 
+void errorCallback(int err)
+{
+  cout << "Fatal error: " << err << endl;
+}
+
 Task::Task(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler)
      : m_callback(callback)
      , m_tag(tag)
@@ -130,8 +135,9 @@ RandomIntervalGenerator::nextInterval()
   return interval;
 }
 
-Scheduler::Scheduler()
+Scheduler::Scheduler() : m_running(false)
 {
+  event_set_fatal_callback(errorCallback);
   evthread_use_pthreads();
   m_base = event_base_new();
 }
@@ -144,19 +150,40 @@ Scheduler::~Scheduler()
 void
 Scheduler::eventLoop()
 {
-  event_base_loop(m_base, EVLOOP_NO_EXIT_ON_EMPTY);
+  while(true)
+  {
+    if (event_base_loop(m_base, EVLOOP_NO_EXIT_ON_EMPTY) < 0)
+    {
+      cout << "scheduler loop break error" << endl;
+    }
+    ReadLock(m_mutex);
+    if (!m_running)
+    {
+      cout << "scheduler loop break normal" << endl;
+      break;
+    }
+  }
 }
 
 void
 Scheduler::start()
 {
+  {
+    WriteLock(m_mutex);
+    m_running = true;
+  }
   m_thread = boost::thread(&Scheduler::eventLoop, this);
 }
 
 void
 Scheduler::shutdown()
 {
+  {
+    WriteLock(m_mutex);
+    m_running = false;
+  }
   event_base_loopbreak(m_base);
+  cout << "shutdown, calling loop break" << endl;
   m_thread.join();
 }
 
@@ -168,8 +195,16 @@ Scheduler::addTask(const TaskPtr &task)
   if (addToMap(newTask))
   {
     newTask->reset();
-    evtimer_add(newTask->ev(), newTask->tv());
+    int res = evtimer_add(newTask->ev(), newTask->tv());
+    if (res < 0)
+    {
+      cout << "evtimer_add failed for " << task->tag() << endl;
+    }
     return true;
+  }
+  else
+  {
+    cout << "fail to add task: " << task->tag() << endl;
   }
 
   return false;
@@ -184,7 +219,11 @@ Scheduler::rescheduleTask(const Task::Tag &tag)
   {
     TaskPtr task = it->second;
     task->reset();
-    evtimer_add(task->ev(), task->tv());
+    int res = evtimer_add(task->ev(), task->tv());
+    if (res < 0)
+    {
+      cout << "evtimer_add failed for " << task->tag() << endl;
+    }
   }
 }
 

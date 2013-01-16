@@ -71,7 +71,6 @@ BOOST_AUTO_TEST_CASE(SchedulerTest)
   BOOST_CHECK_EQUAL(scheduler->size(), 1);
   usleep(1000000);
 
-  scheduler->shutdown();
 
   int hello = 0, world = 0, period = 0;
 
@@ -99,6 +98,7 @@ BOOST_AUTO_TEST_CASE(SchedulerTest)
   // invoked every 0.2 seconds before deleted by matcher
   BOOST_CHECK_EQUAL(period, static_cast<int>((0.6 + 0.6 + 0.4 + 0.2 + 0.1) / 0.2));
 
+  scheduler->shutdown();
 }
 
 BOOST_AUTO_TEST_CASE(GeneratorTest)

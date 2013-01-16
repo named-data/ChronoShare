@@ -5,6 +5,8 @@
 
 #include <event2/event.h>
 #include <event2/thread.h>
+#include <event2/event-config.h>
+#include <event2/util.h>
 
 #include <boost/function.hpp>
 #include <boost/shared_ptr.hpp>
@@ -197,6 +199,7 @@ protected:
   typedef boost::shared_lock<Mutex> ReadLock;
   TaskMap m_taskMap;
   Mutex m_mutex;
+  bool m_running;
   event_base *m_base;
   boost::thread m_thread;
 };
