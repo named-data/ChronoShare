@@ -99,12 +99,10 @@ SyncCore::updateLocalState(sqlite3_int64 seqno)
 
   // no hurry in sending out new Sync Interest; if others send the new Sync Interest first, no problem, we know the new root hash already;
   // this is trying to avoid the situation that the order of SyncData and new Sync Interest gets reversed at receivers
-  /*
   ostringstream ss;
   ss << *m_rootHash;
   TaskPtr task(new OneTimeTask(boost::bind(&SyncCore::sendSyncInterest, this), ss.str(), m_scheduler, 0.05));
   m_scheduler->addTask(task);
-  */
   sendSyncInterest();
 }
 
@@ -191,16 +189,12 @@ SyncCore::handleSyncInterest(const Name &name)
   else
   {
     // we don't recognize the hash, send recover Interest if still don't know the hash after a randomized wait period
-    /*
     ostringstream ss;
     ss << *hash;
     double wait = m_recoverWaitGenerator->nextInterval();
     cout << "recover task scheduled after wait: " << wait << endl;
     TaskPtr task(new OneTimeTask(boost::bind(&SyncCore::recover, this, hash), ss.str(), m_scheduler, wait));
     m_scheduler->addTask(task);
-    */
-
-    recover(hash);
 
   }
 }
