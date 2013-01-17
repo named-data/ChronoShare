@@ -26,6 +26,7 @@
 #include <sync-state.pb.h>
 #include <ccnx-name.h>
 #include <map>
+#include <boost/thread/shared_mutex.hpp>
 
 typedef boost::shared_ptr<SyncStateMsg> SyncStateMsgPtr;
 
@@ -83,6 +84,11 @@ protected:
   Ccnx::Name m_localName;
   
   sqlite3_int64 m_localDeviceId;
+
+  typedef boost::mutex Mutex;
+  typedef boost::unique_lock<Mutex> WriteLock;
+  
+  Mutex m_stateUpdateMutex;  
 };
 
 

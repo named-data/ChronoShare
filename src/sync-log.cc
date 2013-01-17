@@ -23,10 +23,16 @@
 #include <utility>
 
 #include <boost/make_shared.hpp>
+#include <boost/thread.hpp>
 
 using namespace boost;
 using namespace std;
 using namespace Ccnx;
+
+void xTrace (void*, const char* q)
+{
+  cout << q << endl;
+}
 
 SyncLog::SyncLog (const boost::filesystem::path &path, const std::string &localName)
   : DbHelper (path)
@@ -93,10 +99,11 @@ SyncLog::GetNextLocalSeqNo ()
   return seq_no;
 }
 
-
 HashPtr
 SyncLog::RememberStateInStateLog ()
 {
+  WriteLock lock (m_stateUpdateMutex);
+
   int res = sqlite3_exec (m_db, "BEGIN TRANSACTION;", 0,0,0);
 
   res += sqlite3_exec (m_db, "\
@@ -108,8 +115,10 @@ INSERT INTO SyncLog                                                \
               ORDER BY device_name);                               \
 ", 0,0,0);
 
+  // std::cout << sqlite3_errmsg (m_db) << std::endl;
   if (res != SQLITE_OK)
     {
+      sqlite3_exec (m_db, "ROLLBACK TRANSACTION;", 0,0,0);
       BOOST_THROW_EXCEPTION (Error::Db ()
                              << errmsg_info_str (sqlite3_errmsg(m_db)));
     }
@@ -127,8 +136,10 @@ INSERT INTO SyncStateNodes                              \
   res += sqlite3_bind_int64 (insertStmt, 1, rowId);
   sqlite3_step (insertStmt);
 
+  // std::cout << sqlite3_errmsg (m_db) << std::endl;
   if (res != SQLITE_OK)
     {
+      sqlite3_exec (m_db, "ROLLBACK TRANSACTION;", 0,0,0);
       BOOST_THROW_EXCEPTION (Error::Db ()
                              << errmsg_info_str (sqlite3_errmsg(m_db)));
     }
@@ -147,15 +158,24 @@ SELECT state_hash FROM SyncLog WHERE state_id = ?\
       retval = make_shared<Hash> (sqlite3_column_blob (getHashStmt, 0),
                                   sqlite3_column_bytes (getHashStmt, 0));
     }
+  else
+    {
+      sqlite3_exec (m_db, "ROLLBACK TRANSACTION;", 0,0,0);
+
+      // std::cout << sqlite3_errmsg (m_db) << std::endl;
+      BOOST_THROW_EXCEPTION (Error::Db ()
+                             << errmsg_info_str ("Not a valid hash in rememberStateInStateLog"));
+    }
   sqlite3_finalize (getHashStmt);
   res += sqlite3_exec (m_db, "COMMIT;", 0,0,0);
 
   if (res != SQLITE_OK)
     {
+      sqlite3_exec (m_db, "ROLLBACK TRANSACTION;", 0,0,0);
       BOOST_THROW_EXCEPTION (Error::Db ()
                              << errmsg_info_str ("Some error with rememberStateInStateLog"));
     }
-
+  
   return retval;
 }
 
@@ -262,11 +282,6 @@ SyncLog::LookupLocator(const Name &deviceName)
 
   return locator;
 }
-
-// void xTrace (void*, const char* q)
-// {
-//   cout << q << endl;
-// }
 
 void
 SyncLog::UpdateLocator(const Name &deviceName, const Name &locator)
