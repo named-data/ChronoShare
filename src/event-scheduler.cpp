@@ -156,7 +156,7 @@ Scheduler::eventLoop()
     {
       cout << "scheduler loop break error" << endl;
     }
-    ReadLock(m_mutex);
+    ReadLock lock(m_mutex);
     if (!m_running)
     {
       cout << "scheduler loop break normal" << endl;
@@ -169,7 +169,7 @@ void
 Scheduler::start()
 {
   {
-    WriteLock(m_mutex);
+    WriteLock lock(m_mutex);
     m_running = true;
   }
   m_thread = boost::thread(&Scheduler::eventLoop, this);
@@ -179,7 +179,7 @@ void
 Scheduler::shutdown()
 {
   {
-    WriteLock(m_mutex);
+    WriteLock lock(m_mutex);
     m_running = false;
   }
   event_base_loopbreak(m_base);
@@ -213,7 +213,7 @@ Scheduler::addTask(const TaskPtr &task)
 void
 Scheduler::rescheduleTask(const Task::Tag &tag)
 {
-  ReadLock(m_mutex);
+  ReadLock lock(m_mutex);
   TaskMapIt it = m_taskMap.find(tag);
   if (it != m_taskMap.end())
   {
@@ -230,7 +230,7 @@ Scheduler::rescheduleTask(const Task::Tag &tag)
 bool
 Scheduler::addToMap(const TaskPtr &task)
 {
-  WriteLock(m_mutex);
+  WriteLock lock(m_mutex);
   if (m_taskMap.find(task->tag()) == m_taskMap.end())
   {
     m_taskMap.insert(make_pair(task->tag(), task));
@@ -242,7 +242,7 @@ Scheduler::addToMap(const TaskPtr &task)
 void
 Scheduler::deleteTask(const Task::Tag &tag)
 {
-  WriteLock(m_mutex);
+  WriteLock lock(m_mutex);
   TaskMapIt it = m_taskMap.find(tag);
   if (it != m_taskMap.end())
   {
@@ -255,7 +255,7 @@ Scheduler::deleteTask(const Task::Tag &tag)
 void
 Scheduler::deleteTask(const Task::TaskMatcher &matcher)
 {
-  WriteLock(m_mutex);
+  WriteLock lock(m_mutex);
   TaskMapIt it = m_taskMap.begin();
   while(it != m_taskMap.end())
   {
@@ -278,6 +278,6 @@ Scheduler::deleteTask(const Task::TaskMatcher &matcher)
 int
 Scheduler::size()
 {
-  ReadLock(m_mutex);
+  ReadLock lock(m_mutex);
   return m_taskMap.size();
 }

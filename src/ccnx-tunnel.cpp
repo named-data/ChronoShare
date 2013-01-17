@@ -68,7 +68,7 @@ CcnxTunnel::handleTunneledInterest(const Name &tunneledInterest)
   // The interest must have m_localPrefix as a prefix (component-wise), otherwise ccnd would not deliver it to us
   Name interest = tunneledInterest.getPartialName(m_localPrefix.size());
 
-  ReadLock(m_ritLock);
+  ReadLock lock(m_ritLock);
 
   // This is linear scan, but should be acceptable under the assumption that the caller wouldn't be listening to a lot prefixes (as of now, most app listen to one or two prefixes)
   for (RitIter it = m_rit.begin(); it != m_rit.end(); it++)
@@ -104,7 +104,7 @@ CcnxTunnel::isPrefix(const Name &prefix, const Name &name)
 int
 CcnxTunnel::setInterestFilter(const Name &prefix, const InterestCallback &interestCallback)
 {
-  WriteLock(m_ritLock);
+  WriteLock lock(m_ritLock);
   // make sure copy constructor for boost::function works properly
   m_rit.insert(make_pair(prefix, interestCallback));
   return 0;
@@ -113,7 +113,7 @@ CcnxTunnel::setInterestFilter(const Name &prefix, const InterestCallback &intere
 void
 CcnxTunnel::clearInterestFilter(const Name &prefix)
 {
-  WriteLock(m_ritLock);
+  WriteLock lock(m_ritLock);
   // remove all
   m_rit.erase(prefix);
 }
