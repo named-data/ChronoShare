@@ -25,6 +25,34 @@ const string SyncCore::RECOVER = "RECOVER";
 const double SyncCore::WAIT = 0.05;
 const double SyncCore::RANDOM_PERCENT = 0.5;
 
+// for debugging
+static void
+printMsg(SyncStateMsgPtr &msg)
+{
+  cout << " ===== start Msg ======" << endl;
+  int size = msg->state_size();
+  if (size > 0)
+  {
+    int index = 0;
+    while (index < size)
+    {
+      SyncState state = msg->state(index);
+      string strName = state.name();
+      string strLocator = state.locator();
+      sqlite3_int64 seq = state.seq();
+      cout << "Name: " << Name((const unsigned char *)strName.c_str(), strName.size());
+      cout << ", Locator: " << Name((const unsigned char *)strLocator.c_str(), strLocator.size());
+      cout << ", seq: " << seq << endl;
+      index ++;
+    }
+  }
+  else
+  {
+    cout << "Msg size 0" << endl;
+  }
+  cout << " ++++++++ end Msg  ++++++++ \n\n" << endl;
+}
+
 SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPrefix, const Name &syncPrefix, const StateMsgCallback &callback, const CcnxWrapperPtr &handle, const SchedulerPtr &scheduler)
          : m_log(syncLog)
          , m_scheduler(scheduler)
@@ -68,6 +96,10 @@ SyncCore::yp(const Name &deviceName)
   {
     locator = m_yp[deviceName];
   }
+  else
+  {
+    cout << "self: " << m_userName << ", deviceName: " << deviceName << " not found in yp " << endl;
+  }
   return locator;
 }
 
@@ -96,6 +128,7 @@ SyncCore::updateLocalState(sqlite3_int64 seqno)
   msgToBytes(msg, syncData);
   m_handle->publishData(syncName, syncData, FRESHNESS);
   cout << m_userName << " publishes: " << *oldHash << endl;
+  printMsg(msg);
 
   // no hurry in sending out new Sync Interest; if others send the new Sync Interest first, no problem, we know the new root hash already;
   // this is trying to avoid the situation that the order of SyncData and new Sync Interest gets reversed at receivers
@@ -161,6 +194,7 @@ SyncCore::handleRecoverInterest(const Name &name)
     msgToBytes(msg, syncData);
     m_handle->publishData(name, syncData, FRESHNESS);
     cout << m_userName << " publishes " << hash << endl;
+    printMsg(msg);
   }
   else
   {
@@ -188,6 +222,8 @@ SyncCore::handleSyncInterest(const Name &name)
     Bytes syncData;
     msgToBytes(msg, syncData);
     m_handle->publishData(name, syncData, FRESHNESS);
+    cout << m_userName << " publishes: " << *hash << endl;
+    printMsg(msg);
   }
   else
   {
@@ -251,6 +287,8 @@ SyncCore::handleStateData(const Bytes &content)
     return;
   }
 
+  cout << m_userName << " receives Msg " << endl;
+  printMsg (msg);
   int size = msg->state_size();
   int index = 0;
   while (index < size)
@@ -272,6 +310,7 @@ SyncCore::handleStateData(const Bytes &content)
         m_log->UpdateLocator(deviceName, locatorName);
         WriteLock lock(m_ypMutex);
         m_yp[deviceName] = locatorName;
+        cout << "self: " << m_userName << ", device: " << deviceName << " < == > " << locatorName << endl;
       }
     }
     else

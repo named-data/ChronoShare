@@ -22,6 +22,13 @@ void checkRoots(const HashPtr &root1, const HashPtr &root2)
 BOOST_AUTO_TEST_CASE(SyncCoreTest)
 {
   string dir = "./SyncCoreTest";
+  // clean the test dir
+  path d(dir);
+  if (exists(d))
+  {
+    remove_all(d);
+  }
+
   string dir1 = "./SyncCoreTest/1";
   string dir2 = "./SyncCoreTest/2";
   Name user1("/joker");
@@ -36,12 +43,6 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
 
   SchedulerPtr scheduler(new Scheduler());
 
-  // clean the test dir
-  path d(dir);
-  if (exists(d))
-  {
-    remove_all(d);
-  }
 
   SyncCore *core1 = new SyncCore(log1, user1, loc1, syncPrefix, bind(callback, _1), c1, scheduler);
   usleep(10000);
@@ -54,16 +55,19 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   usleep(100000);
   checkRoots(core1->root(), core2->root());
   BOOST_CHECK_EQUAL(core2->seq(user1), 1);
+  BOOST_CHECK_EQUAL(core2->yp(user1), loc1);
 
   core1->updateLocalState(5);
   usleep(100000);
   checkRoots(core1->root(), core2->root());
   BOOST_CHECK_EQUAL(core2->seq(user1), 5);
+  BOOST_CHECK_EQUAL(core2->yp(user1), loc1);
 
   core2->updateLocalState(10);
   usleep(100000);
   checkRoots(core1->root(), core2->root());
   BOOST_CHECK_EQUAL(core1->seq(user2), 10);
+  BOOST_CHECK_EQUAL(core1->yp(user2), loc2);
 
   // simple simultaneous data generation
   cout << "\n\n\n\n\n\n----------Simultaneous\n";
@@ -74,6 +78,11 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   checkRoots(core1->root(), core2->root());
   BOOST_CHECK_EQUAL(core1->seq(user2), 15);
   BOOST_CHECK_EQUAL(core2->seq(user1), 11);
+
+  BOOST_CHECK_EQUAL(core1->yp(user1), loc1);
+  BOOST_CHECK_EQUAL(core1->yp(user2), loc2);
+  BOOST_CHECK_EQUAL(core2->yp(user1), loc1);
+  BOOST_CHECK_EQUAL(core2->yp(user2), loc2);
 
   // clean the test dir
   if (exists(d))
