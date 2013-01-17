@@ -34,7 +34,7 @@ CcnxWrapper::connectCcnd()
   //}
 
   m_handle = ccn_create ();
-  UniqueRecLock(m_mutex);
+  UniqueRecLock lock(m_mutex);
   if (ccn_connect(m_handle, NULL) < 0)
   {
     BOOST_THROW_EXCEPTION (CcnxOperationException() << errmsg_info_str("connection to ccnd failed"));
@@ -54,7 +54,7 @@ CcnxWrapper::connectCcnd()
 CcnxWrapper::~CcnxWrapper()
 {
   {
-    UniqueRecLock(m_mutex);
+    UniqueRecLock lock(m_mutex);
     m_running = false;
   }
 
@@ -75,7 +75,7 @@ CcnxWrapper::ccnLoop ()
         {
           int res = 0;
           {
-            UniqueRecLock(m_mutex);
+            UniqueRecLock lock(m_mutex);
             res = ccn_run (m_handle, 0);
           }
 
@@ -88,7 +88,7 @@ CcnxWrapper::ccnLoop ()
 
           pollfd pfds[1];
           {
-            UniqueRecLock(m_mutex);
+            UniqueRecLock lock(m_mutex);
 
             pfds[0].fd = ccn_get_connection_fd (m_handle);
             pfds[0].events = POLLIN;
@@ -174,7 +174,7 @@ CcnxWrapper::createContentObject(const Name  &name, const void *buf, size_t len,
 int
 CcnxWrapper::putToCcnd (const Bytes &contentObject)
 {
-  UniqueRecLock(m_mutex);
+  UniqueRecLock lock(m_mutex);
   if (!m_running || !m_connected)
     return -1;
 
@@ -288,7 +288,7 @@ incomingData(ccn_closure *selfp,
 
 int CcnxWrapper::sendInterest (const Name &interest, const Closure *closure, const Selectors &selectors)
 {
-  UniqueRecLock(m_mutex);
+  UniqueRecLock lock(m_mutex);
   if (!m_running || !m_connected)
     return -1;
 
@@ -317,7 +317,7 @@ int CcnxWrapper::sendInterest (const Name &interest, const Closure *closure, con
 
 int CcnxWrapper::setInterestFilter (const Name &prefix, const InterestCallback &interestCallback)
 {
-  UniqueRecLock(m_mutex);
+  UniqueRecLock lock(m_mutex);
   if (!m_running || !m_connected)
     return -1;
 
@@ -340,7 +340,7 @@ int CcnxWrapper::setInterestFilter (const Name &prefix, const InterestCallback &
 void
 CcnxWrapper::clearInterestFilter (const Name &prefix)
 {
-  UniqueRecLock(m_mutex);
+  UniqueRecLock lock(m_mutex);
   if (!m_running || !m_connected)
     return;
 

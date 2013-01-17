@@ -15,8 +15,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
- * Author: Alexander Afanasyev <alexander.afanasyev@ucla.edu>
+ * Author: Zhenkai Zhu <zhenkai@cs.ucla.edu>
+ *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
 #include "sync-core.h"
@@ -64,7 +64,7 @@ Name
 SyncCore::yp(const Name &deviceName)
 {
   Name locator;
-  ReadLock(m_ypMutex);
+  ReadLock lock(m_ypMutex);
   if (m_yp.find(deviceName) != m_yp.end())
   {
     locator = m_yp[deviceName];
@@ -271,7 +271,7 @@ SyncCore::handleStateData(const Bytes &content)
         Name locatorName((const unsigned char *)locStr.c_str(), locStr.size());
     //    cout << ", Got loc: " << locatorName << endl;
         m_log.UpdateLocator(deviceName, locatorName);
-        WriteLock(m_ypMutex);
+        WriteLock lock(m_ypMutex);
         m_yp[deviceName] = locatorName;
       }
     }
