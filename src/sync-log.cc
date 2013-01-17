@@ -34,6 +34,7 @@ void xTrace (void*, const char* q)
   cout << q << endl;
 }
 
+
 SyncLog::SyncLog (const boost::filesystem::path &path, const std::string &localName)
   : DbHelper (path)
   , m_localName (localName)
@@ -398,4 +399,20 @@ SELECT sn.device_name, sn.last_known_locator, s_old.seq_no, s_new.seq_no\
   // sqlite3_trace(m_db, NULL, NULL);
 
   return msg;
+}
+
+sqlite3_int64
+SyncLog::SeqNo(const Name &name)
+{
+  sqlite3_stmt *stmt;
+  sqlite3_int64 seq = -1;
+  sqlite3_prepare_v2 (m_db, "SELECT seq_no FROM SyncNodes WHERE device_name=?;", -1, &stmt, 0);
+  Ccnx::CcnxCharbufPtr nameBuf = name;
+  sqlite3_bind_blob (stmt, 1, nameBuf->buf (), nameBuf->length (), SQLITE_STATIC);
+  if (sqlite3_step (stmt) == SQLITE_ROW)
+  {
+    seq = sqlite3_column_int64 (stmt, 0);
+  }
+
+  return seq;
 }

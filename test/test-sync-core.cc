@@ -9,44 +9,15 @@ using namespace boost::filesystem;
 
 BOOST_AUTO_TEST_SUITE(SyncCoreTests)
 
-typedef struct
+void callback(const SyncStateMsgPtr &msg)
 {
-  Name deviceName;
-  Name locator;
-  int64_t seq;
-} Result;
-
-Result result1;
-Result result2;
-
-void setResult(const SyncStateMsgPtr &msg, Result &result)
-{
-  if (msg->state_size() > 0)
-  {
-    SyncState state = msg->state(0);
-    string strName = state.name();
-    result.deviceName = Name((const unsigned char *)strName.c_str(), strName.size());
-    string strLoc = state.locator();
-    result.locator = Name((const unsigned char *)strLoc.c_str(), strLoc.size());
-    result.seq = state.seq();
-  }
-  else
-  {
-    cout << "Msg state size: " << msg->state_size() << endl;
-  }
+  BOOST_CHECK(msg->state_size() > 0);
 }
 
-void callback1(const SyncStateMsgPtr &msg)
+void checkRoots(const HashPtr &root1, const HashPtr &root2)
 {
-  setResult(msg, result1);
+  BOOST_CHECK_EQUAL(*root1, *root2);
 }
-
-void callback2(const SyncStateMsgPtr &msg)
-{
-  setResult(msg, result2);
-}
-
-
 
 BOOST_AUTO_TEST_CASE(SyncCoreTest)
 {
@@ -68,43 +39,37 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
     remove_all(d);
   }
 
-  SyncCore *core1 = new SyncCore(dir1, user1, loc1, syncPrefix, bind(callback1, _1), c1);
+  SyncCore *core1 = new SyncCore(dir1, user1, loc1, syncPrefix, bind(callback, _1), c1);
   usleep(10000);
-  SyncCore *core2 = new SyncCore(dir2, user2, loc2, syncPrefix, bind(callback2, _1), c2);
+  SyncCore *core2 = new SyncCore(dir2, user2, loc2, syncPrefix, bind(callback, _1), c2);
   usleep(1000000);
-
-  SyncState state;
-
-  HashPtr root1 = core1->root();
-  HashPtr root2 = core2->root();
-  BOOST_CHECK_EQUAL(*root1, *root2);
+  checkRoots(core1->root(), core2->root());
 
   cout << "\n\n\n\n\n\n----------\n";
   core1->updateLocalState(1);
   usleep(100000);
-  BOOST_CHECK_EQUAL(result2.seq, 1);
-  BOOST_CHECK_EQUAL(result2.deviceName, user1);
-  BOOST_CHECK_EQUAL(result2.locator, loc1);
+  checkRoots(core1->root(), core2->root());
+  BOOST_CHECK_EQUAL(core2->seq(user1), 1);
 
   core1->updateLocalState(5);
   usleep(100000);
-  BOOST_CHECK_EQUAL(result2.seq, 5);
+  checkRoots(core1->root(), core2->root());
+  BOOST_CHECK_EQUAL(core2->seq(user1), 5);
 
   core2->updateLocalState(10);
   usleep(100000);
-  BOOST_CHECK_EQUAL(result1.seq, 10);
-  BOOST_CHECK_EQUAL(result1.deviceName, user2);
-  BOOST_CHECK_EQUAL(result1.locator, loc2);
+  checkRoots(core1->root(), core2->root());
+  BOOST_CHECK_EQUAL(core1->seq(user2), 10);
 
   // simple simultaneous data generation
   cout << "\n\n\n\n\n\n----------Simultaneous\n";
   core1->updateLocalState(11);
-  // change the value here 100, 2000, 3000, 5000, each with different error (for 2000 and 3000 run at least 3 times)
   usleep(100);
-  core2->updateLocalState(12);
+  core2->updateLocalState(15);
   usleep(1000000);
-  BOOST_CHECK_EQUAL(result1.seq, 12);
-  BOOST_CHECK_EQUAL(result2.seq, 11);
+  checkRoots(core1->root(), core2->root());
+  BOOST_CHECK_EQUAL(core1->seq(user2), 15);
+  BOOST_CHECK_EQUAL(core2->seq(user1), 11);
 
   // clean the test dir
   if (exists(d))

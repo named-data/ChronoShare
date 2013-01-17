@@ -86,8 +86,12 @@ public:
   void
   recover(const HashPtr &hash);
 
+// ------------------ only used in test -------------------------
   HashPtr
   root() { return m_rootHash; }
+
+  sqlite3_int64
+  seq(const Name &name);
 
 protected:
   void

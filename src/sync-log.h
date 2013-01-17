@@ -74,6 +74,10 @@ public:
   SyncStateMsgPtr
   FindStateDifferences (const Hash &oldHash, const Hash &newHash);  
 
+  //-------- only used in test -----------------
+  sqlite3_int64
+  SeqNo(const Ccnx::Name &name);
+
 protected:
   void
   UpdateDeviceSeqNo (sqlite3_int64 deviceId, sqlite3_int64 seqNo);

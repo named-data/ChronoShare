@@ -288,7 +288,10 @@ SyncCore::handleStateData(const Bytes &content)
   m_rootHash = m_log.RememberStateInStateLog();
   SyncStateMsgPtr diff = m_log.FindStateDifferences(*oldHash, *m_rootHash);
 
-  m_stateMsgCallback(diff);
+  if (diff->state_size() > 0)
+  {
+    m_stateMsgCallback(diff);
+  }
 }
 
 void
@@ -344,4 +347,10 @@ SyncCore::msgToBytes(const SyncStateMsgPtr &msg, Bytes &bytes)
   int size = msg->ByteSize();
   bytes.resize(size);
   msg->SerializeToArray(head(bytes), size);
+}
+
+sqlite3_int64
+SyncCore::seq(const Name &name)
+{
+  return m_log.SeqNo(name);
 }
