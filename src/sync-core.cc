@@ -117,6 +117,10 @@ SyncCore::updateLocalState(sqlite3_int64 seqno)
   m_log->UpdateDeviceSeqNo(m_userName, seqno);
   // choose to update locator everytime
   m_log->UpdateLocator(m_userName, m_localPrefix);
+  {
+    WriteLock lock(m_ypMutex);
+    m_yp[m_userName] = m_localPrefix;
+  }
   HashPtr oldHash = m_rootHash;
   m_rootHash = m_log->RememberStateInStateLog();
 
