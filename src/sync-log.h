@@ -95,5 +95,7 @@ protected:
   Mutex m_stateUpdateMutex;  
 };
 
+typedef boost::shared_ptr<SyncLog> SyncLogPtr;
+
 
 #endif // SYNC_LOG_H

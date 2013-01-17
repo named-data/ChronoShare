@@ -31,6 +31,10 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   Name syncPrefix("/broadcast/darkknight");
   CcnxWrapperPtr c1(new CcnxWrapper());
   CcnxWrapperPtr c2(new CcnxWrapper());
+  SyncLogPtr log1(new SyncLog(dir1, user1.toString()));
+  SyncLogPtr log2(new SyncLog(dir2, user2.toString()));
+
+  SchedulerPtr scheduler(new Scheduler());
 
   // clean the test dir
   path d(dir);
@@ -39,9 +43,9 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
     remove_all(d);
   }
 
-  SyncCore *core1 = new SyncCore(dir1, user1, loc1, syncPrefix, bind(callback, _1), c1);
+  SyncCore *core1 = new SyncCore(log1, user1, loc1, syncPrefix, bind(callback, _1), c1, scheduler);
   usleep(10000);
-  SyncCore *core2 = new SyncCore(dir2, user2, loc2, syncPrefix, bind(callback, _1), c2);
+  SyncCore *core2 = new SyncCore(log2, user2, loc2, syncPrefix, bind(callback, _1), c2, scheduler);
   usleep(1000000);
   checkRoots(core1->root(), core2->root());
 

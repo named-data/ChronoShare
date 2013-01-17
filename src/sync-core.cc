@@ -25,9 +25,9 @@ const string SyncCore::RECOVER = "RECOVER";
 const double SyncCore::WAIT = 0.05;
 const double SyncCore::RANDOM_PERCENT = 0.5;
 
-SyncCore::SyncCore(const string &path, const Name &userName, const Name &localPrefix, const Name &syncPrefix, const StateMsgCallback &callback, CcnxWrapperPtr handle)
-         : m_log(path, userName.toString())
-         , m_scheduler(new Scheduler())
+SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPrefix, const Name &syncPrefix, const StateMsgCallback &callback, const CcnxWrapperPtr &handle, const SchedulerPtr &scheduler)
+         : m_log(syncLog)
+         , m_scheduler(scheduler)
          , m_stateMsgCallback(callback)
          , m_userName(userName)
          , m_localPrefix(localPrefix)
@@ -35,18 +35,17 @@ SyncCore::SyncCore(const string &path, const Name &userName, const Name &localPr
          , m_handle(handle)
          , m_recoverWaitGenerator(new RandomIntervalGenerator(WAIT, RANDOM_PERCENT, RandomIntervalGenerator::UP))
 {
-  m_rootHash = m_log.RememberStateInStateLog();
+  m_rootHash = m_log->RememberStateInStateLog();
   m_syncClosure = new Closure(0, boost::bind(&SyncCore::handleSyncData, this, _1, _2), boost::bind(&SyncCore::handleSyncInterestTimeout, this, _1));
   m_recoverClosure = new Closure(0, boost::bind(&SyncCore::handleRecoverData, this, _1, _2), boost::bind(&SyncCore::handleRecoverInterestTimeout, this, _1));
   m_handle->setInterestFilter(m_syncPrefix, boost::bind(&SyncCore::handleInterest, this, _1));
-  m_log.initYP(m_yp);
+  m_log->initYP(m_yp);
   m_scheduler->start();
   sendSyncInterest();
 }
 
 SyncCore::~SyncCore()
 {
-  m_scheduler->shutdown();
   if (m_syncClosure != 0)
   {
     delete m_syncClosure;
@@ -83,13 +82,13 @@ SyncCore::updateLocalPrefix(const Name &localPrefix)
 void
 SyncCore::updateLocalState(sqlite3_int64 seqno)
 {
-  m_log.UpdateDeviceSeqNo(m_userName, seqno);
+  m_log->UpdateDeviceSeqNo(m_userName, seqno);
   // choose to update locator everytime
-  m_log.UpdateLocator(m_userName, m_localPrefix);
+  m_log->UpdateLocator(m_userName, m_localPrefix);
   HashPtr oldHash = m_rootHash;
-  m_rootHash = m_log.RememberStateInStateLog();
+  m_rootHash = m_log->RememberStateInStateLog();
 
-  SyncStateMsgPtr msg = m_log.FindStateDifferences(*oldHash, *m_rootHash);
+  SyncStateMsgPtr msg = m_log->FindStateDifferences(*oldHash, *m_rootHash);
 
   // reply sync Interest with oldHash as last component
   Name syncName = constructSyncName(oldHash);
@@ -130,10 +129,10 @@ SyncCore::handleRecoverInterest(const Name &name)
   Bytes hashBytes = name.getComp(name.size() - 1);
   // this is the hash unkonwn to the sender of the interest
   Hash hash(head(hashBytes), hashBytes.size());
-  if (m_log.LookupSyncLog(hash) > 0)
+  if (m_log->LookupSyncLog(hash) > 0)
   {
     // we know the hash, should reply everything
-    SyncStateMsgPtr msg = m_log.FindStateDifferences(*(Hash::Origin), *m_rootHash);
+    SyncStateMsgPtr msg = m_log->FindStateDifferences(*(Hash::Origin), *m_rootHash);
     // DEBUG
     /*
     assert(msg->state_size() > 0);
@@ -180,11 +179,11 @@ SyncCore::handleSyncInterest(const Name &name)
     cout << "same as root hash: " << *hash << endl;
     return;
   }
-  else if (m_log.LookupSyncLog(*hash) > 0)
+  else if (m_log->LookupSyncLog(*hash) > 0)
   {
     // we know something more
     cout << "found hash in sync log" << endl;
-    SyncStateMsgPtr msg = m_log.FindStateDifferences(*hash, *m_rootHash);
+    SyncStateMsgPtr msg = m_log->FindStateDifferences(*hash, *m_rootHash);
 
     Bytes syncData;
     msgToBytes(msg, syncData);
@@ -264,13 +263,13 @@ SyncCore::handleStateData(const Bytes &content)
     {
       sqlite3_int64 seqno = state.seq();
    //   cout << ", Got seq: " << seqno << endl;
-      m_log.UpdateDeviceSeqNo(deviceName, seqno);
+      m_log->UpdateDeviceSeqNo(deviceName, seqno);
       if (state.has_locator())
       {
         string locStr = state.locator();
         Name locatorName((const unsigned char *)locStr.c_str(), locStr.size());
     //    cout << ", Got loc: " << locatorName << endl;
-        m_log.UpdateLocator(deviceName, locatorName);
+        m_log->UpdateLocator(deviceName, locatorName);
         WriteLock lock(m_ypMutex);
         m_yp[deviceName] = locatorName;
       }
@@ -285,8 +284,8 @@ SyncCore::handleStateData(const Bytes &content)
 
   // find the actuall difference and invoke callback on the actual difference
   HashPtr oldHash = m_rootHash;
-  m_rootHash = m_log.RememberStateInStateLog();
-  SyncStateMsgPtr diff = m_log.FindStateDifferences(*oldHash, *m_rootHash);
+  m_rootHash = m_log->RememberStateInStateLog();
+  SyncStateMsgPtr diff = m_log->FindStateDifferences(*oldHash, *m_rootHash);
 
   if (diff->state_size() > 0)
   {
@@ -305,7 +304,7 @@ SyncCore::sendSyncInterest()
 void
 SyncCore::recover(const HashPtr &hash)
 {
-  if (!(*hash == *m_rootHash) && m_log.LookupSyncLog(*hash) <= 0)
+  if (!(*hash == *m_rootHash) && m_log->LookupSyncLog(*hash) <= 0)
   {
     cout << m_userName << ", Recover for: " << *hash << endl;
     // unfortunately we still don't recognize this hash
@@ -352,5 +351,5 @@ SyncCore::msgToBytes(const SyncStateMsgPtr &msg, Bytes &bytes)
 sqlite3_int64
 SyncCore::seq(const Name &name)
 {
-  return m_log.SeqNo(name);
+  return m_log->SeqNo(name);
 }

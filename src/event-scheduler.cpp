@@ -168,23 +168,24 @@ Scheduler::eventLoop()
 void
 Scheduler::start()
 {
+  WriteLock lock(m_mutex);
+  if (!m_running)
   {
-    WriteLock lock(m_mutex);
+    m_thread = boost::thread(&Scheduler::eventLoop, this);
     m_running = true;
   }
-  m_thread = boost::thread(&Scheduler::eventLoop, this);
 }
 
 void
 Scheduler::shutdown()
 {
+  WriteLock lock(m_mutex);
+  if (m_running)
   {
-    WriteLock lock(m_mutex);
+    event_base_loopbreak(m_base);
+    m_thread.join();
     m_running = false;
   }
-  event_base_loopbreak(m_base);
-  cout << "shutdown, calling loop break" << endl;
-  m_thread.join();
 }
 
 bool

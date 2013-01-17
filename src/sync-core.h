@@ -46,12 +46,13 @@ public:
   static const double RANDOM_PERCENT; // seconds;
 
 public:
-  SyncCore(const string &path                   // path where SyncLog is stored
-           , const Name &userName               // unique permanent name for local user
+  SyncCore(SyncLogPtr syncLog
+           , const Name &userName
            , const Name &localPrefix            // routable name used by the local user
            , const Name &syncPrefix             // the prefix for the sync collection
            , const StateMsgCallback &callback   // callback when state change is detected
-           , CcnxWrapperPtr handle);
+           , const CcnxWrapperPtr &handle
+           , const SchedulerPtr &scheduler);
   ~SyncCore();
 
   // some other code should call this fuction when local prefix
@@ -113,7 +114,7 @@ protected:
   msgToBytes(const SyncStateMsgPtr &msg, Bytes &bytes);
 
 protected:
-  SyncLog m_log;
+  SyncLogPtr m_log;
   SchedulerPtr m_scheduler;
   StateMsgCallback m_stateMsgCallback;
   Name m_userName;

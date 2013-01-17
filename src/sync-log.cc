@@ -116,7 +116,7 @@ INSERT INTO SyncLog                                                \
               ORDER BY device_name);                               \
 ", 0,0,0);
 
-  // std::cout << sqlite3_errmsg (m_db) << std::endl;
+   std::cout << sqlite3_errmsg (m_db) << std::endl;
   if (res != SQLITE_OK)
     {
       sqlite3_exec (m_db, "ROLLBACK TRANSACTION;", 0,0,0);
