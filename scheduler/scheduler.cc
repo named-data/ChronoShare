@@ -82,13 +82,13 @@ Scheduler::start()
 void
 Scheduler::shutdown()
 {
+  WriteLock lock(m_mutex);
+  if (m_running)
   {
-    WriteLock lock(m_mutex);
+    event_base_loopbreak(m_base);
+    m_thread.join();
     m_running = false;
   }
-  
-  event_base_loopbreak(m_base);
-  m_thread.join();
 }
 
 bool
