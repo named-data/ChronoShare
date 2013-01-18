@@ -2,7 +2,6 @@
 
 VERSION='0.1'
 APPNAME='chronoshare'
-CCNXLIB='ccnxx'
 
 from waflib import Build, Logs
 
@@ -62,86 +61,45 @@ def configure(conf):
     conf.write_config_header('src/config.h')
 
 def build (bld):
-    common = bld.objects (
-        target = "common",
+    scheduler = bld.objects (
+        target = "scheduler",
         features = ["cxx"],
-        source = ['src/hash-helper.cc',
-                  'src/chronoshare-client.ice',
-                  ],
-        use = 'BOOST',
-        includes = ['include', 'src'],
+        source = bld.path.ant_glob(['scheduler/**/*.cc']),
+        use = 'BOOST BOOST_THREAD LIBEVENT LIBEVENT_PTHREADS',
+        includes = ['scheduler'],
         )
 
     libccnx = bld (
-        target=CCNXLIB,
-        features=['cxx', 'cxxshlib'],
-        source =  [
-            'src/ccnx-wrapper.cpp',
-            'src/ccnx-pco.cpp',
-            'src/ccnx-closure.cpp',
-            'src/ccnx-tunnel.cpp',
-            'src/object-db.cc',
-            'src/object-manager.cc',
-            'src/ccnx-name.cpp',
-            'src/ccnx-selectors.cpp',
-            'src/event-scheduler.cpp',
-            ],
-        use = 'BOOST BOOST_THREAD BOOST_FILESYSTEM SSL SQLITE3 CCNX common LIBEVENT LIBEVENT_PTHREADS',
-        includes = ['include', 'src'],
+        target="ccnx",
+        features=['cxx'],
+        source = bld.path.ant_glob(['ccnx/**/*.cc', 'ccnx/**/*.cpp']),
+        use = 'BOOST BOOST_THREAD SSL CCNX scheduler',
+        includes = ['ccnx', 'scheduler'],
         )
 
-    database = bld.objects (
-        target = "database",
-        features = ["cxx"],
-        source = [
-                  'src/db-helper.cc',
-                  'src/sync-log.cc',
-                  'src/action-log.cc',
-                  'src/action-item.proto',
-                  'src/sync-state.proto',
-                  'src/sync-core.cc',
-            ],
-        use = "BOOST SQLITE3 SSL common",
-        includes = ['include', 'src'],
+    chornoshare = bld (
+        target="chronoshare",
+        features=['cxx'],
+        source = bld.path.ant_glob(['src/**/*.cc', 'src/**/*.cpp', 'src/**/*.proto']),
+        use = "BOOST BOOST_FILESYSTEM scheduler ccnx",
+        includes = "ccnx scheduler src",
         )
-
+        
     # Unit tests
     if bld.env['TEST']:
       unittests = bld.program (
           target="unit-tests",
-          source = bld.path.ant_glob(['test/**/*.cc']),
+          source = bld.path.ant_glob(['test/*.cc']),
           features=['cxx', 'cxxprogram'],
-          use = 'BOOST_TEST BOOST_FILESYSTEM ccnxx database',
-          includes = ['include', 'src'],
+          use = 'BOOST_TEST BOOST_FILESYSTEM ccnx database chronoshare',
+          includes = "ccnx scheduler src",
           )
 
-    client = bld (
-        target="cs-client",
-        features=['cxx', 'cxxprogram'],
-        source = ['client/client.cc',
-                  ],
-        use = "BOOST CCNX SSL ICE common",
-        includes = ['include', 'src'],
-        )
-
-    daemon = bld (
-        target="cs-daemon",
-        features=['cxx', 'cxxprogram'],
-        # source = bld.path.ant_glob(['src/**/*.cc']),
-        source = ['daemon/daemon.cc',
-                  'daemon/notify-i.cc',
-                  ],
-        use = "BOOST CCNX SSL SQLITE3 ICE common database ccnxx",
-        includes = ['include', 'src'],
-        )
-    
-
-
-    qt = bld (
-        target = "filewatcher",
-        features = "qt4 cxx cxxprogram",
-        defines = "WAF",
-        source = "filesystemwatcher/filesystemwatcher.cpp filesystemwatcher/simpleeventcatcher.cpp filesystemwatcher/main.cpp",
-        includes = "filesystemwatcher src include .",
-        use = "QTCORE QTGUI"
-        )
+    # qt = bld (
+    #     target = "filewatcher",
+    #     features = "qt4 cxx cxxprogram",
+    #     defines = "WAF",
+    #     source = "filesystemwatcher/filesystemwatcher.cpp filesystemwatcher/simpleeventcatcher.cpp filesystemwatcher/main.cpp",
+    #     includes = "filesystemwatcher src include .",
+    #     use = "QTCORE QTGUI"
+    #     )

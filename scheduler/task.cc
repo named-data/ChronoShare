@@ -22,7 +22,7 @@
 #include "task.h"
 #include "scheduler.h"
 
-void
+static void
 eventCallback(evutil_socket_t fd, short what, void *arg)
 {
   Task *task = static_cast<Task *>(arg);
