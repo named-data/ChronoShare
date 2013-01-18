@@ -81,7 +81,7 @@ def build (bld):
         target="chronoshare",
         features=['cxx'],
         source = bld.path.ant_glob(['src/**/*.cc', 'src/**/*.cpp', 'src/**/*.proto']),
-        use = "BOOST BOOST_FILESYSTEM scheduler ccnx",
+        use = "BOOST BOOST_FILESYSTEM SQLITE3 scheduler ccnx",
         includes = "ccnx scheduler src",
         )
         
@@ -95,11 +95,11 @@ def build (bld):
           includes = "ccnx scheduler src",
           )
 
-    # qt = bld (
-    #     target = "filewatcher",
-    #     features = "qt4 cxx cxxprogram",
-    #     defines = "WAF",
-    #     source = "filesystemwatcher/filesystemwatcher.cpp filesystemwatcher/simpleeventcatcher.cpp filesystemwatcher/main.cpp",
-    #     includes = "filesystemwatcher src include .",
-    #     use = "QTCORE QTGUI"
-    #     )
+    qt = bld (
+        target = "filewatcher",
+        features = "qt4 cxx cxxprogram",
+        defines = "WAF",
+          source = bld.path.ant_glob(['filesystemwatcher/*.cpp']),
+        includes = "filesystemwatcher . ",
+        use = "QTCORE QTGUI"
+        )

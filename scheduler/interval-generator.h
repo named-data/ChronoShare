@@ -32,6 +32,8 @@ typedef boost::shared_ptr<IntervalGenerator> IntervalGeneratorPtr;
 class IntervalGenerator
 {
 public:
+  virtual ~IntervalGenerator () { }
+  
   virtual double
   nextInterval() = 0;
 };

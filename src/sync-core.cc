@@ -21,6 +21,9 @@
 
 #include "sync-core.h"
 
+#include "one-time-task.h"
+#include "random-interval-generator.h"
+
 const string SyncCore::RECOVER = "RECOVER";
 const double SyncCore::WAIT = 0.05;
 const double SyncCore::RANDOM_PERCENT = 0.5;

@@ -44,12 +44,33 @@ public:
   // e.g. 9 ~ 11, percent = 0.2
   // direction shifts the random range; e.g. in the above example, UP would produce a range of
   // 10 ~ 12, DOWN of 8 ~ 10, and EVEN of 9 ~ 11
-  RandomIntervalGenerator(double interval, double percent, Direction direction = EVEN);
-  ~RandomIntervalGenerator(){}
+  RandomIntervalGenerator(double interval, double percent, Direction direction = EVEN)
+  : m_rng(time(NULL))
+  , m_dist(0.0, fractional(percent))
+  , m_random(m_rng, m_dist)
+  , m_direction(direction)
+  , m_percent(percent)
+  , m_interval(interval)
+  { }
+
+  virtual ~RandomIntervalGenerator(){}
   
   virtual double
-  nextInterval() _OVERRIDE;
+  nextInterval() _OVERRIDE
+  {
+    double percent = m_random();
+    double interval = m_interval;
+    switch (m_direction)
+      {
+      case UP: interval = m_interval * (1.0 + percent); break;
+      case DOWN: interval = m_interval * (1.0 - percent); break;
+      case EVEN: interval = m_interval * (1.0 - m_percent/2.0 + percent); break;
+      default: break;
+      }
 
+    return interval;
+  }
+  
 private:
   inline double fractional(double x) { double dummy; return abs(modf(x, &dummy)); }
 

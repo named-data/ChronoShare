@@ -23,8 +23,10 @@
 #define SYNC_CORE_H
 
 #include "sync-log.h"
-#include <ccnx-wrapper.h>
-#include <event-scheduler.h>
+#include "ccnx-wrapper.h"
+#include "scheduler.h"
+#include "interval-generator.h"
+
 #include <boost/function.hpp>
 #include <boost/thread/shared_mutex.hpp>
 
