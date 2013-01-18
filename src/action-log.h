@@ -39,7 +39,8 @@ public:
   AddActionUpdate (const std::string &filename,
                    const Hash &hash,
                    time_t wtime,
-                   int mode);
+                   int mode,
+                   int seg_num);
 
   void
   AddActionMove (const std::string &oldFile, const std::string &newFile);
