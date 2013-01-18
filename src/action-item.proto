@@ -5,18 +5,19 @@ message ActionItem
     UPDATE = 0;
     DELETE = 1;
   }
-  required ActionType action = 3;
+  required ActionType action = 0;
 
-  required string filename = 4;
-  required uint64 version = 5;
-  required uint32 timestamp = 6;
+  required string filename = 1;
+  required uint64 version = 2;
+  required uint32 timestamp = 3;
+  optional uint64 seg_num = 4;
+  optional bytes  file_hash = 5;
 
-  optional bytes  file_hash = 7;
-  // optional uint32 atime = 8;
-  optional uint32 mtime = 9;
-  // optional uint32 ctime = 10;
-  optional uint32 mode  = 11;
+  optional uint32 mtime = 6;
+  optional uint32 mode  = 7;
+  optional uint32 atime = 8;
+  optional uint32 ctime = 9;
 
-  optional bytes  parent_device_name = 12;
-  optional uint64 parent_seq_no = 13;
+  // optional bytes  parent_device_name = 12;
+  // optional uint64 parent_seq_no = 13;
 }

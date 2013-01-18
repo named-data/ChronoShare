@@ -103,6 +103,7 @@ CREATE TABLE ActionLog (                                                \n\
     file_mtime  TIMESTAMP,                                              \n\
     file_ctime  TIMESTAMP,                                              \n\
     file_chmod  INTEGER,                                                \n\
+    file_seg_num INTEGER, /* NULL if action is \"delete\" */            \n\
                                                                         \n\
     parent_device_id INTEGER,                                           \n\
     parent_seq_no    INTEGER,                                           \n\
