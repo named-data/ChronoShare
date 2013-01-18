@@ -331,7 +331,8 @@ SyncCore::handleStateData(const Bytes &content)
   // find the actuall difference and invoke callback on the actual difference
   HashPtr oldHash = m_rootHash;
   m_rootHash = m_log->RememberStateInStateLog();
-  SyncStateMsgPtr diff = m_log->FindStateDifferences(*oldHash, *m_rootHash);
+  // get diff with both new SeqNo and old SeqNo
+  SyncStateMsgPtr diff = m_log->FindStateDifferences(*oldHash, *m_rootHash, true);
 
   if (diff->state_size() > 0)
   {

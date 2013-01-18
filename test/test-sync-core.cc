@@ -13,6 +13,19 @@ BOOST_AUTO_TEST_SUITE(SyncCoreTests)
 void callback(const SyncStateMsgPtr &msg)
 {
   BOOST_CHECK(msg->state_size() > 0);
+  int size = msg->state_size();
+  int index = 0;
+  while (index < size)
+  {
+    SyncState state = msg->state(index);
+    BOOST_CHECK(state.has_old_seq());
+    BOOST_CHECK(state.old_seq() >= 0);
+    if (state.seq() != 0)
+    {
+      BOOST_CHECK(state.old_seq() != state.seq()); 
+    }
+    index++;
+  }
 }
 
 void checkRoots(const HashPtr &root1, const HashPtr &root2)
