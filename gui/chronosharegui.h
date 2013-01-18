@@ -30,6 +30,7 @@
 #include <QDir>
 #include <QFileDialog>
 #include <QCloseEvent>
+#include <QMessageBox>
 
 class ChronoShareGui : public QWidget
 {
@@ -52,6 +53,9 @@ private slots:
     // handle left click of tray icon
     void trayIconClicked(QSystemTrayIcon::ActivationReason reason);
 
+    // view chronoshare settings
+    void viewSettings();
+
 private:
     // create actions that result from clicking a menu option
     void createActions();
@@ -63,10 +67,16 @@ private:
     void setIcon();
 
     // load persistent settings
-    void loadSettings();
+    bool loadSettings();
 
     // save persistent settings
     void saveSettings();
+
+    // prompt user dialog box
+    void openMessageBox(QString title, QString text);
+
+    // overload
+    void openMessageBox(QString title, QString text, QString infotext);
 
     // capture close event
     void closeEvent(QCloseEvent* event);
@@ -76,14 +86,13 @@ private:
     QMenu* m_trayIconMenu; // tray icon menu
 
     QAction* m_openFolder; // open the shared folder action
+    QAction* m_viewSettings; // chronoShare settings
     QAction* m_changeFolder; // change the shared folder action
     QAction* m_quitProgram; // quit program action
 
     QString m_dirPath; // shared directory
 
     QString m_settingsFilePath; // settings file path
-
-    QWidget* m_fileDialogWidget; // file dialog widget
 };
 
 #endif // CHRONOSHAREGUI_H

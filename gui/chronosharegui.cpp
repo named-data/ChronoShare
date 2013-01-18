@@ -23,10 +23,15 @@
 
 ChronoShareGui::ChronoShareGui(QWidget *parent) :
     QWidget(parent),
-    m_fileDialogWidget(new QWidget())
+    m_settingsFilePath(QDir::homePath() + ".cronoShare")
 {
     // load settings
-    loadSettings();
+    if(!loadSettings())
+    {
+        // prompt user to choose folder
+        openMessageBox("First Time Setup", "Please select your shared folder location.");
+        openFileDialog();
+    }
 
     // create actions that result from clicking a menu option
     createActions();
@@ -47,9 +52,32 @@ ChronoShareGui::~ChronoShareGui()
     delete m_trayIcon;
     delete m_trayIconMenu;
     delete m_openFolder;
+    delete m_viewSettings;
     delete m_changeFolder;
     delete m_quitProgram;
-    delete m_fileDialogWidget;
+}
+
+void ChronoShareGui::openMessageBox(QString title, QString text)
+{
+    QMessageBox messageBox(this);
+    messageBox.setWindowTitle(title);
+    messageBox.setText(text);
+
+    messageBox.setIconPixmap(QPixmap(":/images/friends-group-icon.png"));
+
+    messageBox.exec();
+}
+
+void ChronoShareGui::openMessageBox(QString title, QString text, QString infotext)
+{
+    QMessageBox messageBox(this);
+    messageBox.setWindowTitle(title);
+    messageBox.setText(text);
+    messageBox.setInformativeText(infotext);
+
+    messageBox.setIconPixmap(QPixmap(":/images/friends-group-icon.png"));
+
+    messageBox.exec();
 }
 
 void ChronoShareGui::createActions()
@@ -57,6 +85,10 @@ void ChronoShareGui::createActions()
     // create the "open folder" action
     m_openFolder = new QAction(tr("&Open Folder"), this);
     connect(m_openFolder, SIGNAL(triggered()), this, SLOT(openSharedFolder()));
+
+    // create the "view settings" action
+    m_viewSettings = new QAction(tr("&View Settings"), this);
+    connect(m_viewSettings, SIGNAL(triggered()), this, SLOT(viewSettings()));
 
     // create the "change folder" action
     m_changeFolder = new QAction(tr("&Change Folder"), this);
@@ -75,6 +107,8 @@ void ChronoShareGui::createTrayIcon()
 
     // add actions to the menu
     m_trayIconMenu->addAction(m_openFolder);
+    m_trayIconMenu->addSeparator();
+    m_trayIconMenu->addAction(m_viewSettings);
     m_trayIconMenu->addAction(m_changeFolder);
     m_trayIconMenu->addSeparator();
     m_trayIconMenu->addAction(m_quitProgram);
@@ -120,11 +154,18 @@ void ChronoShareGui::openSharedFolder()
 void ChronoShareGui::openFileDialog()
 {
     // prompt user for new directory
-    m_dirPath = QFileDialog::getExistingDirectory(this, tr("Open Directory"),
+    QString tempPath = QFileDialog::getExistingDirectory(this, tr("Choose a new folder"),
                                                     m_dirPath, QFileDialog::ShowDirsOnly |
                                                      QFileDialog::DontResolveSymlinks);
+    QFileInfo qFileInfo(tempPath);
+
+    if(qFileInfo.isDir())
+        m_dirPath = tempPath;
+    else
+        openMessageBox("Error", "Not a valid folder, Ignoring.");
 
     qDebug() << m_dirPath;
+    openMessageBox("Current Folder", "Current Shared Folder:\n" + m_dirPath, "You may change the folder by selecting \"change folder\" from the icon in the system tray.");
 
     // save settings
     saveSettings();
@@ -139,11 +180,30 @@ void ChronoShareGui::trayIconClicked(QSystemTrayIcon::ActivationReason reason)
     }
 }
 
-void ChronoShareGui::loadSettings()
+void ChronoShareGui::viewSettings()
 {
+    // simple for now
+    openMessageBox("Chronoshare Settings", "CurrentFolder:\n" + m_dirPath);
+}
+
+bool ChronoShareGui::loadSettings()
+{
+    bool successful = false;
+
     // Load Settings
     QSettings settings(m_settingsFilePath, QSettings::NativeFormat);
-    m_dirPath = settings.value("dirPath", QDir::homePath()).toString();
+    if(settings.contains("dirPath"))
+    {
+        m_dirPath = settings.value("dirPath", QDir::homePath()).toString();
+        successful = true;
+    }
+    else
+    {
+        m_dirPath = QDir::homePath();
+        successful = false;
+    }
+
+    return successful;
 }
 
 void ChronoShareGui::saveSettings()
