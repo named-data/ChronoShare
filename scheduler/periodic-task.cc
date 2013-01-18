@@ -22,9 +22,10 @@
 #include "periodic-task.h"
 #include <utility>
 
-PeriodicTask::PeriodicTask(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler, const IntervalGeneratorPtr &generator)
-             : Task(callback, tag, scheduler)
-             , m_generator(generator)
+PeriodicTask::PeriodicTask(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler,
+                           IntervalGeneratorPtr generator)
+  : Task(callback, tag, scheduler)
+  , m_generator(generator)
 {
 }
 

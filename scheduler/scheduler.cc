@@ -56,11 +56,14 @@ Scheduler::eventLoop()
     {
       cout << "scheduler loop break error" << endl;
     }
-    ReadLock lock(m_mutex);
-    if (!m_running)
+    
     {
-      cout << "scheduler loop break normal" << endl;
-      break;
+      ReadLock lock(m_mutex);
+      if (!m_running)
+        {
+          cout << "scheduler loop break normal" << endl;
+          break;
+        }
     }
   }
 }
@@ -79,13 +82,13 @@ Scheduler::start()
 void
 Scheduler::shutdown()
 {
-  WriteLock lock(m_mutex);
-  if (m_running)
   {
-    event_base_loopbreak(m_base);
-    m_thread.join();
+    WriteLock lock(m_mutex);
     m_running = false;
   }
+  
+  event_base_loopbreak(m_base);
+  m_thread.join();
 }
 
 bool

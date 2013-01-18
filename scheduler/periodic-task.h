@@ -32,7 +32,7 @@ public:
   // generator is needed only when this is a periodic task
   // two simple generators implementation (SimpleIntervalGenerator and RandomIntervalGenerator) are provided;
   // if user needs more complex pattern in the intervals between calls, extend class IntervalGenerator
-  PeriodicTask(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler, const IntervalGeneratorPtr &generator);
+  PeriodicTask(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler, IntervalGeneratorPtr generator);
   virtual ~PeriodicTask(){}
 
   // invoke callback, reset self and ask scheduler to schedule self with the next delay interval

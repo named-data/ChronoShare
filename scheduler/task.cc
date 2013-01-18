@@ -60,8 +60,11 @@ Task::~Task()
 void
 Task::setTv(double delay)
 {
+  // Alex: when using abs function, i would recommend use it with std:: prefix, otherwise
+  // the standard one may be used, which converts everything to INT, making a lot of problems
   double intPart, fraction;
-  fraction = modf(abs(delay), &intPart);
+  fraction = modf(std::abs(delay), &intPart);
+
   m_tv->tv_sec = static_cast<int>(intPart);
   m_tv->tv_usec = static_cast<int>((fraction * 1000000));
 }
