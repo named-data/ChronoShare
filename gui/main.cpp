@@ -23,10 +23,13 @@
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
+    QApplication app(argc, argv);
 
-    // invoke instance of gui for this shared directory
-    ChronoShareGui w("/Users/jared/Desktop");
+    // do not quit when last window closes
+    app.setQuitOnLastWindowClosed(false);
+
+    // invoke gui
+    ChronoShareGui gui;
     
-    return a.exec();
+    return app.exec();
 }

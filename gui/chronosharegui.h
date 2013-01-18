@@ -24,9 +24,12 @@
 #include <QWidget>
 #include <QSystemTrayIcon>
 #include <QMenu>
-#include <QCloseEvent>
 #include <QDebug>
 #include <QProcess>
+#include <QSettings>
+#include <QDir>
+#include <QFileDialog>
+#include <QCloseEvent>
 
 class ChronoShareGui : public QWidget
 {
@@ -34,12 +37,18 @@ class ChronoShareGui : public QWidget
     
 public:
     // constructor
-    ChronoShareGui(QString dirPath, QWidget* parent = 0);
+    explicit ChronoShareGui(QWidget* parent = 0);
 
     // destructor
     ~ChronoShareGui();
-    
+
 private slots:
+    // open the shared folder
+    void openSharedFolder();
+
+    // open file dialog
+    void openFileDialog();
+
     // handle left click of tray icon
     void trayIconClicked(QSystemTrayIcon::ActivationReason reason);
 
@@ -53,17 +62,28 @@ private:
     // set icon image
     void setIcon();
 
-    // open the shared folder
-    void openSharedFolder();
+    // load persistent settings
+    void loadSettings();
+
+    // save persistent settings
+    void saveSettings();
+
+    // capture close event
+    void closeEvent(QCloseEvent* event);
 
 private:
     QSystemTrayIcon* m_trayIcon; // tray icon
     QMenu* m_trayIconMenu; // tray icon menu
 
     QAction* m_openFolder; // open the shared folder action
+    QAction* m_changeFolder; // change the shared folder action
     QAction* m_quitProgram; // quit program action
 
     QString m_dirPath; // shared directory
+
+    QString m_settingsFilePath; // settings file path
+
+    QWidget* m_fileDialogWidget; // file dialog widget
 };
 
 #endif // CHRONOSHAREGUI_H
