@@ -24,6 +24,7 @@
 
 #include "sync-log.h"
 #include <boost/tuple/tuple.hpp>
+#include <action-item.pb.h>
 #include <ccnx-wrapper.h>
 
 class ActionLog;

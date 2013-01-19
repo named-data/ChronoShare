@@ -2,22 +2,22 @@ message ActionItem
 {
   enum ActionType
   {
-    UPDATE = 1;
-    DELETE = 2;
+    UPDATE = 0;
+    DELETE = 1;
   }
-  required ActionType action = 14;
+  required ActionType action = 1;
 
-  required string filename = 1;
-  required uint64 version = 2;
-  required uint32 timestamp = 3;
-  optional uint64 seg_num = 4;
-  optional bytes  file_hash = 5;
+  required string filename = 2;
+  required uint64 version = 3;
+  required uint32 timestamp = 4;
+  optional uint64 seg_num = 5;
+  optional bytes  file_hash = 6;
 
-  optional uint32 mtime = 6;
-  optional uint32 mode  = 7;
-  // optional uint32 atime = 8;
-  // optional uint32 ctime = 9;
+  optional uint32 mtime = 7;
+  optional uint32 mode  = 8;
+  // optional uint32 atime = 9;
+  // optional uint32 ctime = 10;
 
-  optional bytes  parent_device_name = 12;
-  optional uint64 parent_seq_no = 13;
+  optional bytes  parent_device_name = 11;
+  optional uint64 parent_seq_no = 12;
 }

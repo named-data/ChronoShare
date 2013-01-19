@@ -20,7 +20,6 @@
  */
 
 #include "action-log.h"
-#include <action-item.pb.h>
 
 using namespace boost;
 using namespace std;
