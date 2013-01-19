@@ -82,6 +82,14 @@ public:
   virtual void
   rescheduleTask(const Task::Tag &tag);
 
+  // if the task is not pending, it will be added to the schedule queue
+  // if the task is pending, the delay is changed to the passed in delay
+  // e.g. if at second 0 task A with delay 5 is originally going to run at second 5 and
+  // rescheduleTask(A) is called at second 4, A will be reschedule to run
+  // at second 9
+  virtual void
+  rescheduleTask(const TaskPtr &task);
+
   void
   eventLoop();
 

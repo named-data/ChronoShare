@@ -121,6 +121,27 @@ Scheduler::deleteTask(TaskPtr task)
 }
 
 void
+Scheduler::rescheduleTask(const TaskPtr &task)
+{
+  ReadLock lock(m_mutex);
+  TaskMapIt it = m_taskMap.find(tag);
+  if (it != m_taskMap.end())
+  {
+    TaskPtr task = it->second;
+    task->reset();
+    int res = evtimer_add(task->ev(), task->tv());
+    if (res < 0)
+    {
+      cout << "evtimer_add failed for " << task->tag() << endl;
+    }
+  }
+  else
+  {
+    addTask(task);
+  }
+}
+
+void
 Scheduler::rescheduleTask(const Task::Tag &tag)
 {
   ReadLock lock(m_mutex);
