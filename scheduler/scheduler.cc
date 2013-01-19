@@ -114,6 +114,12 @@ Scheduler::addTask(const TaskPtr &task)
   return false;
 }
 
+virtual void
+Scheduler::deleteTask(TaskPtr task)
+{
+  deleteTask (task->tag ());
+}
+
 void
 Scheduler::rescheduleTask(const Task::Tag &tag)
 {

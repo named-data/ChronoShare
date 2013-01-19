@@ -60,6 +60,10 @@ public:
   virtual bool
   addTask(const TaskPtr &task);
 
+  // delete task by task->tag, regardless of whether it's invoked or not
+  virtual void
+  deleteTask(TaskPtr task);
+  
   // delete task by tag, regardless of whether it's invoked or not
   // if no task is found, no effect
   virtual void
