@@ -105,7 +105,7 @@ def build (bld):
         )
 
     qt = bld (
-	target = "gui",
+	target = "chronoshare-gui",
 	features = "qt4 cxx cxxprogram",
 	defines = "WAF",
 	source = bld.path.ant_glob(['gui/*.cpp']),
