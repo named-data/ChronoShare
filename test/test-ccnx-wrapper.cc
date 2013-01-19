@@ -53,7 +53,7 @@ BOOST_AUTO_TEST_CASE (CcnxWrapperTest)
   usleep(100000);
   c2->setInterestFilter(prefix2, bind(publish2, _1));
 
-  Closure *closure = new Closure(1, bind(dataCallback, _1, _2), bind(timeout, _1));
+  Closure *closure = new Closure(bind(dataCallback, _1, _2), bind(timeout, _1));
 
   c1->sendInterest(Name("/c2/hi"), closure);
   usleep(100000);
@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE (CcnxWrapperTest)
 BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)
 {
 
-  Closure *closure = new Closure(1, bind(dataCallback, _1, _2), bind(timeout, _1));
+  Closure *closure = new Closure(bind(dataCallback, _1, _2), bind(timeout, _1));
 
   Selectors selectors;
   selectors.interestLifetime(1);

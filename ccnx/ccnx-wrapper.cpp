@@ -247,18 +247,16 @@ incomingData(ccn_closure *selfp,
       break;
 
     case CCN_UPCALL_INTEREST_TIMED_OUT: {
-      if (cp != NULL && cp->getRetry() > 0) {
-        cp->decRetry();
-        return CCN_UPCALL_RESULT_REEXPRESS;
-      }
-
-      Name interest(info->interest_ccnb, info->interest_comps);
-      Closure::TimeoutCallbackReturnValue rv = cp->runTimeoutCallback(interest);
-      switch(rv)
+      if (cp != NULL)
       {
-        case Closure::RESULT_OK : return CCN_UPCALL_RESULT_OK;
-        case Closure::RESULT_REEXPRESS : return CCN_UPCALL_RESULT_REEXPRESS;
-        default : break;
+        Name interest(info->interest_ccnb, info->interest_comps);
+        Closure::TimeoutCallbackReturnValue rv = cp->runTimeoutCallback(interest);
+        switch(rv)
+        {
+          case Closure::RESULT_OK : return CCN_UPCALL_RESULT_OK;
+          case Closure::RESULT_REEXPRESS : return CCN_UPCALL_RESULT_REEXPRESS;
+          default : break;
+        }
       }
       return CCN_UPCALL_RESULT_OK;
     }

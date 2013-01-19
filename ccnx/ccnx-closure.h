@@ -21,10 +21,8 @@ public:
 
   typedef boost::function<TimeoutCallbackReturnValue (const Name &)> TimeoutCallback;
 
-  Closure(int retry, const DataCallback &dataCallback, const TimeoutCallback &timeoutCallback = TimeoutCallback());
+  Closure(const DataCallback &dataCallback, const TimeoutCallback &timeoutCallback = TimeoutCallback());
   Closure(const Closure &other);
-  int getRetry() {return m_retry;}
-  void decRetry() { m_retry--;}
   virtual ~Closure();
   virtual void
   runDataCallback(const Name &name, const Bytes &content);
@@ -35,7 +33,6 @@ public:
   dup() const;
 
 protected:
-  int m_retry;
   TimeoutCallback *m_timeoutCallback;
   DataCallback *m_dataCallback;
 };

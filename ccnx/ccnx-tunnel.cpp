@@ -118,8 +118,8 @@ CcnxTunnel::clearInterestFilter(const Name &prefix)
   m_rit.erase(prefix);
 }
 
-TunnelClosure::TunnelClosure(int retry, const DataCallback &dataCallback, CcnxTunnel *tunnel, const Name &originalInterest, const TimeoutCallback &timeoutCallback)
-                  : Closure(retry, dataCallback, timeoutCallback)
+TunnelClosure::TunnelClosure(const DataCallback &dataCallback, CcnxTunnel *tunnel, const Name &originalInterest, const TimeoutCallback &timeoutCallback)
+                  : Closure(dataCallback, timeoutCallback)
                   , m_tunnel(tunnel)
                   , m_originalInterest(originalInterest)
 {
@@ -134,7 +134,7 @@ TunnelClosure::TunnelClosure(const Closure *closure, CcnxTunnel *tunnel, const N
 Closure *
 TunnelClosure::dup() const
 {
-  Closure *closure = new TunnelClosure(m_retry, *m_dataCallback, m_tunnel, m_originalInterest, *m_timeoutCallback);
+  Closure *closure = new TunnelClosure(*m_dataCallback, m_tunnel, m_originalInterest, *m_timeoutCallback);
   return closure;
 }
 
