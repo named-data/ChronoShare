@@ -19,7 +19,6 @@
  */
 
 #include "chronosharegui.h"
-#include "ui_chronosharegui.h"
 
 ChronoShareGui::ChronoShareGui(QWidget *parent) :
     QWidget(parent),
@@ -96,7 +95,7 @@ void ChronoShareGui::createActions()
 
     // create the "quit program" action
     m_quitProgram = new QAction(tr("&Quit"), this);
-    connect(m_quitProgram, SIGNAL(triggered()), qApp, SLOT(quit()));
+    connect(m_quitProgram, SIGNAL(triggered()), this, SLOT(quit()));
 
 }
 
@@ -218,3 +217,9 @@ void ChronoShareGui::closeEvent(QCloseEvent* event)
     qDebug() << "Close Event.";
     event->ignore(); // don't let the event propagate to the base class
 }
+
+#if WAF
+#include "chronosharegui.moc"
+#include "chronosharegui.cpp.moc"
+#endif
+

@@ -103,3 +103,12 @@ def build (bld):
         includes = "filesystemwatcher . ",
         use = "QTCORE QTGUI"
         )
+
+    qt = bld (
+	target = "gui",
+	features = "qt4 cxx cxxprogram",
+	defines = "WAF",
+	source = bld.path.ant_glob(['gui/*.cpp']),
+	includes = "chronosharegui . ",
+	use = "QTCORE QTGUI"
+	)
