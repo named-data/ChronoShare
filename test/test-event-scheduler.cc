@@ -96,6 +96,16 @@ BOOST_AUTO_TEST_CASE(SchedulerTest)
   BOOST_CHECK_EQUAL(scheduler->size(), 1);
   usleep(1000000);
 
+  BOOST_CHECK_EQUAL(scheduler->size(), 0);
+  scheduler->addTask(task1);
+  usleep(400000);
+  BOOST_CHECK_EQUAL(scheduler->size(), 1);
+  scheduler->rescheduleTask(task1);
+  usleep(400000);
+  BOOST_CHECK_EQUAL(scheduler->size(), 1);
+  usleep(110000);
+  BOOST_CHECK_EQUAL(scheduler->size(), 0);
+
 
   int hello = 0, world = 0, period = 0;
 
@@ -116,8 +126,8 @@ BOOST_AUTO_TEST_CASE(SchedulerTest)
     period = it->second;
   }
 
-  // added four times, canceled once before invoking callback
-  BOOST_CHECK_EQUAL(hello, 3);
+  // added five times, canceled once before invoking callback
+  BOOST_CHECK_EQUAL(hello, 4);
   // added two times, canceled once by matcher before invoking callback
   BOOST_CHECK_EQUAL(world, 1);
   // invoked every 0.2 seconds before deleted by matcher

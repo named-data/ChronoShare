@@ -124,7 +124,7 @@ void
 Scheduler::rescheduleTask(const TaskPtr &task)
 {
   ReadLock lock(m_mutex);
-  TaskMapIt it = m_taskMap.find(tag);
+  TaskMapIt it = m_taskMap.find(task->tag());
   if (it != m_taskMap.end())
   {
     TaskPtr task = it->second;
