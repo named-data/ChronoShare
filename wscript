@@ -109,6 +109,6 @@ def build (bld):
 	features = "qt4 cxx cxxprogram",
 	defines = "WAF",
 	source = bld.path.ant_glob(['gui/*.cpp']),
-	includes = "chronosharegui . ",
+	includes = "gui . ",
 	use = "QTCORE QTGUI"
 	)
