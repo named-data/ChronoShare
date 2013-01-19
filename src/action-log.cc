@@ -85,7 +85,8 @@ void
 ActionLog::AddActionUpdate (const std::string &filename,
                             const Hash &hash,
                             time_t wtime,
-                            int mode)
+                            int mode,
+                            int seg_num)
 {
   sqlite3_exec (m_db, "BEGIN TRANSACTION;", 0,0,0);
   
@@ -102,7 +103,7 @@ ActionLog::AddActionUpdate (const std::string &filename,
   sqlite3_stmt *stmt;
   int res = sqlite3_prepare_v2 (m_db, "INSERT INTO ActionLog "
                                 "(device_id, seq_no, action, filename, version, action_timestamp, "
-                                "file_hash, file_atime, file_mtime, file_ctime, file_chmod, "
+                                "file_hash, file_atime, file_mtime, file_ctime, file_chmod, file_seg_num, "
                                 "parent_device_id, parent_seq_no, "
                                 "action_name, action_content_object) "
                                 "VALUES (?, ?, ?, ?, ?, datetime(?, 'unixepoch'),"
@@ -140,16 +141,17 @@ ActionLog::AddActionUpdate (const std::string &filename,
   sqlite3_bind_int64 (stmt, 9, wtime);
   // sqlite3_bind_int64 (stmt, 10, ctime); // NULL
   sqlite3_bind_int   (stmt, 11, mode);
+  sqlite3_bind_int   (stmt, 12, seg_num);
 
   if (parent_device_id > 0 && parent_seq_no > 0)
     {
-      sqlite3_bind_int64 (stmt, 12, parent_device_id);
-      sqlite3_bind_int64 (stmt, 13, parent_seq_no);
+      sqlite3_bind_int64 (stmt, 13, parent_device_id);
+      sqlite3_bind_int64 (stmt, 14, parent_seq_no);
     }
   else
     {
-      sqlite3_bind_null (stmt, 12);
       sqlite3_bind_null (stmt, 13);
+      sqlite3_bind_null (stmt, 14);
     }
   
   // missing part: creating ContentObject for the action !!!
@@ -164,6 +166,7 @@ ActionLog::AddActionUpdate (const std::string &filename,
   item.set_mtime (wtime);
   // item.set_ctime (ctime);
   item.set_mode (mode);
+  item.set_seg_num (seg_num);
 
   if (parent_device_id > 0 && parent_seq_no > 0)
     {
@@ -286,9 +289,9 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
 {
   ActionLog *the = reinterpret_cast<ActionLog*> (sqlite3_user_data (context));
 
-  if (argc != 10)
+  if (argc != 11)
     {
-      sqlite3_result_error (context, "``apply_action'' expects 8 arguments", -1);
+      sqlite3_result_error (context, "``apply_action'' expects 11 arguments", -1);
       return;
     }
 
@@ -311,6 +314,7 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
       time_t mtime = static_cast<time_t> (sqlite3_value_int64 (argv[7]));
       time_t ctime = static_cast<time_t> (sqlite3_value_int64 (argv[8]));
       int mode = sqlite3_value_int (argv[9]);
+      int seg_num = sqlite3_value_int (argv[10]);
 
       cout << "Update " << filename << " " << atime << " " << mtime << " " << ctime << " " << hash << endl;
 
@@ -323,6 +327,7 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
                           "file_mtime=datetime(?, 'unixepoch'),"
                           "file_ctime=datetime(?, 'unixepoch'),"
                           "file_chmod=? "
+                          "file_seg_num=? "
                           "WHERE type=0 AND filename=?", -1, &stmt, 0);
 
       sqlite3_bind_int64 (stmt, 1, device_id);
@@ -332,7 +337,8 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
       sqlite3_bind_int64 (stmt, 5, mtime);
       sqlite3_bind_int64 (stmt, 6, ctime);
       sqlite3_bind_int   (stmt, 7, mode);
-      sqlite3_bind_text  (stmt, 8, filename.c_str (), -1, SQLITE_TRANSIENT);
+      sqlite3_bind_int   (stmt, 8, seg_num);
+      sqlite3_bind_text  (stmt, 9, filename.c_str (), -1, SQLITE_TRANSIENT);
       
       sqlite3_step (stmt);
 

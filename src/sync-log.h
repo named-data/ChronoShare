@@ -69,10 +69,10 @@ public:
 
   // How difference is exposed will be determined later by the actual protocol
   SyncStateMsgPtr
-  FindStateDifferences (const std::string &oldHash, const std::string &newHash);
+  FindStateDifferences (const std::string &oldHash, const std::string &newHash, bool includeOldSeq = false);
 
   SyncStateMsgPtr
-  FindStateDifferences (const Hash &oldHash, const Hash &newHash);  
+  FindStateDifferences (const Hash &oldHash, const Hash &newHash, bool includeOldSeq = false);  
 
   //-------- only used in test -----------------
   sqlite3_int64

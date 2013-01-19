@@ -103,6 +103,7 @@ CREATE TABLE ActionLog (                                                \n\
     file_mtime  TIMESTAMP,                                              \n\
     file_ctime  TIMESTAMP,                                              \n\
     file_chmod  INTEGER,                                                \n\
+    file_seg_num INTEGER, /* NULL if action is \"delete\" */            \n\
                                                                         \n\
     parent_device_id INTEGER,                                           \n\
     parent_seq_no    INTEGER,                                           \n\
@@ -143,7 +144,7 @@ CREATE TRIGGER ActionLogInsert_trigger                                  \n\
                              NEW.device_id, NEW.seq_no,                 \
                              NEW.action,NEW.filename,NEW.file_hash,     \
                              strftime('%s', NEW.file_atime),strftime('%s', NEW.file_mtime),strftime('%s', NEW.file_ctime), \
-                             NEW.file_chmod); /* function that applies action and adds record the FileState */  \n \
+                             NEW.file_chmod, NEW.file_seg_num); /* function that applies action and adds record the FileState */  \n \
     END;                                                                \n\
                                                                         \n\
 CREATE TABLE FileState (                                                \n\
@@ -156,6 +157,7 @@ CREATE TABLE FileState (                                                \n\
     file_mtime  TIMESTAMP,                                              \n\
     file_ctime  TIMESTAMP,                                              \n\
     file_chmod  INTEGER,                                                \n\
+    file_seg_num INTEGER,                                               \n\
                                                                         \n\
     PRIMARY KEY (type, filename)                                        \n\
 );                                                                      \n\

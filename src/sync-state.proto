@@ -11,6 +11,7 @@ message SyncState
 
   optional uint64 seq = 3;
   optional bytes locator = 4;
+  optional uint64 old_seq = 5;
 }
 
 message SyncStateMsg

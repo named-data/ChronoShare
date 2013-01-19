@@ -304,13 +304,13 @@ SyncLog::UpdateLocator(const Name &deviceName, const Name &locator)
 }
 
 SyncStateMsgPtr
-SyncLog::FindStateDifferences (const std::string &oldHash, const std::string &newHash)
+SyncLog::FindStateDifferences (const std::string &oldHash, const std::string &newHash, bool includeOldSeq)
 {
-  return FindStateDifferences (*Hash::FromString (oldHash), *Hash::FromString (newHash));
+  return FindStateDifferences (*Hash::FromString (oldHash), *Hash::FromString (newHash), includeOldSeq);
 }
 
 SyncStateMsgPtr
-SyncLog::FindStateDifferences (const Hash &oldHash, const Hash &newHash)
+SyncLog::FindStateDifferences (const Hash &oldHash, const Hash &newHash, bool includeOldSeq)
 {
   sqlite3_stmt *stmt;
 
@@ -370,6 +370,7 @@ SELECT sn.device_name, sn.last_known_locator, s_old.seq_no, s_new.seq_no\
     {
       SyncState *state = msg->add_state ();
 
+      // set name
       state->set_name (reinterpret_cast<const char*> (sqlite3_column_blob (stmt, 0)), sqlite3_column_bytes (stmt, 0));
 
       // locator is optional, so must check if it is null
@@ -378,6 +379,23 @@ SELECT sn.device_name, sn.last_known_locator, s_old.seq_no, s_new.seq_no\
         state->set_locator (reinterpret_cast<const char*> (sqlite3_column_blob (stmt, 1)), sqlite3_column_bytes (stmt, 1));
       }
 
+      // set old seq
+      if (includeOldSeq)
+      {
+        if (sqlite3_column_type (stmt, 2) == SQLITE_NULL)
+        {
+          // old seq is zero; we always have an initial action of zero seq
+          // other's do not need to fetch this action
+          state->set_old_seq(0);
+        }
+        else
+        {
+          sqlite3_int64 oldSeqNo = sqlite3_column_int64 (stmt, 2);
+          state->set_old_seq(oldSeqNo);
+        }
+      }
+
+      // set new seq
       if (sqlite3_column_type (stmt, 3) == SQLITE_NULL)
         {
         state->set_type (SyncState::DELETE);
