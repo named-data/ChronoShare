@@ -27,11 +27,10 @@
 using namespace boost;
 using namespace std;
 
-Fetcher::Fetcher (Ccnx::CcnxWrapperPtr ccnx, SchedulerPtr scheduler,
+Fetcher::Fetcher (FetchManager &fetchManger,
                   const Ccnx::Name &name, int32_t minSeqNo, int32_t maxSeqNo,
                   const Ccnx::Name &forwardingHint/* = Ccnx::Name ()*/)
-  : m_ccnx (ccnx)
-  , m_scheduler (scheduler)
+  : m_fetchManager (fetchManger)
   , m_name (name)
   , m_forwardingHint (forwardingHint)
   , m_minSendSeqNo (-1)

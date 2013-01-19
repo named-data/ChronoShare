@@ -25,17 +25,25 @@
 #include "ccnx-wrapper.h"
 #include "scheduler.h"
 
+class FetchManager;
+
 class Fetcher 
 {
 public:
-  Fetcher (Ccnx::CcnxWrapperPtr ccnx, SchedulerPtr scheduler,
+  Fetcher (FetchManager &fetchManger,
            const Ccnx::Name &name, int32_t minSeqNo, int32_t maxSeqNo,
            const Ccnx::Name &forwardingHint = Ccnx::Name ());
   virtual ~Fetcher ();
+
+private:
+  void
+  OnData ();
+
+  void
+  OnTimeout ();
   
 private:
-  Ccnx::CcnxWrapperPtr m_ccnx;
-  SchedulerPtr m_scheduler;
+  FetchManager &m_fetchManager;
   
   Ccnx::Name m_name;
   Ccnx::Name m_forwardingHint;
