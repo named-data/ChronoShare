@@ -45,12 +45,19 @@ public:
   virtual ~FetchManager ();
 
   void
-  Enqueue (const Ccnx::Name &deviceName, uint32_t minSeqNo, uint32_t maxSeqNo, int priority=PRIORITY_NORMAL);
+  Enqueue (const Ccnx::Name &deviceName,
+           uint32_t minSeqNo, uint32_t maxSeqNo, int priority=PRIORITY_NORMAL);
+
+  Ccnx::CcnxWrapperPtr
+  GetCcnx ();
+
+  SchedulerPtr
+  GetScheduler ();
   
 private:
   Ccnx::CcnxWrapperPtr m_ccnx;
   SyncLogPtr m_sync; // to access forwarding hints
-  Scheduler m_scheduler;
+  SchedulerPtr m_scheduler;
 };
 
 

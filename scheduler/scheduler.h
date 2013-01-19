@@ -38,6 +38,10 @@
 #include <sys/time.h>
 
 #include "task.h"
+#include "interval-generator.h"
+
+class Scheduler;
+typedef boost::shared_ptr<Scheduler> SchedulerPtr;
 
 /**
  * @brief Scheduler class
@@ -56,9 +60,18 @@ public:
   virtual void
   shutdown();
 
+  // helper method to schedule one-time task
+  static TaskPtr
+  scheduleOneTimeTask (SchedulerPtr scheduler, double delay, const Task::Callback &callback, const Task::Tag &tag);
+
+  // helper method to schedule periodic task
+  static TaskPtr
+  schedulePeriodicTask (SchedulerPtr scheduler, IntervalGeneratorPtr delayGenerator,
+                        const Task::Callback &callback, const Task::Tag &tag);
+  
   // if task with the same tag exists, the task is not added and return false
   virtual bool
-  addTask(const TaskPtr &task);
+  addTask(TaskPtr task);
 
   // delete task by task->tag, regardless of whether it's invoked or not
   virtual void
@@ -116,9 +129,6 @@ protected:
   event_base *m_base;
   boost::thread m_thread;
 };
-
-class Scheduler;
-typedef boost::shared_ptr<Scheduler> SchedulerPtr;
 
 struct SchedulerException : virtual boost::exception, virtual std::exception { };
 

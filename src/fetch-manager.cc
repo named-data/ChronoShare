@@ -32,15 +32,29 @@ FetchManager::FetchManager (CcnxWrapperPtr ccnx, SyncLogPtr sync)
   : m_ccnx (ccnx)
   , m_sync (sync)
 {
-  m_scheduler.start ();
+  m_scheduler = make_shared<Scheduler> ();
+  m_scheduler->start ();
 }
 
 FetchManager::~FetchManager ()
 {
-  m_scheduler.shutdown ();
+  m_scheduler->shutdown ();
+  m_scheduler.reset ();
 }
 
 void
 FetchManager::Enqueue (const Ccnx::Name &deviceName, uint32_t minSeqNo, uint32_t maxSeqNo, int priority/*=PRIORITY_NORMAL*/)
 {
+}
+
+Ccnx::CcnxWrapperPtr
+FetchManager::GetCcnx ()
+{
+  return m_ccnx;
+}
+
+SchedulerPtr
+FetchManager::GetScheduler ()
+{
+  return m_scheduler;
 }

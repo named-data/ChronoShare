@@ -20,9 +20,14 @@
  */
 
 #include "scheduler.h"
+#include "one-time-task.h"
+#include "periodic-task.h"
+
 #include <utility>
+#include <boost/make_shared.hpp>
 
 using namespace std;
+using namespace boost;
 
 #define EVLOOP_NO_EXIT_ON_EMPTY 0x04
 
@@ -91,24 +96,45 @@ Scheduler::shutdown()
   m_thread.join();
 }
 
-bool
-Scheduler::addTask(const TaskPtr &task)
+TaskPtr
+Scheduler::scheduleOneTimeTask (SchedulerPtr scheduler, double delay,
+                                const Task::Callback &callback, const Task::Tag &tag)
 {
-  TaskPtr newTask = task;
+  TaskPtr task = make_shared<OneTimeTask> (callback, tag, scheduler, delay);
+  if (scheduler->addTask (task))
+    return task;
+  else
+    return TaskPtr ();
+}
 
+TaskPtr
+Scheduler::schedulePeriodicTask (SchedulerPtr scheduler, IntervalGeneratorPtr delayGenerator,
+                                 const Task::Callback &callback, const Task::Tag &tag)
+{
+  TaskPtr task = make_shared<PeriodicTask> (callback, tag, scheduler, delayGenerator);
+
+  if (scheduler->addTask (task))
+    return task;
+  else
+    return TaskPtr ();
+}
+
+bool
+Scheduler::addTask(TaskPtr newTask)
+{
   if (addToMap(newTask))
   {
     newTask->reset();
     int res = evtimer_add(newTask->ev(), newTask->tv());
     if (res < 0)
     {
-      cout << "evtimer_add failed for " << task->tag() << endl;
+      cout << "evtimer_add failed for " << newTask->tag() << endl;
     }
     return true;
   }
   else
   {
-    cout << "fail to add task: " << task->tag() << endl;
+    cout << "fail to add task: " << newTask->tag() << endl;
   }
 
   return false;
