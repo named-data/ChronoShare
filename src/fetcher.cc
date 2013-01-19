@@ -26,45 +26,23 @@
 
 using namespace boost;
 using namespace std;
-namespace fs = boost::filesystem;
 
-const std::string INIT_DATABASE = "\
-PRAGMA foreign_keys = ON;           \
-                                    \
-CREATE TABLE                                     \
-    Queue(                                       \
-        name     BLOB NOT NULL PRIMARY KEY,      \
-        seq_no_rcvd INTEGER,                     \
-        seq_no_available INTEGER,                \
-    );                                           \
-";
+Fetcher::Fetcher (Ccnx::CcnxWrapperPtr ccnx, SchedulerPtr scheduler,
+                  const Ccnx::Name &name, int32_t minSeqNo, int32_t maxSeqNo,
+                  const Ccnx::Name &forwardingHint/* = Ccnx::Name ()*/)
+  : m_ccnx (ccnx)
+  , m_scheduler (scheduler)
+  , m_name (name)
+  , m_forwardingHint (forwardingHint)
+  , m_minSendSeqNo (-1)
+  , m_maxSendSeqNo (-1)
+  , m_minSeqNo (minSeqNo)
+  , m_maxSeqNo (maxSeqNo)
 
-Fetcher::Fetcher (const fs::path &path, const string &name)
+  , m_pipeline (6) // initial "congestion window"
 {
-  fs::path chronoshareDirectory = path / ".chronoshare";
-  fs::create_directories (chronoshareDirectory);
-  
-  int res = sqlite3_open((chronoshareDirectory / (name+".db")).c_str (), &m_db);
-  if (res != SQLITE_OK)
-    {
-      BOOST_THROW_EXCEPTION (Error::Fetcher ()
-                             << errmsg_info_str ("Cannot open/create dabatabase: [" + (chronoshareDirectory / (name+".db")).string () + "]"));
-    }
-  
-  char *errmsg = 0;
-  res = sqlite3_exec (m_db, INIT_DATABASE.c_str (), NULL, NULL, &errmsg);
-  if (res != SQLITE_OK && errmsg != 0)
-    {
-      // std::cerr << "DEBUG: " << errmsg << std::endl;
-      sqlite3_free (errmsg);
-    }
 }
 
 Fetcher::~Fetcher ()
 {
-  int res = sqlite3_close (m_db);
-  if (res != SQLITE_OK)
-    {
-      // complain
-    }
 }

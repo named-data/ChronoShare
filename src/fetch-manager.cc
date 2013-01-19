@@ -19,16 +19,28 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-module ChronoshareClient
+#include "fetch-manager.h"
+#include <boost/make_shared.hpp>
+#include <boost/ref.hpp>
+#include <boost/throw_exception.hpp>
+
+using namespace boost;
+using namespace std;
+using namespace Ccnx;
+
+FetchManager::FetchManager (CcnxWrapperPtr ccnx, SyncLogPtr sync)
+  : m_ccnx (ccnx)
+  , m_sync (sync)
 {
-  sequence<byte> HashBytes;
-  
-  interface Notify 
-  {
-    void updateFile (string filename, ["cpp:array"] HashBytes fileHash, long wtime, int mode);
+  m_scheduler.start ();
+}
 
-    void moveFile (string origFilename, string newFilename);
+FetchManager::~FetchManager ()
+{
+  m_scheduler.shutdown ();
+}
 
-    void deleteFile (string filename);
-  };
-};
+void
+FetchManager::Enqueue (const Ccnx::Name &deviceName, uint32_t minSeqNo, uint32_t maxSeqNo, int priority/*=PRIORITY_NORMAL*/)
+{
+}

@@ -19,42 +19,47 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#ifndef FETCHER_H
-#define FETCHER_H
+#ifndef FETCH_MANAGER_H
+#define FETCH_MANAGER_H
 
-#include "ccnx-wrapper.h"
+#include <boost/exception/all.hpp>
+#include <boost/shared_ptr.hpp>
+#include <string>
+#include <stdint.h>
 #include "scheduler.h"
 
-class Fetcher 
+#include "ccnx-wrapper.h"
+#include "ccnx-tunnel.h"
+#include "sync-log.h"
+
+class FetchManager
 {
+  enum
+    {
+      PRIORITY_NORMAL,
+      PRIORITY_HIGH
+    };
+
 public:
-  Fetcher (Ccnx::CcnxWrapperPtr ccnx, SchedulerPtr scheduler,
-           const Ccnx::Name &name, int32_t minSeqNo, int32_t maxSeqNo,
-           const Ccnx::Name &forwardingHint = Ccnx::Name ());
-  virtual ~Fetcher ();
+  FetchManager (Ccnx::CcnxWrapperPtr ccnx, SyncLogPtr sync);
+  virtual ~FetchManager ();
+
+  void
+  Enqueue (const Ccnx::Name &deviceName, uint32_t minSeqNo, uint32_t maxSeqNo, int priority=PRIORITY_NORMAL);
   
 private:
   Ccnx::CcnxWrapperPtr m_ccnx;
-  SchedulerPtr m_scheduler;
-  
-  Ccnx::Name m_name;
-  Ccnx::Name m_forwardingHint;
-  
-  int32_t m_minSendSeqNo;
-  int32_t m_maxSendSeqNo;
-  int32_t m_minSeqNo;
-  int32_t m_maxSeqNo;
-
-  uint32_t m_pipeline;
+  SyncLogPtr m_sync; // to access forwarding hints
+  Scheduler m_scheduler;
 };
 
-typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str; 
 
+typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str; 
 namespace Error {
 struct Fetcher : virtual boost::exception, virtual std::exception { };
 }
 
-typedef boost::shared_ptr<Fetcher> FetcherPtr;
+typedef boost::shared_ptr<FetchManager> FetchManagerPtr;
 
 
 #endif // FETCHER_H
