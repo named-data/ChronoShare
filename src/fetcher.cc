@@ -20,6 +20,8 @@
  */
 
 #include "fetcher.h"
+#include "fetch-manager.h"
+
 #include <boost/make_shared.hpp>
 #include <boost/ref.hpp>
 #include <boost/throw_exception.hpp>
@@ -51,4 +53,20 @@ void
 Fetcher::RestartPipeline ()
 {
   m_active = true;
+}
+
+void
+Fetcher::OnData (uint32_t seqno, const Ccnx::Name &name, const Ccnx::Bytes &)
+{
+  // bla bla
+  if (0)
+    {
+      m_active = false;
+      m_fetchManager.DidFetchComplete (*this);
+    }
+}
+
+void
+Fetcher::OnTimeout (uint32_t seqno, const Ccnx::Name &name)
+{
 }

@@ -126,8 +126,8 @@ protected:
   YellowPage m_yp;
   Mutex m_ypMutex;
   CcnxWrapperPtr m_handle;
-  Closure *m_syncClosure;
-  Closure *m_recoverClosure;
+  Closure m_syncClosure;
+  Closure m_recoverClosure;
 
   IntervalGeneratorPtr m_recoverWaitGenerator;
 

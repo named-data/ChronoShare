@@ -1,7 +1,26 @@
+/* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
+/*
+ * Copyright (c) 2013 University of California, Los Angeles
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Author: Zhenkai Zhu <zhenkai@cs.ucla.edu>
+ *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
+ */
+
 #ifndef CCNX_TUNNEL_H
 #define CCNX_TUNNEL_H
-
-#include <boost/variant.hpp>
 
 #include "ccnx-common.h"
 #include "ccnx-wrapper.h"
@@ -16,8 +35,6 @@
 #endif // __GNUC__ version
 #endif // __GNUC__
 
-using namespace std;
-
 // Eventually, Sync::CcnxWrapper should be moved to this namespace.
 // It has nothing to do with Sync.
 namespace Ccnx
@@ -26,8 +43,8 @@ namespace Ccnx
 class CcnxTunnel : public CcnxWrapper
 {
 public:
-  typedef multimap<Name, InterestCallback> RegisteredInterestTable;
-  typedef multimap<Name, InterestCallback>::iterator RitIter;
+  typedef std::multimap<Name, InterestCallback> RegisteredInterestTable;
+  typedef std::multimap<Name, InterestCallback>::iterator RitIter;
 
 
   CcnxTunnel();
@@ -41,7 +58,7 @@ public:
   publishContentObject(const Name &name, const Bytes &contentObject, int freshness);
 
   virtual int
-  sendInterest (const Name &interest, const Closure *closure, const Selectors &selectors = Selectors());
+  sendInterest (const Name &interest, const Closure &closure, const Selectors &selectors = Selectors());
 
 
   // prefix is topology-independent
@@ -89,9 +106,10 @@ protected:
 class TunnelClosure : public Closure
 {
 public:
-  TunnelClosure(const DataCallback &dataCallback, CcnxTunnel *tunnel, const Name &originalInterest, const TimeoutCallback &timeoutCallback = TimeoutCallback());
+  TunnelClosure(const DataCallback &dataCallback, CcnxTunnel &tunnel,
+                const Name &originalInterest, const TimeoutCallback &timeoutCallback = TimeoutCallback());
 
-  TunnelClosure(const Closure *closure, CcnxTunnel *tunnel, const Name &originalInterest);
+  TunnelClosure(const Closure &closure, CcnxTunnel &tunnel, const Name &originalInterest);
 
   virtual void
   runDataCallback(const Name &name, const Bytes &content) _OVERRIDE;
@@ -100,10 +118,10 @@ public:
   runTimeoutCallback(const Name &interest) _OVERRIDE;
 
   virtual Closure *
-  dup() const _OVERRIDE;
+  dup() const;
 
 private:
-  CcnxTunnel *m_tunnel;
+  CcnxTunnel &m_tunnel;
   Name m_originalInterest;
 };
 

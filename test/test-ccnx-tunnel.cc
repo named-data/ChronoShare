@@ -82,21 +82,16 @@ BOOST_AUTO_TEST_CASE (CcnxTunnelTest)
   g_dc_o = 0;
   t1->publishData(Name(inner), (const unsigned char *)inner.c_str(), inner.size(), 5);
   usleep(100000);
-  Closure *outerClosure = new Closure(bind(outerCallback, _1, _2));
-  c1->sendInterest(Name("/local/hello"), outerClosure);
+
+  c1->sendInterest(Name("/local/hello"), Closure(bind(outerCallback, _1, _2)));
   usleep(100000);
   // it is indeed published as /local/hello
   BOOST_CHECK_EQUAL(g_dc_o, 1);
 
   g_dc_i = 0;
-  Closure *innerClosure = new Closure(bind(innerCallback, _1, _2));
-  t2->sendInterest(Name(inner), innerClosure);
+  t2->sendInterest(Name(inner), Closure(bind(innerCallback, _1, _2)));
   usleep(100000);
   BOOST_CHECK_EQUAL(g_dc_i, 1);
-
-  delete outerClosure;
-  delete innerClosure;
-
 }
 
 BOOST_AUTO_TEST_CASE (CcnxTunnelRegister)
@@ -107,7 +102,7 @@ BOOST_AUTO_TEST_CASE (CcnxTunnelRegister)
   t3.overridePrefix();
   t3.setInterestFilter(Name("/t3"), bind(interestCallback, _1));
   usleep(100000);
-  Closure *innerClosure = new Closure(bind(innerCallback, _1, _2));
+  Closure innerClosure (bind(innerCallback, _1, _2));
   t1->sendInterest(Name("/t3/hello"), innerClosure);
   usleep(100000);
   BOOST_CHECK_EQUAL(g_dc_i, 1);
@@ -119,7 +114,6 @@ BOOST_AUTO_TEST_CASE (CcnxTunnelRegister)
   usleep(100000);
   BOOST_CHECK_EQUAL(g_dc_i, 1);
   BOOST_CHECK_EQUAL(g_ic, 1);
-  delete innerClosure;
 
 }
 

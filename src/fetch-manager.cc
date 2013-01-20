@@ -90,7 +90,7 @@ FetchManager::ScheduleFetches ()
 }
 
 void
-FetchManager::NoDataTimeout (Fetcher &fetcher)
+FetchManager::DidNoDataTimeout (Fetcher &fetcher)
 {
   fetcher.m_forwardingHint = Ccnx::Name ("/ndn/broadcast");
   fetcher.m_active = false;
@@ -99,19 +99,18 @@ FetchManager::NoDataTimeout (Fetcher &fetcher)
     m_currentParallelFetches --;
     // no need to do anything with the m_fetchList
   }
-  
+
   ScheduleFetches ();
 }
 
 void
-FetchManager::FetchComplete (Fetcher &fetcher)
+FetchManager::DidFetchComplete (Fetcher &fetcher)
 {
-  fetcher.m_active = false;
   {
     unique_lock<mutex> lock (m_parellelFetchMutex);
     m_currentParallelFetches --;
     m_fetchList.erase_and_dispose (FetchList::s_iterator_to (fetcher), fetcher_disposer ());
   }
-  
+
   // ? do something else
 }

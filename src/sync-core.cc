@@ -64,11 +64,14 @@ SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPr
          , m_localPrefix(localPrefix)
          , m_syncPrefix(syncPrefix)
          , m_handle(handle)
+         , m_syncClosure (boost::bind(&SyncCore::handleSyncData, this, _1, _2),
+                          boost::bind(&SyncCore::handleSyncInterestTimeout, this, _1))
+         , m_recoverClosure (boost::bind(&SyncCore::handleRecoverData, this, _1, _2),
+                             boost::bind(&SyncCore::handleRecoverInterestTimeout, this, _1))
          , m_recoverWaitGenerator(new RandomIntervalGenerator(WAIT, RANDOM_PERCENT, RandomIntervalGenerator::UP))
 {
   m_rootHash = m_log->RememberStateInStateLog();
-  m_syncClosure = new Closure(boost::bind(&SyncCore::handleSyncData, this, _1, _2), boost::bind(&SyncCore::handleSyncInterestTimeout, this, _1));
-  m_recoverClosure = new Closure(boost::bind(&SyncCore::handleRecoverData, this, _1, _2), boost::bind(&SyncCore::handleRecoverInterestTimeout, this, _1));
+
   m_handle->setInterestFilter(m_syncPrefix, boost::bind(&SyncCore::handleInterest, this, _1));
   m_log->initYP(m_yp);
   m_scheduler->start();
@@ -77,17 +80,7 @@ SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPr
 
 SyncCore::~SyncCore()
 {
-  if (m_syncClosure != 0)
-  {
-    delete m_syncClosure;
-    m_syncClosure = 0;
-  }
-
-  if (m_recoverClosure != 0)
-  {
-    delete m_recoverClosure;
-    m_recoverClosure = 0;
-  }
+  // need to "deregister" closures
 }
 
 Name

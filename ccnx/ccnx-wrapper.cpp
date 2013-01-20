@@ -284,7 +284,7 @@ incomingData(ccn_closure *selfp,
   return CCN_UPCALL_RESULT_OK;
 }
 
-int CcnxWrapper::sendInterest (const Name &interest, const Closure *closure, const Selectors &selectors)
+int CcnxWrapper::sendInterest (const Name &interest, const Closure &closure, const Selectors &selectors)
 {
   UniqueRecLock lock(m_mutex);
   if (!m_running || !m_connected)
@@ -294,7 +294,7 @@ int CcnxWrapper::sendInterest (const Name &interest, const Closure *closure, con
   ccn_charbuf *pname = namePtr->getBuf();
   ccn_closure *dataClosure = new ccn_closure;
 
-  Closure *myClosure = closure->dup();
+  Closure *myClosure = closure.dup();
   dataClosure->data = (void *)myClosure;
 
   dataClosure->p = &incomingData;

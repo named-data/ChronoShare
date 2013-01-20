@@ -53,7 +53,7 @@ BOOST_AUTO_TEST_CASE (CcnxWrapperTest)
   usleep(100000);
   c2->setInterestFilter(prefix2, bind(publish2, _1));
 
-  Closure *closure = new Closure(bind(dataCallback, _1, _2), bind(timeout, _1));
+  Closure closure (bind(dataCallback, _1, _2), bind(timeout, _1));
 
   c1->sendInterest(Name("/c2/hi"), closure);
   usleep(100000);
@@ -63,13 +63,12 @@ BOOST_AUTO_TEST_CASE (CcnxWrapperTest)
   // reset
   g_dataCallback_counter = 0;
   g_timeout_counter = 0;
-  delete closure;
 }
 
 BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)
 {
 
-  Closure *closure = new Closure(bind(dataCallback, _1, _2), bind(timeout, _1));
+  Closure closure (bind(dataCallback, _1, _2), bind(timeout, _1));
 
   Selectors selectors;
   selectors.interestLifetime(1);
@@ -94,7 +93,6 @@ BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)
   // reset
   g_dataCallback_counter = 0;
   g_timeout_counter = 0;
-  delete closure;
 }
 
 BOOST_AUTO_TEST_SUITE_END()

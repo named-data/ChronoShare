@@ -57,19 +57,19 @@ public:
   inline SchedulerPtr
   GetScheduler ();
 
-private:
-  void
-  ScheduleFetches ();  
-  
   // Events called from Fetcher
   void
-  NoDataTimeout (Fetcher &fetcher);
+  DidNoDataTimeout (Fetcher &fetcher);
 
   void
-  FetchComplete (Fetcher &fetcher);
+  DidFetchComplete (Fetcher &fetcher);
 
 private:
-  
+  void
+  ScheduleFetches ();
+
+private:
+
 private:
   Ccnx::CcnxWrapperPtr m_ccnx;
   SyncLogPtr m_sync; // to access forwarding hints
@@ -83,7 +83,7 @@ private:
   typedef boost::intrusive::member_hook< Fetcher,
                                          boost::intrusive::list_member_hook<>, &Fetcher::m_managerListHook> MemberOption;
   typedef boost::intrusive::list<Fetcher, MemberOption> FetchList;
-  
+
   FetchList m_fetchList;
 };
 
@@ -99,7 +99,7 @@ FetchManager::GetScheduler ()
   return m_scheduler;
 }
 
-typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str; 
+typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;
 namespace Error {
 struct FetchManager : virtual boost::exception, virtual std::exception { };
 }
