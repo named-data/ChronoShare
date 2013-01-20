@@ -43,9 +43,12 @@ private:
   RestartPipeline ();
 
   void
-  OnData (uint32_t seqno, const Ccnx::Name &name, const Ccnx::Bytes &);
+  FillPipeline ();
 
   void
+  OnData (uint32_t seqno, const Ccnx::Name &name, const Ccnx::Bytes &);
+
+  Ccnx::Closure::TimeoutCallbackReturnValue
   OnTimeout (uint32_t seqno, const Ccnx::Name &name);
 
 private:
@@ -56,14 +59,14 @@ private:
   Ccnx::Name m_forwardingHint;
 
   int32_t m_minSendSeqNo;
-  int32_t m_maxSendSeqNo;
+  int32_t m_maxInOrderRecvSeqNo;
+  std::set<int32_t> m_outOfOrderRecvSeqNo;
+
   int32_t m_minSeqNo;
   int32_t m_maxSeqNo;
 
   uint32_t m_pipeline;
-
-  // Ccnx::Closure m_onDataClosure;
-  // Ccnx::Closure m_onTimeoutClosure;
+  uint32_t m_activePipeline;
 
   boost::intrusive::list_member_hook<> m_managerListHook;
   friend class FetchManager;

@@ -28,6 +28,7 @@
 
 using namespace boost;
 using namespace std;
+using namespace Ccnx;
 
 Fetcher::Fetcher (FetchManager &fetchManger,
                   const Ccnx::Name &name, int32_t minSeqNo, int32_t maxSeqNo,
@@ -37,11 +38,12 @@ Fetcher::Fetcher (FetchManager &fetchManger,
   , m_name (name)
   , m_forwardingHint (forwardingHint)
   , m_minSendSeqNo (-1)
-  , m_maxSendSeqNo (-1)
+  , m_maxInOrderRecvSeqNo (-1)
   , m_minSeqNo (minSeqNo)
   , m_maxSeqNo (maxSeqNo)
 
   , m_pipeline (6) // initial "congestion window"
+  , m_activePipeline (0)
 {
 }
 
@@ -53,11 +55,47 @@ void
 Fetcher::RestartPipeline ()
 {
   m_active = true;
+  m_minSendSeqNo = m_maxInOrderRecvSeqNo;
+
+  FillPipeline ();
+}
+
+void
+Fetcher::FillPipeline ()
+{
+  for (; m_minSendSeqNo < m_maxSeqNo && m_activePipeline < m_pipeline; m_minSendSeqNo++)
+    {
+      m_fetchManager.GetCcnx ()
+        ->sendInterest (Name (m_name)("file")(m_minSendSeqNo+1),
+                        Closure (bind(&Fetcher::OnData, this, m_minSendSeqNo+1, _1, _2),
+                                 bind(&Fetcher::OnTimeout, this, m_minSendSeqNo+1, _1)));
+
+      m_activePipeline ++;
+    }
 }
 
 void
 Fetcher::OnData (uint32_t seqno, const Ccnx::Name &name, const Ccnx::Bytes &)
 {
+  m_activePipeline --;
+
+  ////////////////////////////////////////////////////////////////////////////
+  m_outOfOrderRecvSeqNo.insert (seqno);
+  set<int32_t>::iterator inOrderSeqNo = m_outOfOrderRecvSeqNo.begin ();
+  for (; inOrderSeqNo != m_outOfOrderRecvSeqNo.end ();
+       inOrderSeqNo++)
+    {
+      if (*inOrderSeqNo == m_maxInOrderRecvSeqNo+1)
+        {
+          m_maxInOrderRecvSeqNo = *inOrderSeqNo;
+        }
+      else
+        break;
+    }
+  m_outOfOrderRecvSeqNo.erase (m_outOfOrderRecvSeqNo.begin (), inOrderSeqNo);
+  ////////////////////////////////////////////////////////////////////////////
+
+  FillPipeline ();
   // bla bla
   if (0)
     {
@@ -66,7 +104,9 @@ Fetcher::OnData (uint32_t seqno, const Ccnx::Name &name, const Ccnx::Bytes &)
     }
 }
 
-void
+Closure::TimeoutCallbackReturnValue
 Fetcher::OnTimeout (uint32_t seqno, const Ccnx::Name &name)
 {
+  // Closure::RESULT_REEXPRESS
+  return Closure::RESULT_OK;
 }

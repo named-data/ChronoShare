@@ -51,7 +51,7 @@ public:
   size_t
   length () const
   { return m_buf->length; }
-  
+
 private:
   void init(ccn_charbuf *buf);
 
@@ -89,7 +89,7 @@ public:
   appendComp(const Name &name);
 
   Name &
-  appendComp(const void *buf, size_t size); 
+  appendComp(const void *buf, size_t size);
 
   /**
    * Append int component
@@ -100,7 +100,11 @@ public:
    */
   Name &
   appendComp(uint64_t number);
-  
+
+  template<class T>
+  Name &
+  operator ()(const T &comp) { return appendComp (comp); }
+
   int
   size() const {return m_comps.size();}
 
