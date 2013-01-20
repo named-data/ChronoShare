@@ -25,12 +25,15 @@
 #include <boost/exception/all.hpp>
 #include <boost/shared_ptr.hpp>
 #include <string>
+#include <list>
 #include <stdint.h>
 #include "scheduler.h"
 
 #include "ccnx-wrapper.h"
 #include "ccnx-tunnel.h"
 #include "sync-log.h"
+
+#include "fetcher.h"
 
 class FetchManager
 {
@@ -41,29 +44,64 @@ class FetchManager
     };
 
 public:
-  FetchManager (Ccnx::CcnxWrapperPtr ccnx, SyncLogPtr sync);
+  FetchManager (Ccnx::CcnxWrapperPtr ccnx, SyncLogPtr sync, uint32_t parallelFetches = 3);
   virtual ~FetchManager ();
 
   void
   Enqueue (const Ccnx::Name &deviceName,
            uint32_t minSeqNo, uint32_t maxSeqNo, int priority=PRIORITY_NORMAL);
 
-  Ccnx::CcnxWrapperPtr
+  inline Ccnx::CcnxWrapperPtr
   GetCcnx ();
 
-  SchedulerPtr
+  inline SchedulerPtr
   GetScheduler ();
+
+private:
+  void
+  ScheduleFetches ();  
+  
+  // Events called from Fetcher
+  void
+  NoDataTimeout (Fetcher &fetcher);
+
+  void
+  FetchComplete (Fetcher &fetcher);
+
+private:
   
 private:
   Ccnx::CcnxWrapperPtr m_ccnx;
   SyncLogPtr m_sync; // to access forwarding hints
   SchedulerPtr m_scheduler;
+
+  uint32_t m_maxParallelFetches;
+  uint32_t m_currentParallelFetches;
+  boost::mutex m_parellelFetchMutex;
+
+  // optimized list structure for fetch queue
+  typedef boost::intrusive::member_hook< Fetcher,
+                                         boost::intrusive::list_member_hook<>, &Fetcher::m_managerListHook> MemberOption;
+  typedef boost::intrusive::list<Fetcher, MemberOption> FetchList;
+  
+  FetchList m_fetchList;
 };
 
+Ccnx::CcnxWrapperPtr
+FetchManager::GetCcnx ()
+{
+  return m_ccnx;
+}
+
+SchedulerPtr
+FetchManager::GetScheduler ()
+{
+  return m_scheduler;
+}
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str; 
 namespace Error {
-struct Fetcher : virtual boost::exception, virtual std::exception { };
+struct FetchManager : virtual boost::exception, virtual std::exception { };
 }
 
 typedef boost::shared_ptr<FetchManager> FetchManagerPtr;

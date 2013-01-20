@@ -24,10 +24,11 @@
 
 #include "ccnx-wrapper.h"
 #include "scheduler.h"
+#include <boost/intrusive/list.hpp>
 
 class FetchManager;
 
-class Fetcher 
+class Fetcher
 {
 public:
   Fetcher (FetchManager &fetchManger,
@@ -37,6 +38,9 @@ public:
 
 private:
   void
+  RestartPipeline ();
+  
+  void
   OnData ();
 
   void
@@ -44,6 +48,7 @@ private:
   
 private:
   FetchManager &m_fetchManager;
+  bool m_active;
   
   Ccnx::Name m_name;
   Ccnx::Name m_forwardingHint;
@@ -54,6 +59,9 @@ private:
   int32_t m_maxSeqNo;
 
   uint32_t m_pipeline;
+
+  boost::intrusive::list_member_hook<> m_managerListHook;  
+  friend class FetchManager;
 };
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str; 

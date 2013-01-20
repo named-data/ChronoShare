@@ -31,6 +31,7 @@ Fetcher::Fetcher (FetchManager &fetchManger,
                   const Ccnx::Name &name, int32_t minSeqNo, int32_t maxSeqNo,
                   const Ccnx::Name &forwardingHint/* = Ccnx::Name ()*/)
   : m_fetchManager (fetchManger)
+  , m_active (false)
   , m_name (name)
   , m_forwardingHint (forwardingHint)
   , m_minSendSeqNo (-1)
@@ -44,4 +45,10 @@ Fetcher::Fetcher (FetchManager &fetchManger,
 
 Fetcher::~Fetcher ()
 {
+}
+
+void
+Fetcher::RestartPipeline ()
+{
+  m_active = true;
 }
