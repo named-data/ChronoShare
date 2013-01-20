@@ -22,7 +22,7 @@
 
 ChronoShareGui::ChronoShareGui(QWidget *parent) :
     QWidget(parent),
-    m_settingsFilePath(QDir::homePath() + ".cronoShare")
+    m_settingsFilePath(QDir::homePath() + "/.cronoshare")
 {
     // load settings
     if(!loadSettings())
@@ -95,8 +95,7 @@ void ChronoShareGui::createActions()
 
     // create the "quit program" action
     m_quitProgram = new QAction(tr("&Quit"), this);
-    connect(m_quitProgram, SIGNAL(triggered()), this, SLOT(quit()));
-
+    connect(m_quitProgram, SIGNAL(triggered()), qApp, SLOT(quit()));
 }
 
 void ChronoShareGui::createTrayIcon()
@@ -191,6 +190,9 @@ bool ChronoShareGui::loadSettings()
 
     // Load Settings
     QSettings settings(m_settingsFilePath, QSettings::NativeFormat);
+    
+    qDebug() << settings.allKeys();
+    
     if(settings.contains("dirPath"))
     {
         m_dirPath = settings.value("dirPath", QDir::homePath()).toString();
@@ -201,12 +203,17 @@ bool ChronoShareGui::loadSettings()
         m_dirPath = QDir::homePath();
         successful = false;
     }
+    
+    qDebug() << "success: " << successful;
 
     return successful;
 }
 
 void ChronoShareGui::saveSettings()
 {
+    qDebug() << m_settingsFilePath;
+    qDebug() << m_dirPath;
+    
     // Save Settings
     QSettings settings(m_settingsFilePath, QSettings::NativeFormat);
     settings.setValue("dirPath", m_dirPath);
@@ -222,4 +229,3 @@ void ChronoShareGui::closeEvent(QCloseEvent* event)
 #include "chronosharegui.moc"
 #include "chronosharegui.cpp.moc"
 #endif
-
