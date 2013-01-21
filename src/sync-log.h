@@ -39,12 +39,18 @@ public:
   // void
   // initYP(map<Ccnx::Name, Ccnx::Name> &yp);
 
+  inline const Ccnx::Name &
+  GetLocalName () const;
+
   sqlite3_int64
   GetNextLocalSeqNo (); // side effect: local seq_no will be increased
 
   // done
   void
   UpdateDeviceSeqNo (const Ccnx::Name &name, sqlite3_int64 seqNo);
+
+  void
+  UpdateLocalSeqNo (sqlite3_int64 seqNo);
 
   Ccnx::Name
   LookupLocator (const Ccnx::Name &deviceName);
@@ -98,6 +104,12 @@ protected:
 };
 
 typedef boost::shared_ptr<SyncLog> SyncLogPtr;
+
+const Ccnx::Name &
+SyncLog::GetLocalName () const
+{
+  return m_localName;
+}
 
 
 #endif // SYNC_LOG_H

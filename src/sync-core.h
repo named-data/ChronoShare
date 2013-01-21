@@ -119,8 +119,8 @@ protected:
   SyncLogPtr m_log;
   SchedulerPtr m_scheduler;
   StateMsgCallback m_stateMsgCallback;
-  Name m_userName;
-  Name m_localPrefix;
+  // Name m_userName;
+  // Name m_localPrefix;
   Name m_syncPrefix;
   HashPtr m_rootHash;
   // YellowPage m_yp;

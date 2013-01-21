@@ -240,6 +240,12 @@ SyncLog::UpdateDeviceSeqNo (const Ccnx::Name &name, sqlite3_int64 seqNo)
 }
 
 void
+SyncLog::UpdateLocalSeqNo (sqlite3_int64 seqNo)
+{
+  return UpdateDeviceSeqNo (m_localDeviceId, seqNo);
+}
+
+void
 SyncLog::UpdateDeviceSeqNo (sqlite3_int64 deviceId, sqlite3_int64 seqNo)
 {
   sqlite3_stmt *stmt;
