@@ -84,7 +84,7 @@ def build (bld):
         use = "BOOST BOOST_FILESYSTEM SQLITE3 scheduler ccnx",
         includes = "ccnx scheduler src",
         )
-        
+
     # Unit tests
     if bld.env['TEST']:
       unittests = bld.program (
@@ -108,7 +108,7 @@ def build (bld):
 	target = "chronoshare-gui",
 	features = "qt4 cxx cxxprogram",
 	defines = "WAF",
-	source = 'gui/main.cpp gui/chronosharegui.cpp gui/images.qrc',
+	source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.qrc']),
 	includes = "gui . ",
 	use = "QTCORE QTGUI"
 	)
