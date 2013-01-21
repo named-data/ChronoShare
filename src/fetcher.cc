@@ -67,6 +67,7 @@ Fetcher::RestartPipeline ()
 {
   m_active = true;
   m_minSendSeqNo = m_maxInOrderRecvSeqNo;
+  // cout << "Restart: " << m_minSendSeqNo << endl;
   m_lastPositiveActivity = date_time::second_clock<boost::posix_time::ptime>::universal_time();
 
   FillPipeline ();
@@ -83,9 +84,14 @@ Fetcher::FillPipeline ()
 {
   for (; m_minSendSeqNo < m_maxSeqNo && m_activePipeline < m_pipeline; m_minSendSeqNo++)
     {
+      if (m_outOfOrderRecvSeqNo.find (m_minSendSeqNo+1) != m_outOfOrderRecvSeqNo.end ())
+        continue;
+
+      // cout << ">>> " << m_minSendSeqNo+1 << endl;
       m_ccnx->sendInterest (Name (m_name)(m_minSendSeqNo+1),
                             Closure (bind(&Fetcher::OnData, this, m_minSendSeqNo+1, _1, _2),
-                                     bind(&Fetcher::OnTimeout, this, m_minSendSeqNo+1, _1)));
+                                     bind(&Fetcher::OnTimeout, this, m_minSendSeqNo+1, _1)),
+                            Selectors().interestLifetime (1)); // Alex: this lifetime should be changed to RTO
 
       m_activePipeline ++;
     }
@@ -140,6 +146,7 @@ Fetcher::OnTimeout (uint32_t seqno, const Ccnx::Name &name)
       m_activePipeline --;
       if (m_activePipeline == 0)
         {
+          m_active = false;
           m_onFetchFailed (*this);
           // this is not valid anymore, but we still should be able finish work
         }

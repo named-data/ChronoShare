@@ -61,7 +61,7 @@ struct FetcherTestData
         recvContent.insert (*reinterpret_cast<const int*> (head(data)));
       }
 
-    // cout << basename << ", " << name << ", " << seqno << endl;
+    // cout << "<<< " << basename << ", " << name << ", " << seqno << endl;
   }
 
   void
@@ -89,14 +89,16 @@ BOOST_AUTO_TEST_CASE (TestFetcher)
   // this will allow us to test our pipeline of 6
   for (int i = 0; i < 10; i++)
     {
-      ccnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 10);
+      ccnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 30);
+    }
 
-      int other = 10 + i+5;
-      ccnx->publishData (Name (baseName)(other), reinterpret_cast<const unsigned char*> (&other), sizeof(int), 10);
+  for (int i = 15; i < 25; i++)
+    {
+      ccnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 30);
     }
 
   int oneMore = 26;
-  ccnx->publishData (Name (baseName)(oneMore), reinterpret_cast<const unsigned char*> (&oneMore), sizeof(int), 10);
+  ccnx->publishData (Name (baseName)(oneMore), reinterpret_cast<const unsigned char*> (&oneMore), sizeof(int), 30);
 
   FetcherTestData data;
 
@@ -111,22 +113,57 @@ BOOST_AUTO_TEST_CASE (TestFetcher)
   fetcher.RestartPipeline ();
   BOOST_CHECK_EQUAL (fetcher.IsActive (), true);
 
-  usleep(13000000);
+  usleep(7000000);
   BOOST_CHECK_EQUAL (data.m_failed, true);
   BOOST_CHECK_EQUAL (data.differentNames.size (), 1);
-  BOOST_CHECK_EQUAL (data.segmentNames.size (), 10);
-  BOOST_CHECK_EQUAL (data.recvData.size (), 10);
-  BOOST_CHECK_EQUAL (data.recvContent.size (), 10);
+  BOOST_CHECK_EQUAL (data.segmentNames.size (), 20);
+  BOOST_CHECK_EQUAL (data.recvData.size (), 20);
+  BOOST_CHECK_EQUAL (data.recvContent.size (), 20);
 
-  ostringstream recvData;
-  for (set<uint32_t>::iterator i = data.recvData.begin (); i != data.recvData.end (); i++)
-    recvData << *i << ", ";
+  {
+    ostringstream recvData;
+    for (set<uint32_t>::iterator i = data.recvData.begin (); i != data.recvData.end (); i++)
+      recvData << *i << ", ";
 
-  ostringstream recvContent;
-  for (set<uint32_t>::iterator i = data.recvContent.begin (); i != data.recvContent.end (); i++)
-    recvContent << *i << ", ";
+    ostringstream recvContent;
+    for (set<uint32_t>::iterator i = data.recvContent.begin (); i != data.recvContent.end (); i++)
+      recvContent << *i << ", ";
 
-  BOOST_CHECK_EQUAL (recvData.str (), recvContent.str ());
+    BOOST_CHECK_EQUAL (recvData.str (), "0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, ");
+    BOOST_CHECK_EQUAL (recvData.str (), recvContent.str ());
+  }
+
+  BOOST_CHECK_EQUAL (fetcher.IsActive (), false);
+  fetcher.RestartPipeline ();
+  BOOST_CHECK_EQUAL (fetcher.IsActive (), true);
+
+  usleep(7000000);
+  BOOST_CHECK_EQUAL (data.m_failed, true);
+
+  // publishing missing pieces
+  for (int i = 0; i < 27; i++)
+    {
+      ccnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 1);
+    }
+  BOOST_CHECK_EQUAL (fetcher.IsActive (), false);
+  fetcher.RestartPipeline ();
+  BOOST_CHECK_EQUAL (fetcher.IsActive (), true);
+
+  usleep(1000000);
+  BOOST_CHECK_EQUAL (data.m_done, true);
+
+  {
+    ostringstream recvData;
+    for (set<uint32_t>::iterator i = data.recvData.begin (); i != data.recvData.end (); i++)
+      recvData << *i << ", ";
+
+    ostringstream recvContent;
+    for (set<uint32_t>::iterator i = data.recvContent.begin (); i != data.recvContent.end (); i++)
+      recvContent << *i << ", ";
+
+    BOOST_CHECK_EQUAL (recvData.str (), "0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, ");
+    BOOST_CHECK_EQUAL (recvData.str (), recvContent.str ());
+  }
 }
 
 // BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)

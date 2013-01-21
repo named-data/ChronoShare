@@ -62,7 +62,7 @@ public:
   answerOriginKind(AOK kind) {m_answerOriginKind = kind; return *this;}
 
   inline Selectors &
-  interestLifetime(int lifetime) {m_interestLifetime = lifetime; return *this;}
+  interestLifetime(double lifetime) {m_interestLifetime = lifetime; return *this;}
 
   inline Selectors &
   scope(int scope) {m_scope = scope; return *this;}
