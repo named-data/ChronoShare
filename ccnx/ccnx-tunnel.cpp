@@ -26,8 +26,8 @@ namespace Ccnx
 {
 
 CcnxTunnel::CcnxTunnel()
-                          : CcnxWrapper()
-                          , m_localPrefix("/")
+  : CcnxWrapper()
+  , m_localPrefix("/")
 {
   refreshLocalPrefix();
 }

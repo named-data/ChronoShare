@@ -22,10 +22,7 @@
 #ifndef CCNX_TUNNEL_H
 #define CCNX_TUNNEL_H
 
-#include "ccnx-common.h"
 #include "ccnx-wrapper.h"
-#include "ccnx-name.h"
-#include "ccnx-selectors.h"
 
 #define _OVERRIDE
 #ifdef __GNUC__

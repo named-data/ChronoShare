@@ -40,7 +40,7 @@ SyncLog::SyncLog (const boost::filesystem::path &path, const std::string &localN
   , m_localName (localName)
 {
   UpdateDeviceSeqNo (localName, 0);
-  
+
   sqlite3_stmt *stmt;
   int res = sqlite3_prepare_v2 (m_db, "SELECT device_id, seq_no FROM SyncNodes WHERE device_name=?", -1, &stmt, 0);
 

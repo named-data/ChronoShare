@@ -155,6 +155,14 @@ Name::toCcnxCharbuf() const
 }
 
 Name &
+Name::appendComp(const Name &comp)
+{
+  m_comps.insert (m_comps.end (),
+                  comp.m_comps.begin (), comp.m_comps.end ());
+  return *this;
+}
+
+Name &
 Name::appendComp(const Bytes &comp)
 {
   m_comps.push_back(comp);
@@ -169,16 +177,6 @@ Name::appendComp(const string &compStr)
 }
 
 Name &
-Name::appendComp(const Name &name)
-{
-  for (vector<Bytes>::const_iterator i = name.m_comps.begin (); i != name.m_comps.end (); i++)
-    {
-      appendComp (*i);
-    }
-  return *this;
-}
-
-Name &
 Name::appendComp (const void *buf, size_t size)
 {
   Bytes comp (reinterpret_cast<const unsigned char*> (buf), reinterpret_cast<const unsigned char*> (buf) + size);
@@ -190,7 +188,7 @@ Name::appendComp(uint64_t number)
 {
   Bytes comp;
   comp.push_back (0);
-  
+
   while (number > 0)
     {
       comp.push_back (static_cast<unsigned char> (number & 0xFF));

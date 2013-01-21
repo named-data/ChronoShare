@@ -21,6 +21,7 @@
 
 #include "fetcher.h"
 #include "fetch-manager.h"
+#include "ccnx-pco.h"
 
 #include <boost/make_shared.hpp>
 #include <boost/ref.hpp>
@@ -88,7 +89,7 @@ Fetcher::FillPipeline ()
         continue;
 
       // cout << ">>> " << m_minSendSeqNo+1 << endl;
-      m_ccnx->sendInterest (Name (m_name)(m_minSendSeqNo+1),
+      m_ccnx->sendInterest (Name (m_forwardingHint)(m_name)(m_minSendSeqNo+1),
                             Closure (bind(&Fetcher::OnData, this, m_minSendSeqNo+1, _1, _2),
                                      bind(&Fetcher::OnTimeout, this, m_minSendSeqNo+1, _1)),
                             Selectors().interestLifetime (1)); // Alex: this lifetime should be changed to RTO
@@ -100,7 +101,21 @@ Fetcher::FillPipeline ()
 void
 Fetcher::OnData (uint32_t seqno, const Ccnx::Name &name, const Ccnx::Bytes &content)
 {
-  m_onDataSegment (*this, seqno, m_name, name, content);
+  if (m_forwardingHint == Name ())
+    m_onDataSegment (*this, seqno, m_name, name, content);
+  else
+    {
+      try {
+        ParsedContentObject pco (content);
+        m_onDataSegment (*this, seqno, m_name, pco.name (), pco.content ());
+      }
+      catch (MisformedContentObjectException &e)
+        {
+          cerr << "MisformedContentObjectException..." << endl;
+          // no idea what should do...
+          // let's ignore for now
+        }
+    }
 
   m_activePipeline --;
   m_lastPositiveActivity = date_time::second_clock<boost::posix_time::ptime>::universal_time();

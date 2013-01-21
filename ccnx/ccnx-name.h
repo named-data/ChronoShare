@@ -80,13 +80,13 @@ public:
   operator CcnxCharbufPtr () const { return toCcnxCharbuf (); }
 
   Name &
+  appendComp(const Name &comp);
+
+  Name &
   appendComp(const Bytes &comp);
 
   Name &
   appendComp(const string &compStr);
-
-  Name &
-  appendComp(const Name &name);
 
   Name &
   appendComp(const void *buf, size_t size);
