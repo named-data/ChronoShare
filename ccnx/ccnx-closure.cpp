@@ -46,7 +46,7 @@ Closure::runTimeoutCallback(const Name &interest)
 
 
 void
-Closure::runDataCallback(const Name &name, const Bytes &content)
+Closure::runDataCallback(const Name &name, PcoPtr content)
 {
   if (!m_dataCallback.empty ())
     {

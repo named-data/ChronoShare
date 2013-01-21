@@ -30,7 +30,6 @@
 #include "scheduler.h"
 
 #include "ccnx-wrapper.h"
-#include "ccnx-tunnel.h"
 #include "sync-log.h"
 
 #include "fetcher.h"
@@ -60,7 +59,7 @@ public:
   // Fetch Events
   void
   DidDataSegmentFetched (Fetcher &fetcher, uint32_t seqno, const Ccnx::Name &basename,
-                         const Ccnx::Name &name, const Ccnx::Bytes &data);
+                         const Ccnx::Name &name, Ccnx::PcoPtr data);
 
   void
   DidNoDataTimeout (Fetcher &fetcher);

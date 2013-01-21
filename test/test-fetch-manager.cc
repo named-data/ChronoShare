@@ -50,15 +50,17 @@ struct FetcherTestData
 
   void
   onData (Fetcher &fetcher, uint32_t seqno, const Ccnx::Name &basename,
-          const Ccnx::Name &name, const Ccnx::Bytes &data)
+          const Ccnx::Name &name, Ccnx::PcoPtr pco)
   {
     recvData.insert (seqno);
     differentNames.insert (basename);
     segmentNames.insert (name);
 
-    if (data.size () == sizeof(int))
+    BytesPtr data = pco->contentPtr ();
+
+    if (data->size () == sizeof(int))
       {
-        recvContent.insert (*reinterpret_cast<const int*> (head(data)));
+        recvContent.insert (*reinterpret_cast<const int*> (head(*data)));
       }
 
     // cout << "<<< " << basename << ", " << name << ", " << seqno << endl;

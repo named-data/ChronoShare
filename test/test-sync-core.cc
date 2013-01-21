@@ -3,9 +3,11 @@
 
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/make_shared.hpp>
 
 using namespace std;
 using namespace Ccnx;
+using namespace boost;
 using namespace boost::filesystem;
 
 BOOST_AUTO_TEST_SUITE(SyncCoreTests)
@@ -55,16 +57,17 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   SyncLogPtr log1(new SyncLog(dir1, user1.toString()));
   SyncLogPtr log2(new SyncLog(dir2, user2.toString()));
 
-  SchedulerPtr scheduler(new Scheduler());
+  // should not have used the same scheduler...
+  SchedulerPtr scheduler1 = make_shared<Scheduler> ();
+  SchedulerPtr scheduler2 = make_shared<Scheduler> ();
 
-
-  SyncCore *core1 = new SyncCore(log1, user1, loc1, syncPrefix, bind(callback, _1), c1, scheduler);
+  SyncCore *core1 = new SyncCore(log1, user1, loc1, syncPrefix, bind(callback, _1), c1, scheduler1);
   usleep(10000);
-  SyncCore *core2 = new SyncCore(log2, user2, loc2, syncPrefix, bind(callback, _1), c2, scheduler);
+  SyncCore *core2 = new SyncCore(log2, user2, loc2, syncPrefix, bind(callback, _1), c2, scheduler2);
   usleep(1000000);
   checkRoots(core1->root(), core2->root());
 
-  cout << "\n\n\n\n\n\n----------\n";
+  // cout << "\n\n\n\n\n\n----------\n";
   core1->updateLocalState(1);
   usleep(100000);
   checkRoots(core1->root(), core2->root());
@@ -84,11 +87,11 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   BOOST_CHECK_EQUAL(log1->LookupLocator (user2), loc2);
 
   // simple simultaneous data generation
-  cout << "\n\n\n\n\n\n----------Simultaneous\n";
+  // cout << "\n\n\n\n\n\n----------Simultaneous\n";
   core1->updateLocalState(11);
   usleep(100);
   core2->updateLocalState(15);
-  usleep(1000000);
+  usleep(2000000);
   checkRoots(core1->root(), core2->root());
   BOOST_CHECK_EQUAL(core1->seq(user2), 15);
   BOOST_CHECK_EQUAL(core2->seq(user1), 11);

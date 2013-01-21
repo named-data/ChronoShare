@@ -35,7 +35,7 @@ class Fetcher
 {
 public:
   typedef boost::function<void (Fetcher &, uint32_t /*requested seqno*/, const Ccnx::Name & /*requested base name*/,
-                                const Ccnx::Name & /*actual name*/, const Ccnx::Bytes &)> OnDataSegmentCallback;
+                                const Ccnx::Name & /*actual name*/, Ccnx::PcoPtr /*content object*/)> OnDataSegmentCallback;
   typedef boost::function<void (Fetcher &)> OnFetchCompleteCallback;
   typedef boost::function<void (Fetcher &)> OnFetchFailedCallback;
 
@@ -62,7 +62,7 @@ private:
   FillPipeline ();
 
   void
-  OnData (uint32_t seqno, const Ccnx::Name &name, const Ccnx::Bytes &);
+  OnData (uint32_t seqno, const Ccnx::Name &name, Ccnx::PcoPtr data);
 
   Ccnx::Closure::TimeoutCallbackReturnValue
   OnTimeout (uint32_t seqno, const Ccnx::Name &name);

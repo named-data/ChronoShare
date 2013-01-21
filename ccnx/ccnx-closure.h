@@ -27,10 +27,13 @@
 
 namespace Ccnx {
 
+class ParsedContentObject;
+typedef boost::shared_ptr<ParsedContentObject> PcoPtr;
+
 class Closure
 {
 public:
-  typedef boost::function<void (const Name &, const Bytes &)> DataCallback;
+  typedef boost::function<void (const Name &, PcoPtr pco)> DataCallback;
 
   typedef enum
   {
@@ -44,7 +47,7 @@ public:
   virtual ~Closure();
 
   virtual void
-  runDataCallback(const Name &name, const Bytes &content);
+  runDataCallback(const Name &name, Ccnx::PcoPtr pco);
 
   virtual TimeoutCallbackReturnValue
   runTimeoutCallback(const Name &interest);

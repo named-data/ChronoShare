@@ -99,15 +99,15 @@ Fetcher::FillPipeline ()
 }
 
 void
-Fetcher::OnData (uint32_t seqno, const Ccnx::Name &name, const Ccnx::Bytes &content)
+Fetcher::OnData (uint32_t seqno, const Ccnx::Name &name, PcoPtr data)
 {
   if (m_forwardingHint == Name ())
-    m_onDataSegment (*this, seqno, m_name, name, content);
+    m_onDataSegment (*this, seqno, m_name, name, data);
   else
     {
       try {
-        ParsedContentObject pco (content);
-        m_onDataSegment (*this, seqno, m_name, pco.name (), pco.content ());
+        PcoPtr pco = make_shared<ParsedContentObject> (*data->contentPtr ());
+        m_onDataSegment (*this, seqno, m_name, pco->name (), pco);
       }
       catch (MisformedContentObjectException &e)
         {

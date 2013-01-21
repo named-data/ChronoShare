@@ -1,3 +1,24 @@
+/* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
+/*
+ * Copyright (c) 2013 University of California, Los Angeles
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Author: Zhenkai Zhu <zhenkai@cs.ucla.edu>
+ *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
+ */
+
 #include "ccnx-wrapper.h"
 extern "C" {
 #include <ccn/fetch.h>
@@ -6,6 +27,7 @@ extern "C" {
 #include <boost/throw_exception.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/random.hpp>
+#include <boost/make_shared.hpp>
 #include <sstream>
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;
@@ -265,21 +287,23 @@ incomingData(ccn_closure *selfp,
       return CCN_UPCALL_RESULT_OK;
     }
 
-  const unsigned char *pcontent;
-  size_t len;
-  if (ccn_content_get_value(info->content_ccnb, info->pco->offset[CCN_PCO_E], info->pco, &pcontent, &len) < 0)
-  {
-    // BOOST_THROW_EXCEPTION(CcnxOperationException() << errmsg_info_str("decode ContentObject failed"));
-  }
+  PcoPtr pco = make_shared<ParsedContentObject> (info->content_ccnb, info->pco->offset[CCN_PCO_E]);
 
-  Name name(info->content_ccnb, info->content_comps);
+  // const unsigned char *pcontent;
+  // size_t len;
+  // if (ccn_content_get_value(info->content_ccnb, info->pco->offset[CCN_PCO_E], info->pco, &pcontent, &len) < 0)
+  // {
+  //   // BOOST_THROW_EXCEPTION(CcnxOperationException() << errmsg_info_str("decode ContentObject failed"));
+  // }
 
-  Bytes content;
-  // copy content and do processing on the copy
-  // otherwise the pointed memory may have been changed during the processing
-  readRaw(content, pcontent, len);
+  // Name name(info->content_ccnb, info->content_comps);
 
-  cp->runDataCallback(name, content);
+  // Bytes content;
+  // // copy content and do processing on the copy
+  // // otherwise the pointed memory may have been changed during the processing
+  // readRaw(content, pcontent, len);
+
+  cp->runDataCallback (pco->name (), pco);
 
   return CCN_UPCALL_RESULT_OK;
 }

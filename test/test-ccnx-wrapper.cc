@@ -31,9 +31,10 @@ void publish2(const Name &name)
   c2->publishData(name, (const unsigned char*)content.c_str(), content.size(), 5);
 }
 
-void dataCallback(const Name &name, const Bytes &content)
+void dataCallback(const Name &name, Ccnx::PcoPtr pco)
 {
-  string msg((const char*)&content[0], content.size());
+  BytesPtr content = pco->contentPtr ();
+  string msg(reinterpret_cast<const char *> (head (*content)), content->size());
   g_dataCallback_counter ++;
   BOOST_CHECK_EQUAL(name, msg);
 }

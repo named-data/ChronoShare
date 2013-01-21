@@ -103,7 +103,7 @@ FetchManager::ScheduleFetches ()
 
 void
 FetchManager::DidDataSegmentFetched (Fetcher &fetcher, uint32_t seqno, const Ccnx::Name &basename,
-                                     const Ccnx::Name &name, const Bytes &data)
+                                     const Ccnx::Name &name, Ccnx::PcoPtr data)
 {
   // do something
 }

@@ -72,10 +72,10 @@ public:
   handleInterest(const Name &name);
 
   void
-  handleSyncData(const Name &name, const Bytes &content);
+  handleSyncData(const Name &name, Ccnx::PcoPtr content);
 
   void
-  handleRecoverData(const Name &name, const Bytes &content);
+  handleRecoverData(const Name &name, Ccnx::PcoPtr content);
 
   Closure::TimeoutCallbackReturnValue
   handleSyncInterestTimeout(const Name &name);
