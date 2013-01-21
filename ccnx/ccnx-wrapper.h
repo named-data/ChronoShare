@@ -41,10 +41,10 @@ public:
   sendInterest (const Name &interest, const Closure &closure, const Selectors &selector = Selectors());
 
   virtual int
-  publishData (const Name &name, const unsigned char *buf, size_t len, int freshness);
+  publishData (const Name &name, const unsigned char *buf, size_t len, int freshness = 2147/* max value for ccnx*/);
 
   int
-  publishData (const Name &name, const Bytes &content, int freshness);
+  publishData (const Name &name, const Bytes &content, int freshness = 2147/* max value for ccnx*/);
 
   static Name
   getLocalPrefix ();

@@ -25,18 +25,29 @@
 #include <boost/make_shared.hpp>
 #include <boost/ref.hpp>
 #include <boost/throw_exception.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 using namespace boost;
 using namespace std;
 using namespace Ccnx;
 
-Fetcher::Fetcher (FetchManager &fetchManger,
+Fetcher::Fetcher (CcnxWrapperPtr ccnx,
+                  OnDataSegmentCallback onDataSegment,
+                  OnFetchCompleteCallback onFetchComplete, OnFetchFailedCallback onFetchFailed,
                   const Ccnx::Name &name, int32_t minSeqNo, int32_t maxSeqNo,
+                  boost::posix_time::time_duration timeout/* = boost::posix_time::seconds (30)*/,
                   const Ccnx::Name &forwardingHint/* = Ccnx::Name ()*/)
-  : m_fetchManager (fetchManger)
+  : m_ccnx (ccnx)
+
+  , m_onDataSegment (onDataSegment)
+  , m_onFetchComplete (onFetchComplete)
+  , m_onFetchFailed (onFetchFailed)
+
   , m_active (false)
   , m_name (name)
   , m_forwardingHint (forwardingHint)
+  , m_maximumNoActivityPeriod (timeout)
+
   , m_minSendSeqNo (-1)
   , m_maxInOrderRecvSeqNo (-1)
   , m_minSeqNo (minSeqNo)
@@ -56,8 +67,15 @@ Fetcher::RestartPipeline ()
 {
   m_active = true;
   m_minSendSeqNo = m_maxInOrderRecvSeqNo;
+  m_lastPositiveActivity = date_time::second_clock<boost::posix_time::ptime>::universal_time();
 
   FillPipeline ();
+}
+
+void
+Fetcher::SetForwardingHint (const Ccnx::Name &forwardingHint)
+{
+  m_forwardingHint = forwardingHint;
 }
 
 void
@@ -65,19 +83,21 @@ Fetcher::FillPipeline ()
 {
   for (; m_minSendSeqNo < m_maxSeqNo && m_activePipeline < m_pipeline; m_minSendSeqNo++)
     {
-      m_fetchManager.GetCcnx ()
-        ->sendInterest (Name (m_name)("file")(m_minSendSeqNo+1),
-                        Closure (bind(&Fetcher::OnData, this, m_minSendSeqNo+1, _1, _2),
-                                 bind(&Fetcher::OnTimeout, this, m_minSendSeqNo+1, _1)));
+      m_ccnx->sendInterest (Name (m_name)(m_minSendSeqNo+1),
+                            Closure (bind(&Fetcher::OnData, this, m_minSendSeqNo+1, _1, _2),
+                                     bind(&Fetcher::OnTimeout, this, m_minSendSeqNo+1, _1)));
 
       m_activePipeline ++;
     }
 }
 
 void
-Fetcher::OnData (uint32_t seqno, const Ccnx::Name &name, const Ccnx::Bytes &)
+Fetcher::OnData (uint32_t seqno, const Ccnx::Name &name, const Ccnx::Bytes &content)
 {
+  m_onDataSegment (*this, seqno, m_name, name, content);
+
   m_activePipeline --;
+  m_lastPositiveActivity = date_time::second_clock<boost::posix_time::ptime>::universal_time();
 
   ////////////////////////////////////////////////////////////////////////////
   m_outOfOrderRecvSeqNo.insert (seqno);
@@ -95,18 +115,36 @@ Fetcher::OnData (uint32_t seqno, const Ccnx::Name &name, const Ccnx::Bytes &)
   m_outOfOrderRecvSeqNo.erase (m_outOfOrderRecvSeqNo.begin (), inOrderSeqNo);
   ////////////////////////////////////////////////////////////////////////////
 
-  FillPipeline ();
-  // bla bla
-  if (0)
+  if (m_maxInOrderRecvSeqNo == m_maxSeqNo)
     {
       m_active = false;
-      m_fetchManager.DidFetchComplete (*this);
+      m_onFetchComplete (*this);
+    }
+  else
+    {
+      FillPipeline ();
     }
 }
 
 Closure::TimeoutCallbackReturnValue
 Fetcher::OnTimeout (uint32_t seqno, const Ccnx::Name &name)
 {
-  // Closure::RESULT_REEXPRESS
-  return Closure::RESULT_OK;
+  // cout << "Fetcher::OnTimeout: " << name << endl;
+  // cout << "Last: " << m_lastPositiveActivity << ", config: " << m_maximumNoActivityPeriod
+  //      << ", now: " << date_time::second_clock<boost::posix_time::ptime>::universal_time()
+  //      << ", oldest: " << (date_time::second_clock<boost::posix_time::ptime>::universal_time() - m_maximumNoActivityPeriod) << endl;
+
+  if (m_lastPositiveActivity <
+      (date_time::second_clock<boost::posix_time::ptime>::universal_time() - m_maximumNoActivityPeriod))
+    {
+      m_activePipeline --;
+      if (m_activePipeline == 0)
+        {
+          m_onFetchFailed (*this);
+          // this is not valid anymore, but we still should be able finish work
+        }
+      return Closure::RESULT_OK;
+    }
+  else
+    return Closure::RESULT_REEXPRESS;
 }

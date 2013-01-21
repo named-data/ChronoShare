@@ -27,21 +27,37 @@
 
 #include "scheduler.h"
 #include <boost/intrusive/list.hpp>
+#include <boost/date_time/posix_time/posix_time_types.hpp>
 
 class FetchManager;
 
 class Fetcher
 {
 public:
-  Fetcher (FetchManager &fetchManger,
+  typedef boost::function<void (Fetcher &, uint32_t /*requested seqno*/, const Ccnx::Name & /*requested base name*/,
+                                const Ccnx::Name & /*actual name*/, const Ccnx::Bytes &)> OnDataSegmentCallback;
+  typedef boost::function<void (Fetcher &)> OnFetchCompleteCallback;
+  typedef boost::function<void (Fetcher &)> OnFetchFailedCallback;
+
+  Fetcher (Ccnx::CcnxWrapperPtr ccnx,
+           OnDataSegmentCallback onDataSegment,
+           OnFetchCompleteCallback onFetchComplete, OnFetchFailedCallback onFetchFailed,
            const Ccnx::Name &name, int32_t minSeqNo, int32_t maxSeqNo,
+           boost::posix_time::time_duration timeout = boost::posix_time::seconds (30), // this time is not precise, but sets min bound
+                                                                                  // actual time depends on how fast Interests timeout
            const Ccnx::Name &forwardingHint = Ccnx::Name ());
   virtual ~Fetcher ();
 
-private:
+  inline bool
+  IsActive () const;
+
   void
   RestartPipeline ();
 
+  void
+  SetForwardingHint (const Ccnx::Name &forwardingHint);
+
+private:
   void
   FillPipeline ();
 
@@ -51,12 +67,22 @@ private:
   Ccnx::Closure::TimeoutCallbackReturnValue
   OnTimeout (uint32_t seqno, const Ccnx::Name &name);
 
+public:
+  boost::intrusive::list_member_hook<> m_managerListHook;
+
 private:
-  FetchManager &m_fetchManager;
+  Ccnx::CcnxWrapperPtr m_ccnx;
+
+  OnDataSegmentCallback m_onDataSegment;
+  OnFetchCompleteCallback m_onFetchComplete;
+  OnFetchFailedCallback m_onFetchFailed;
+
   bool m_active;
 
   Ccnx::Name m_name;
   Ccnx::Name m_forwardingHint;
+
+  boost::posix_time::time_duration m_maximumNoActivityPeriod;
 
   int32_t m_minSendSeqNo;
   int32_t m_maxInOrderRecvSeqNo;
@@ -68,8 +94,8 @@ private:
   uint32_t m_pipeline;
   uint32_t m_activePipeline;
 
-  boost::intrusive::list_member_hook<> m_managerListHook;
-  friend class FetchManager;
+  boost::posix_time::ptime m_lastPositiveActivity;
+
 };
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;
@@ -79,6 +105,12 @@ struct Fetcher : virtual boost::exception, virtual std::exception { };
 }
 
 typedef boost::shared_ptr<Fetcher> FetcherPtr;
+
+bool
+Fetcher::IsActive () const
+{
+  return m_active;
+}
 
 
 #endif // FETCHER_H

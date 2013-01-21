@@ -57,7 +57,11 @@ public:
   inline SchedulerPtr
   GetScheduler ();
 
-  // Events called from Fetcher
+  // Fetch Events
+  void
+  DidDataSegmentFetched (Fetcher &fetcher, uint32_t seqno, const Ccnx::Name &basename,
+                         const Ccnx::Name &name, const Ccnx::Bytes &data);
+
   void
   DidNoDataTimeout (Fetcher &fetcher);
 

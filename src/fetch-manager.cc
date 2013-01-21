@@ -54,8 +54,20 @@ void
 FetchManager::Enqueue (const Ccnx::Name &deviceName, uint32_t minSeqNo, uint32_t maxSeqNo, int priority/*=PRIORITY_NORMAL*/)
 {
   // we may need to guarantee that LookupLocator will gives an answer and not throw exception...
-  Name forwardingHint = m_sync->LookupLocator (deviceName);
-  Fetcher &fetcher = *(new Fetcher (*this, deviceName, minSeqNo, maxSeqNo, forwardingHint));
+  Name forwardingHint;
+  try {
+    forwardingHint = m_sync->LookupLocator (deviceName);
+  }
+  catch (Error::Db &exception) {
+    // just ignore for now
+  }
+
+  Fetcher &fetcher = *(new Fetcher (m_ccnx,
+                                    bind (&FetchManager::DidDataSegmentFetched, this, _1, _2, _3, _4, _5),
+                                    bind (&FetchManager::DidFetchComplete, this, _1),
+                                    bind (&FetchManager::DidNoDataTimeout, this, _1),
+                                    deviceName, minSeqNo, maxSeqNo
+                                    /* Alex: should or should not include hint initially?*/));
 
   switch (priority)
     {
@@ -81,7 +93,7 @@ FetchManager::ScheduleFetches ()
        m_currentParallelFetches < m_maxParallelFetches && item != m_fetchList.end ();
        item++)
     {
-      if (item->m_active)
+      if (item->IsActive ())
         continue;
 
       m_currentParallelFetches ++;
@@ -90,10 +102,16 @@ FetchManager::ScheduleFetches ()
 }
 
 void
+FetchManager::DidDataSegmentFetched (Fetcher &fetcher, uint32_t seqno, const Ccnx::Name &basename,
+                                     const Ccnx::Name &name, const Bytes &data)
+{
+  // do something
+}
+
+void
 FetchManager::DidNoDataTimeout (Fetcher &fetcher)
 {
-  fetcher.m_forwardingHint = Ccnx::Name ("/ndn/broadcast");
-  fetcher.m_active = false;
+  fetcher.SetForwardingHint (Ccnx::Name ("/ndn/broadcast"));
   {
     unique_lock<mutex> lock (m_parellelFetchMutex);
     m_currentParallelFetches --;
