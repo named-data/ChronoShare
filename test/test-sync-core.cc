@@ -22,7 +22,7 @@ void callback(const SyncStateMsgPtr &msg)
     BOOST_CHECK(state.old_seq() >= 0);
     if (state.seq() != 0)
     {
-      BOOST_CHECK(state.old_seq() != state.seq()); 
+      BOOST_CHECK(state.old_seq() != state.seq());
     }
     index++;
   }
@@ -69,19 +69,19 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   usleep(100000);
   checkRoots(core1->root(), core2->root());
   BOOST_CHECK_EQUAL(core2->seq(user1), 1);
-  BOOST_CHECK_EQUAL(core2->yp(user1), loc1);
+  BOOST_CHECK_EQUAL(log2->LookupLocator (user1), loc1);
 
   core1->updateLocalState(5);
   usleep(100000);
   checkRoots(core1->root(), core2->root());
   BOOST_CHECK_EQUAL(core2->seq(user1), 5);
-  BOOST_CHECK_EQUAL(core2->yp(user1), loc1);
+  BOOST_CHECK_EQUAL(log2->LookupLocator (user1), loc1);
 
   core2->updateLocalState(10);
   usleep(100000);
   checkRoots(core1->root(), core2->root());
   BOOST_CHECK_EQUAL(core1->seq(user2), 10);
-  BOOST_CHECK_EQUAL(core1->yp(user2), loc2);
+  BOOST_CHECK_EQUAL(log1->LookupLocator (user2), loc2);
 
   // simple simultaneous data generation
   cout << "\n\n\n\n\n\n----------Simultaneous\n";
@@ -93,10 +93,10 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   BOOST_CHECK_EQUAL(core1->seq(user2), 15);
   BOOST_CHECK_EQUAL(core2->seq(user1), 11);
 
-  BOOST_CHECK_EQUAL(core1->yp(user1), loc1);
-  BOOST_CHECK_EQUAL(core1->yp(user2), loc2);
-  BOOST_CHECK_EQUAL(core2->yp(user1), loc1);
-  BOOST_CHECK_EQUAL(core2->yp(user2), loc2);
+  BOOST_CHECK_EQUAL(log1->LookupLocator (user1), loc1);
+  BOOST_CHECK_EQUAL(log1->LookupLocator (user2), loc2);
+  BOOST_CHECK_EQUAL(log2->LookupLocator (user1), loc1);
+  BOOST_CHECK_EQUAL(log2->LookupLocator (user2), loc2);
 
   // clean the test dir
   if (exists(d))

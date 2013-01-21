@@ -37,7 +37,7 @@ class SyncCore
 {
 public:
   typedef boost::function<void (const SyncStateMsgPtr & stateMsg) > StateMsgCallback;
-  typedef map<Name, Name> YellowPage;
+  // typedef map<Name, Name> YellowPage;
   typedef boost::shared_mutex Mutex;
   typedef boost::shared_lock<Mutex> ReadLock;
   typedef boost::unique_lock<Mutex> WriteLock;
@@ -59,14 +59,14 @@ public:
 
   // some other code should call this fuction when local prefix
   // changes; e.g. when wake up in another network
-  void
-  updateLocalPrefix(const Name &localPrefix);
+  // void
+  // updateLocalPrefix(const Name &localPrefix);
 
   void
   updateLocalState(sqlite3_int64);
 
-  Name
-  yp(const Name &name);
+  // Name
+  // yp(const Name &name);
 
   void
   handleInterest(const Name &name);
@@ -123,7 +123,7 @@ protected:
   Name m_localPrefix;
   Name m_syncPrefix;
   HashPtr m_rootHash;
-  YellowPage m_yp;
+  // YellowPage m_yp;
   Mutex m_ypMutex;
   CcnxWrapperPtr m_handle;
   Closure m_syncClosure;

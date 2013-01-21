@@ -73,7 +73,7 @@ SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPr
   m_rootHash = m_log->RememberStateInStateLog();
 
   m_handle->setInterestFilter(m_syncPrefix, boost::bind(&SyncCore::handleInterest, this, _1));
-  m_log->initYP(m_yp);
+  // m_log->initYP(m_yp);
   m_scheduler->start();
   sendSyncInterest();
 }
@@ -83,29 +83,29 @@ SyncCore::~SyncCore()
   // need to "deregister" closures
 }
 
-Name
-SyncCore::yp(const Name &deviceName)
-{
-  Name locator;
-  ReadLock lock(m_ypMutex);
-  if (m_yp.find(deviceName) != m_yp.end())
-  {
-    locator = m_yp[deviceName];
-  }
-  else
-  {
-    cout << "self: " << m_userName << ", deviceName: " << deviceName << " not found in yp " << endl;
-  }
-  return locator;
-}
+// Name
+// SyncCore::yp(const Name &deviceName)
+// {
+//   Name locator;
+//   ReadLock lock(m_ypMutex);
+//   if (m_yp.find(deviceName) != m_yp.end())
+//   {
+//     locator = m_yp[deviceName];
+//   }
+//   else
+//   {
+//     cout << "self: " << m_userName << ", deviceName: " << deviceName << " not found in yp " << endl;
+//   }
+//   return locator;
+// }
 
-void
-SyncCore::updateLocalPrefix(const Name &localPrefix)
-{
-  m_localPrefix = localPrefix;
-  // optionally, we can have a sync action to announce the new prefix
-  // we are not doing this for now
-}
+// void
+// SyncCore::updateLocalPrefix(const Name &localPrefix)
+// {
+//   m_localPrefix = localPrefix;
+//   // optionally, we can have a sync action to announce the new prefix
+//   // we are not doing this for now
+// }
 
 void
 SyncCore::updateLocalState(sqlite3_int64 seqno)
@@ -113,10 +113,10 @@ SyncCore::updateLocalState(sqlite3_int64 seqno)
   m_log->UpdateDeviceSeqNo(m_userName, seqno);
   // choose to update locator everytime
   m_log->UpdateLocator(m_userName, m_localPrefix);
-  {
-    WriteLock lock(m_ypMutex);
-    m_yp[m_userName] = m_localPrefix;
-  }
+  // {
+  //   WriteLock lock(m_ypMutex);
+  //   m_yp[m_userName] = m_localPrefix;
+  // }
   HashPtr oldHash = m_rootHash;
   m_rootHash = m_log->RememberStateInStateLog();
 
@@ -308,8 +308,8 @@ SyncCore::handleStateData(const Bytes &content)
         Name locatorName((const unsigned char *)locStr.c_str(), locStr.size());
     //    cout << ", Got loc: " << locatorName << endl;
         m_log->UpdateLocator(deviceName, locatorName);
-        WriteLock lock(m_ypMutex);
-        m_yp[deviceName] = locatorName;
+        // WriteLock lock(m_ypMutex);
+        // m_yp[deviceName] = locatorName;
         cout << "self: " << m_userName << ", device: " << deviceName << " < == > " << locatorName << endl;
       }
     }

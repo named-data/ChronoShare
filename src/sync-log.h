@@ -35,9 +35,9 @@ class SyncLog : public DbHelper
 public:
   SyncLog (const boost::filesystem::path &path, const std::string &localName);
 
-  // fill in the map with device-name <-> locator pairs
-  void
-  initYP(map<Ccnx::Name, Ccnx::Name> &yp);
+  // // fill in the map with device-name <-> locator pairs
+  // void
+  // initYP(map<Ccnx::Name, Ccnx::Name> &yp);
 
   sqlite3_int64
   GetNextLocalSeqNo (); // side effect: local seq_no will be increased
@@ -51,6 +51,9 @@ public:
 
   void
   UpdateLocator (const Ccnx::Name &deviceName, const Ccnx::Name &locator);
+
+  void
+  UpdateLocalLocator (const Ccnx::Name &locator);
 
   // done
   /**
@@ -72,7 +75,7 @@ public:
   FindStateDifferences (const std::string &oldHash, const std::string &newHash, bool includeOldSeq = false);
 
   SyncStateMsgPtr
-  FindStateDifferences (const Hash &oldHash, const Hash &newHash, bool includeOldSeq = false);  
+  FindStateDifferences (const Hash &oldHash, const Hash &newHash, bool includeOldSeq = false);
 
   //-------- only used in test -----------------
   sqlite3_int64
@@ -81,18 +84,17 @@ public:
 protected:
   void
   UpdateDeviceSeqNo (sqlite3_int64 deviceId, sqlite3_int64 seqNo);
-  
+
 
 protected:
-  // std::string m_localName;
   Ccnx::Name m_localName;
-  
+
   sqlite3_int64 m_localDeviceId;
 
   typedef boost::mutex Mutex;
   typedef boost::unique_lock<Mutex> WriteLock;
-  
-  Mutex m_stateUpdateMutex;  
+
+  Mutex m_stateUpdateMutex;
 };
 
 typedef boost::shared_ptr<SyncLog> SyncLogPtr;
