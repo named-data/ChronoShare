@@ -31,6 +31,7 @@
 #include <QFileDialog>
 #include <QCloseEvent>
 #include <QMessageBox>
+#include <QApplication>
 
 class ChronoShareGui : public QWidget
 {
