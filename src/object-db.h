@@ -27,6 +27,7 @@
 #include <ccnx-common.h>
 #include <ccnx-name.h>
 #include <boost/filesystem.hpp>
+#include <boost/shared_ptr.hpp>
 
 class ObjectDb
 {
@@ -50,5 +51,7 @@ public:
 private:
   sqlite3 *m_db;
 };
+
+typedef boost::shared_ptr<ObjectDb> ObjectDbPtr;
 
 #endif // OBJECT_DB_H

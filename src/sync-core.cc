@@ -39,10 +39,10 @@ SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPr
                    const StateMsgCallback &callback, CcnxWrapperPtr ccnx, SchedulerPtr scheduler)
   : m_ccnx (ccnx)
   , m_log(syncLog)
-  , m_scheduler(scheduler)
-  , m_stateMsgCallback(callback)
-  , m_syncPrefix(syncPrefix)
-  , m_recoverWaitGenerator(new RandomIntervalGenerator(WAIT, RANDOM_PERCENT, RandomIntervalGenerator::UP))
+         , m_scheduler(scheduler)
+         , m_stateMsgCallback(callback)
+         , m_syncPrefix(syncPrefix)
+         , m_recoverWaitGenerator(new RandomIntervalGenerator(WAIT, RANDOM_PERCENT, RandomIntervalGenerator::UP))
 {
   m_rootHash = m_log->RememberStateInStateLog();
 
@@ -60,12 +60,23 @@ SyncCore::~SyncCore()
 }
 
 void
+SyncCore::updateLocalPrefix (const Name &localPrefix)
+{
+  m_log->UpdateLocalLocator (localPrefix);
+}
+
+void
 SyncCore::updateLocalState(sqlite3_int64 seqno)
 {
   m_log->UpdateLocalSeqNo (seqno);
+  localStateChanged();
+}
 
+void
+SyncCore::localStateChanged()
+{
   HashPtr oldHash = m_rootHash;
-  m_rootHash = m_log->RememberStateInStateLog ();
+  m_rootHash = m_log->RememberStateInStateLog();
 
   SyncStateMsgPtr msg = m_log->FindStateDifferences(*oldHash, *m_rootHash);
 
@@ -79,7 +90,7 @@ SyncCore::updateLocalState(sqlite3_int64 seqno)
 
   // no hurry in sending out new Sync Interest; if others send the new Sync Interest first, no problem, we know the new root hash already;
   // this is trying to avoid the situation that the order of SyncData and new Sync Interest gets reversed at receivers
-  Scheduler::scheduleOneTimeTask (m_scheduler, 0.1,
+  Scheduler::scheduleOneTimeTask (m_scheduler, 0.05,
                                   bind(&SyncCore::sendSyncInterest, this),
                                   lexical_cast<string> (*m_rootHash));
 
@@ -118,9 +129,9 @@ SyncCore::handleRecoverInterest(const Name &name)
     m_ccnx->publishData(name, *syncData, FRESHNESS);
     _LOG_TRACE (m_log->GetLocalName () << " publishes " << hash);
     _LOG_TRACE (msg);
-  }
-  else
-  {
+      }
+      else
+      {
     // we don't recognize this hash, can not help
   }
 }
@@ -227,7 +238,7 @@ SyncCore::handleStateData(const Bytes &content)
       {
         string locStr = state.locator();
         Name locatorName((const unsigned char *)locStr.c_str(), locStr.size());
-        // cout << ", Got loc: " << locatorName << endl;
+    //    cout << ", Got loc: " << locatorName << endl;
         m_log->UpdateLocator(deviceName, locatorName);
 
         _LOG_TRACE ("self: " << m_log->GetLocalName () << ", device: " << deviceName << " < == > " << locatorName);

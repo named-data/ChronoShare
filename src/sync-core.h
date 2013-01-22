@@ -46,7 +46,13 @@ public:
            , const StateMsgCallback &callback   // callback when state change is detected
            , Ccnx::CcnxWrapperPtr ccnx
            , SchedulerPtr scheduler);
-  ~SyncCore ();
+  ~SyncCore();
+
+  void
+  updateLocalPrefix (const Ccnx::Name &localPrefix);
+
+  void
+  localStateChanged ();
 
   void
   updateLocalState (sqlite3_int64);
