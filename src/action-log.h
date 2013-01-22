@@ -49,6 +49,9 @@ public:
   void
   AddActionDelete (const std::string &filename);
 
+  bool
+  KnownFileState(const std::string &filename, const Hash &hash);
+
 private:
   boost::tuple<sqlite3_int64, sqlite3_int64, sqlite3_int64, std::string>
   GetExistingRecord (const std::string &filename);

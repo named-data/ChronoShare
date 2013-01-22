@@ -63,7 +63,7 @@ public:
   updateLocalPrefix(const Name &localPrefix);
 
   void
-  updateLocalState(sqlite3_int64);
+  localStateChanged();
 
   Name
   yp(const Name &name);
@@ -95,6 +95,9 @@ public:
 
   sqlite3_int64
   seq(const Name &name);
+
+  void
+  updateLocalState(sqlite3_int64);
 
 protected:
   void

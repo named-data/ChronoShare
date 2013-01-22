@@ -118,6 +118,13 @@ void
 SyncCore::updateLocalState(sqlite3_int64 seqno)
 {
   m_log->UpdateDeviceSeqNo(m_userName, seqno);
+  localStateChanged();
+
+}
+
+void
+SyncCore::localStateChanged()
+{
   // choose to update locator everytime
   m_log->UpdateLocator(m_userName, m_localPrefix);
   {
@@ -141,7 +148,7 @@ SyncCore::updateLocalState(sqlite3_int64 seqno)
   // this is trying to avoid the situation that the order of SyncData and new Sync Interest gets reversed at receivers
   ostringstream ss;
   ss << *m_rootHash;
-  TaskPtr task(new OneTimeTask(boost::bind(&SyncCore::sendSyncInterest, this), ss.str(), m_scheduler, 0.1));
+  TaskPtr task(new OneTimeTask(boost::bind(&SyncCore::sendSyncInterest, this), ss.str(), m_scheduler, 0.05));
   m_scheduler->addTask(task);
   sendSyncInterest();
 }

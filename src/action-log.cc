@@ -382,3 +382,18 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
   
   sqlite3_result_null (context);
 }
+
+bool
+ActionLog::KnownFileState(const std::string &filename, const Hash &hash)
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "SELECT * FROM FileState WHERE filename = ? AND file_hash = ?;", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, filename.c_str(), -1, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, 2, hash.GetHash (), hash.GetHashBytes (), SQLITE_STATIC);
+  if (sqlite3_step (stmt) == SQLITE_ROW)
+  {
+    return true;
+  }
+
+  return false;
+}
