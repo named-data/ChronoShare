@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   usleep(1000000);
   checkRoots(core1->root(), core2->root());
 
-  _LOG_TRACE ("\n\n\n\n\n\n----------\n");
+  // _LOG_TRACE ("\n\n\n\n\n\n----------\n");
 
   core1->updateLocalState(1);
   usleep(100000);
@@ -92,7 +92,8 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   BOOST_CHECK_EQUAL(log1->LookupLocator (user2), loc2);
 
   // simple simultaneous data generation
-  _LOG_TRACE ("\n\n\n\n\n\n----------Simultaneous\n");
+  // _LOG_TRACE ("\n\n\n\n\n\n----------Simultaneous\n");
+  _LOG_TRACE ("Simultaneous");
 
   core1->updateLocalState(11);
   usleep(100);

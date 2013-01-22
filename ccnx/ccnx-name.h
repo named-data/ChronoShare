@@ -105,6 +105,9 @@ public:
   Name &
   operator ()(const T &comp) { return appendComp (comp); }
 
+  Name &
+  operator ()(const void *buf, size_t size) { return appendComp (buf, size); }
+
   int
   size() const {return m_comps.size();}
 

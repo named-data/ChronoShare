@@ -55,7 +55,7 @@ ObjectManager::localFileToObjects (const fs::path &file, const Ccnx::Name &devic
 {
   HashPtr fileHash = Hash::FromFileContent (file);
   ObjectDb fileDb (m_folder, lexical_cast<string> (*fileHash));
-  
+
   fs::ifstream iff (file, std::ios::in | std::ios::binary);
   sqlite3_int64 segment = 0;
   while (iff.good ())
@@ -63,21 +63,17 @@ ObjectManager::localFileToObjects (const fs::path &file, const Ccnx::Name &devic
       char buf[MAX_FILE_SEGMENT_SIZE];
       iff.read (buf, MAX_FILE_SEGMENT_SIZE);
 
-      Name name (deviceName);
-      name
-        .appendComp ("file")
-        .appendComp (fileHash->GetHash (), fileHash->GetHashBytes ())
-        .appendComp (segment);
+      Name name = Name (deviceName)("file")(fileHash->GetHash (), fileHash->GetHashBytes ())(segment);
 
       // cout << *fileHash << endl;
       // cout << name << endl;
 
       Bytes data = m_ccnx->createContentObject (name, buf, iff.gcount ());
       fileDb.saveContentObject (deviceName, segment, data);
-      
+
       segment ++;
     }
-  
+
   return fileHash;
 }
 
@@ -103,12 +99,12 @@ ObjectManager::objectsToLocalFile (/*in*/const Ccnx::Name &deviceName, /*in*/con
       BytesPtr data = obj.contentPtr ();
 
       off.write (reinterpret_cast<const char*> (head(*data)), data->size());
-      
+
       segment ++;
       bytes = fileDb.fetchSegment (deviceName, segment);
     }
 
   // permission and timestamp should be assigned somewhere else (ObjectManager has no idea about that)
-  
+
   return true;
 }

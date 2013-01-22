@@ -20,10 +20,13 @@
  */
 
 #include "sync-log.h"
+#include "logging.h"
 #include <utility>
 
 #include <boost/make_shared.hpp>
 #include <boost/thread.hpp>
+
+INIT_LOGGER ("Sync.Log");
 
 using namespace boost;
 using namespace std;
@@ -116,7 +119,8 @@ INSERT INTO SyncLog                                                \
               ORDER BY device_name);                               \
 ", 0,0,0);
 
-   std::cout << sqlite3_errmsg (m_db) << std::endl;
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, "DbError: " << sqlite3_errmsg (m_db));
+
   if (res != SQLITE_OK)
     {
       sqlite3_exec (m_db, "ROLLBACK TRANSACTION;", 0,0,0);
@@ -137,7 +141,7 @@ INSERT INTO SyncStateNodes                              \
   res += sqlite3_bind_int64 (insertStmt, 1, rowId);
   sqlite3_step (insertStmt);
 
-  // std::cout << sqlite3_errmsg (m_db) << std::endl;
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, "DbError: " << sqlite3_errmsg (m_db));
   if (res != SQLITE_OK)
     {
       sqlite3_exec (m_db, "ROLLBACK TRANSACTION;", 0,0,0);
@@ -163,7 +167,7 @@ SELECT state_hash FROM SyncLog WHERE state_id = ?\
     {
       sqlite3_exec (m_db, "ROLLBACK TRANSACTION;", 0,0,0);
 
-      // std::cout << sqlite3_errmsg (m_db) << std::endl;
+      _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, "DbError: " << sqlite3_errmsg (m_db));
       BOOST_THROW_EXCEPTION (Error::Db ()
                              << errmsg_info_str ("Not a valid hash in rememberStateInStateLog"));
     }

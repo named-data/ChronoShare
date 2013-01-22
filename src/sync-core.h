@@ -25,13 +25,8 @@
 #include "sync-log.h"
 #include "ccnx-wrapper.h"
 #include "scheduler.h"
-#include "interval-generator.h"
 
 #include <boost/function.hpp>
-#include <boost/thread/shared_mutex.hpp>
-
-using namespace std;
-using namespace Ccnx;
 
 class SyncCore
 {
@@ -49,85 +44,69 @@ public:
 
 public:
   SyncCore(SyncLogPtr syncLog
-           , const Name &userName
-           , const Name &localPrefix            // routable name used by the local user
-           , const Name &syncPrefix             // the prefix for the sync collection
+           , const Ccnx::Name &userName
+           , const Ccnx::Name &localPrefix      // routable name used by the local user
+           , const Ccnx::Name &syncPrefix       // the prefix for the sync collection
            , const StateMsgCallback &callback   // callback when state change is detected
-           , const CcnxWrapperPtr &handle
-           , const SchedulerPtr &scheduler);
+           , Ccnx::CcnxWrapperPtr ccnx
+           , SchedulerPtr scheduler);
   ~SyncCore();
 
-  // some other code should call this fuction when local prefix
-  // changes; e.g. when wake up in another network
-  // void
-  // updateLocalPrefix(const Name &localPrefix);
+  void
+  updateLocalState (sqlite3_int64);
+
+// ------------------ only used in test -------------------------
+public:
+  HashPtr
+  root() const { return m_rootHash; }
+
+  sqlite3_int64
+  seq (const Ccnx::Name &name);
+
+private:
+  void
+  handleInterest(const Ccnx::Name &name);
 
   void
-  updateLocalState(sqlite3_int64);
-
-  // Name
-  // yp(const Name &name);
+  handleSyncData(const Ccnx::Name &name, Ccnx::PcoPtr content);
 
   void
-  handleInterest(const Name &name);
+  handleRecoverData(const Ccnx::Name &name, Ccnx::PcoPtr content);
+
+  Ccnx::Closure::TimeoutCallbackReturnValue
+  handleSyncInterestTimeout(const Ccnx::Name &name);
+
+  Ccnx::Closure::TimeoutCallbackReturnValue
+  handleRecoverInterestTimeout(const Ccnx::Name &name);
 
   void
-  handleSyncData(const Name &name, Ccnx::PcoPtr content);
-
-  void
-  handleRecoverData(const Name &name, Ccnx::PcoPtr content);
-
-  Closure::TimeoutCallbackReturnValue
-  handleSyncInterestTimeout(const Name &name);
-
-  Closure::TimeoutCallbackReturnValue
-  handleRecoverInterestTimeout(const Name &name);
-
-  void
-  deregister(const Name &name);
+  deregister(const Ccnx::Name &name);
 
   void
   recover(const HashPtr &hash);
-
-// ------------------ only used in test -------------------------
-  HashPtr
-  root() { return m_rootHash; }
-
-  sqlite3_int64
-  seq(const Name &name);
 
 private:
   void
   sendSyncInterest();
 
   void
-  handleSyncInterest(const Name &name);
+  handleSyncInterest(const Ccnx::Name &name);
 
   void
-  handleRecoverInterest(const Name &name);
+  handleRecoverInterest(const Ccnx::Name &name);
 
   void
-  handleStateData(const Bytes &content);
-
-  Name
-  constructSyncName(const HashPtr &hash);
-
-  static void
-  msgToBytes(const SyncStateMsgPtr &msg, Bytes &bytes);
+  handleStateData(const Ccnx::Bytes &content);
 
 private:
+  Ccnx::CcnxWrapperPtr m_ccnx;
+
   SyncLogPtr m_log;
   SchedulerPtr m_scheduler;
   StateMsgCallback m_stateMsgCallback;
-  // Name m_userName;
-  // Name m_localPrefix;
-  Name m_syncPrefix;
+
+  Ccnx::Name m_syncPrefix;
   HashPtr m_rootHash;
-  // YellowPage m_yp;
-  Mutex m_ypMutex;
-  CcnxWrapperPtr m_handle;
-  Closure m_syncClosure;
-  Closure m_recoverClosure;
 
   IntervalGeneratorPtr m_recoverWaitGenerator;
 };

@@ -61,9 +61,9 @@ ActionLog::GetExistingRecord (const std::string &filename)
   sqlite3_int64 parent_device_id = -1;
   sqlite3_int64 parent_seq_no = -1;
   string parent_device_name;
-  
+
   sqlite3_bind_text (stmt, 1, filename.c_str (), filename.size (), SQLITE_STATIC);
-  if (sqlite3_step (stmt) == SQLITE_ROW) 
+  if (sqlite3_step (stmt) == SQLITE_ROW)
     {
       version = sqlite3_column_int64 (stmt, 0) + 1;
 
@@ -74,7 +74,7 @@ ActionLog::GetExistingRecord (const std::string &filename)
           parent_device_name = string(reinterpret_cast<const char*> (sqlite3_column_blob (stmt, 4)), sqlite3_column_bytes (stmt, 4));
         }
     }
-  
+
   sqlite3_finalize (stmt);
   return make_tuple (version, parent_device_id, parent_seq_no, parent_device_name);
 }
@@ -88,7 +88,7 @@ ActionLog::AddActionUpdate (const std::string &filename,
                             int seg_num)
 {
   sqlite3_exec (m_db, "BEGIN TRANSACTION;", 0,0,0);
-  
+
   sqlite3_int64 seq_no = GetNextLocalSeqNo ();
   sqlite3_int64 version = 0;
   sqlite3_int64 parent_device_id = -1;
@@ -96,9 +96,9 @@ ActionLog::AddActionUpdate (const std::string &filename,
   sqlite3_int64 parent_seq_no = -1;
 
   sqlite3_int64 action_time = time (0);
-  
+
   tie (version, parent_device_id, parent_seq_no, parent_device_name) = GetExistingRecord (filename);
-  
+
   sqlite3_stmt *stmt;
   int res = sqlite3_prepare_v2 (m_db, "INSERT INTO ActionLog "
                                 "(device_id, seq_no, action, filename, version, action_timestamp, "
@@ -117,7 +117,7 @@ ActionLog::AddActionUpdate (const std::string &filename,
   //                               "VALUES (?, ?, ?, ?, ?, datetime(?, 'unixepoch'),"
   //                               "        ?, datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), ?,"
   //   "        ?, ?)" << endl;
-  
+
   if (res != SQLITE_OK)
     {
       BOOST_THROW_EXCEPTION (Error::Db ()
@@ -126,16 +126,16 @@ ActionLog::AddActionUpdate (const std::string &filename,
                              // << errmsg_info_str ("Some error with prepare AddActionUpdate"));
     }
 
-  
+
   sqlite3_bind_int64 (stmt, 1, m_localDeviceId);
   sqlite3_bind_int64 (stmt, 2, seq_no);
   sqlite3_bind_int   (stmt, 3, 0);
   sqlite3_bind_text  (stmt, 4, filename.c_str (), filename.size (), SQLITE_TRANSIENT);
   sqlite3_bind_int64 (stmt, 5, version);
   sqlite3_bind_int64 (stmt, 6, action_time);
-  
+
   sqlite3_bind_blob  (stmt, 7, hash.GetHash (), hash.GetHashBytes (), SQLITE_TRANSIENT);
-  
+
   // sqlite3_bind_int64 (stmt, 8, atime); // NULL
   sqlite3_bind_int64 (stmt, 9, wtime);
   // sqlite3_bind_int64 (stmt, 10, ctime); // NULL
@@ -152,7 +152,7 @@ ActionLog::AddActionUpdate (const std::string &filename,
       sqlite3_bind_null (stmt, 13);
       sqlite3_bind_null (stmt, 14);
     }
-  
+
   // missing part: creating ContentObject for the action !!!
 
   ActionItem item;
@@ -171,7 +171,7 @@ ActionLog::AddActionUpdate (const std::string &filename,
     {
       cout << Name (reinterpret_cast<const unsigned char *> (parent_device_name.c_str ()),
                     parent_device_name.size ()) << endl;
-      
+
       item.set_parent_device_name (parent_device_name);
       item.set_parent_seq_no (parent_seq_no);
     }
@@ -180,22 +180,18 @@ ActionLog::AddActionUpdate (const std::string &filename,
 
   string item_msg;
   item.SerializeToString (&item_msg);
-  Name actionName (m_localName);
-  actionName
-    .appendComp ("action")
-    .appendComp (m_sharedFolderName)
-    .appendComp (seq_no);
-  
+  Name actionName = Name (m_localName)("action")(m_sharedFolderName)(seq_no);
+
   Bytes actionData = m_ccnx->createContentObject (actionName, item_msg.c_str (), item_msg.size ());
   CcnxCharbufPtr namePtr = actionName.toCcnxCharbuf ();
-  
+
   sqlite3_bind_blob (stmt, 14, namePtr->buf (), namePtr->length (), SQLITE_TRANSIENT);
   sqlite3_bind_blob (stmt, 15, &actionData[0], actionData.size (), SQLITE_TRANSIENT);
-  
+
   sqlite3_step (stmt);
 
-  sqlite3_finalize (stmt); 
-                          
+  sqlite3_finalize (stmt);
+
   sqlite3_exec (m_db, "END TRANSACTION;", 0,0,0);
 }
 
@@ -211,18 +207,18 @@ void
 ActionLog::AddActionDelete (const std::string &filename)
 {
   sqlite3_exec (m_db, "BEGIN TRANSACTION;", 0,0,0);
-  
+
   sqlite3_int64 version = 0;
   sqlite3_int64 parent_device_id = -1;
   string        parent_device_name;
   sqlite3_int64 parent_seq_no = -1;
 
   sqlite3_int64 action_time = time (0);
-  
+
   tie (version, parent_device_id, parent_seq_no, parent_device_name) = GetExistingRecord (filename);
   if (parent_device_id < 0) // no records exist or file was already deleted
     {
-      sqlite3_exec (m_db, "END TRANSACTION;", 0,0,0);  
+      sqlite3_exec (m_db, "END TRANSACTION;", 0,0,0);
       return;
     }
 
@@ -258,28 +254,24 @@ ActionLog::AddActionDelete (const std::string &filename)
 
   string item_msg;
   item.SerializeToString (&item_msg);
-  Name actionName (m_localName);
-  actionName
-    .appendComp ("action")
-    .appendComp (m_sharedFolderName)
-    .appendComp (seq_no);
-  
+  Name actionName = Name (m_localName)("action")(m_sharedFolderName)(seq_no);
+
   Bytes actionData = m_ccnx->createContentObject (actionName, item_msg.c_str (), item_msg.size ());
   CcnxCharbufPtr namePtr = actionName.toCcnxCharbuf ();
-  
+
   sqlite3_bind_blob (stmt, 9, namePtr->buf (), namePtr->length (), SQLITE_TRANSIENT);
   sqlite3_bind_blob (stmt, 10, &actionData[0], actionData.size (), SQLITE_TRANSIENT);
-  
+
   sqlite3_step (stmt);
-  
+
   // cout << Ccnx::Name (reinterpret_cast<const unsigned char *> (parent_device_name.c_str ()),
   //                     parent_device_name.size ()) << endl;
-  
+
   // assign name to the action, serialize action, and create content object
-  
-  sqlite3_finalize (stmt); 
-  
-  sqlite3_exec (m_db, "END TRANSACTION;", 0,0,0);    
+
+  sqlite3_finalize (stmt);
+
+  sqlite3_exec (m_db, "END TRANSACTION;", 0,0,0);
 }
 
 
@@ -299,7 +291,7 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
   // cout << "device_name: " << sqlite3_value_text (argv[0]) << endl;
   // cout << "action: " << sqlite3_value_int (argv[1]) << endl;
   // cout << "filename: " << sqlite3_value_text (argv[2]) << endl;
-  
+
   string device_name (reinterpret_cast<const char*> (sqlite3_value_blob (argv[0])), sqlite3_value_bytes (argv[0]));
   sqlite3_int64 device_id = sqlite3_value_int64 (argv[1]);
   sqlite3_int64 seq_no    = sqlite3_value_int64 (argv[2]);
@@ -338,11 +330,11 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
       sqlite3_bind_int   (stmt, 7, mode);
       sqlite3_bind_int   (stmt, 8, seg_num);
       sqlite3_bind_text  (stmt, 9, filename.c_str (), -1, SQLITE_TRANSIENT);
-      
+
       sqlite3_step (stmt);
 
       // cout << sqlite3_errmsg (the->m_db) << endl;
-      
+
       sqlite3_finalize (stmt);
 
       int affected_rows = sqlite3_changes (the->m_db);
@@ -362,7 +354,7 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
           sqlite3_bind_int64 (stmt, 6, mtime);
           sqlite3_bind_int64 (stmt, 7, ctime);
           sqlite3_bind_int   (stmt, 8, mode);
-      
+
           sqlite3_step (stmt);
           // cout << sqlite3_errmsg (the->m_db) << endl;
           sqlite3_finalize (stmt);
@@ -375,10 +367,10 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
       sqlite3_bind_text (stmt, 1, filename.c_str (), -1, SQLITE_STATIC);
 
       cout << "Delete " << filename << endl;
-      
+
       sqlite3_step (stmt);
       sqlite3_finalize (stmt);
     }
-  
+
   sqlite3_result_null (context);
 }

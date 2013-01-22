@@ -46,10 +46,16 @@
 #define _LOG_ERROR(x) \
   LOG4CXX_ERROR(staticModuleLogger, x);
 
+#define _LOG_ERROR_COND(cond,x) \
+  if (cond) { _LOG_ERROR(x) }
+
+#define _LOG_DEBUG_COND(cond,x) \
+  if (cond) { _LOG_DEBUG(x) }
+
 void
 INIT_LOGGERS ();
 
-#else
+#else // else HAVE_LOG4CXX
 
 #define INIT_LOGGER(name)
 #define _LOG_FUNCTION(x)
@@ -57,6 +63,8 @@ INIT_LOGGERS ();
 #define _LOG_TRACE(x)
 #define INIT_LOGGERS(x)
 #define _LOG_ERROR(x)
+#define _LOG_ERROR_COND(cond,x)
+#define _LOG_DEBUG_COND(cond,x)
 
 #ifdef _DEBUG
 
