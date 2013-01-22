@@ -1,5 +1,5 @@
 #include "sync-core.h"
-
+#include "logging.h"
 
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem.hpp>
@@ -9,6 +9,8 @@ using namespace std;
 using namespace Ccnx;
 using namespace boost;
 using namespace boost::filesystem;
+
+INIT_LOGGER("Test.Sync.Core");
 
 BOOST_AUTO_TEST_SUITE(SyncCoreTests)
 
@@ -37,6 +39,8 @@ void checkRoots(const HashPtr &root1, const HashPtr &root2)
 
 BOOST_AUTO_TEST_CASE(SyncCoreTest)
 {
+  INIT_LOGGERS();
+
   string dir = "./SyncCoreTest";
   // clean the test dir
   path d(dir);
@@ -67,7 +71,8 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   usleep(1000000);
   checkRoots(core1->root(), core2->root());
 
-  // cout << "\n\n\n\n\n\n----------\n";
+  _LOG_TRACE ("\n\n\n\n\n\n----------\n");
+
   core1->updateLocalState(1);
   usleep(100000);
   checkRoots(core1->root(), core2->root());
@@ -87,7 +92,8 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   BOOST_CHECK_EQUAL(log1->LookupLocator (user2), loc2);
 
   // simple simultaneous data generation
-  // cout << "\n\n\n\n\n\n----------Simultaneous\n";
+  _LOG_TRACE ("\n\n\n\n\n\n----------Simultaneous\n");
+
   core1->updateLocalState(11);
   usleep(100);
   core2->updateLocalState(15);

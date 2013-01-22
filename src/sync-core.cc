@@ -20,19 +20,24 @@
  */
 
 #include "sync-core.h"
-
-#include "one-time-task.h"
+#include "logging.h"
 #include "random-interval-generator.h"
+
+#include <boost/lexical_cast.hpp>
+
+INIT_LOGGER ("Sync.Core");
 
 const string SyncCore::RECOVER = "RECOVER";
 const double SyncCore::WAIT = 0.05;
 const double SyncCore::RANDOM_PERCENT = 0.5;
 
+using namespace boost;
+
 // for debugging
 static void
 printMsg(SyncStateMsgPtr &msg)
 {
-  cerr << " ===== start Msg ======" << endl;
+  _LOG_TRACE (" ===== start Msg ======");
   int size = msg->state_size();
   if (size > 0)
   {
@@ -43,17 +48,17 @@ printMsg(SyncStateMsgPtr &msg)
       string strName = state.name();
       string strLocator = state.locator();
       sqlite3_int64 seq = state.seq();
-      cerr << "Name: " << Name((const unsigned char *)strName.c_str(), strName.size());
-      cerr << ", Locator: " << Name((const unsigned char *)strLocator.c_str(), strLocator.size());
-      cerr << ", seq: " << seq << endl;
+      _LOG_TRACE ("Name: " << Name((const unsigned char *)strName.c_str(), strName.size())
+                  <<", Locator: " << Name((const unsigned char *)strLocator.c_str(), strLocator.size())
+                  << ", seq: " << seq);
       index ++;
     }
   }
   else
   {
-    cerr << "Msg size 0" << endl;
+    _LOG_TRACE ("Msg size 0");
   }
-  cerr << " ++++++++ end Msg  ++++++++ \n\n" << endl;
+  _LOG_TRACE (" ++++++++ end Msg  ++++++++ ");
 }
 
 SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPrefix, const Name &syncPrefix, const StateMsgCallback &callback, const CcnxWrapperPtr &handle, const SchedulerPtr &scheduler)
@@ -128,15 +133,15 @@ SyncCore::updateLocalState(sqlite3_int64 seqno)
   Bytes syncData;
   msgToBytes(msg, syncData);
   m_handle->publishData(syncName, syncData, FRESHNESS);
-  cerr << m_log->GetLocalName () << " publishes: " << *oldHash << endl;
+  _LOG_DEBUG (m_log->GetLocalName () << " publishes: " << *oldHash);
   printMsg(msg);
 
   // no hurry in sending out new Sync Interest; if others send the new Sync Interest first, no problem, we know the new root hash already;
   // this is trying to avoid the situation that the order of SyncData and new Sync Interest gets reversed at receivers
-  ostringstream ss;
-  ss << *m_rootHash;
-  TaskPtr task(new OneTimeTask(boost::bind(&SyncCore::sendSyncInterest, this), ss.str(), m_scheduler, 0.1));
-  m_scheduler->addTask(task);
+  Scheduler::scheduleOneTimeTask (m_scheduler, 0.1,
+                                  bind(&SyncCore::sendSyncInterest, this),
+                                  lexical_cast<string> (*m_rootHash));
+
   sendSyncInterest();
 }
 
@@ -194,7 +199,7 @@ SyncCore::handleRecoverInterest(const Name &name)
     Bytes syncData;
     msgToBytes(msg, syncData);
     m_handle->publishData(name, syncData, FRESHNESS);
-    cerr << m_log->GetLocalName () << " publishes " << hash << endl;
+    _LOG_DEBUG (m_log->GetLocalName () << " publishes " << hash);
     printMsg(msg);
   }
   else
@@ -211,32 +216,31 @@ SyncCore::handleSyncInterest(const Name &name)
   if (*hash == *m_rootHash)
   {
     // we have the same hash; nothing needs to be done
-    cerr << "same as root hash: " << *hash << endl;
+    _LOG_DEBUG ("same as root hash: " << *hash);
     return;
   }
   else if (m_log->LookupSyncLog(*hash) > 0)
   {
     // we know something more
-    cerr << "found hash in sync log" << endl;
+    _LOG_DEBUG ("found hash in sync log");
     SyncStateMsgPtr msg = m_log->FindStateDifferences(*hash, *m_rootHash);
 
     Bytes syncData;
     msgToBytes(msg, syncData);
     m_handle->publishData(name, syncData, FRESHNESS);
-    cerr << m_log->GetLocalName () << " publishes: " << *hash << endl;
+    _LOG_DEBUG (m_log->GetLocalName () << " publishes: " << *hash);
     printMsg(msg);
   }
   else
   {
     // we don't recognize the hash, send recover Interest if still don't know the hash after a randomized wait period
-    ostringstream ss;
-    ss << "r-" << *hash;
     double wait = m_recoverWaitGenerator->nextInterval();
-    cerr << m_log->GetLocalName () << ", rootHash: " << *m_rootHash << ", hash: " << *hash << endl;
-    cerr << "recover task scheduled after wait: " << wait << endl;
-    TaskPtr task(new OneTimeTask(boost::bind(&SyncCore::recover, this, hash), ss.str(), m_scheduler, wait));
-    m_scheduler->addTask(task);
+    _LOG_DEBUG (m_log->GetLocalName () << ", rootHash: " << *m_rootHash << ", hash: " << *hash);
+    _LOG_DEBUG ("recover task scheduled after wait: " << wait);
 
+    Scheduler::scheduleOneTimeTask (m_scheduler,
+                                    wait, boost::bind(&SyncCore::recover, this, hash),
+                                    "r-"+lexical_cast<string> (*hash));
   }
 }
 
@@ -261,7 +265,7 @@ SyncCore::handleRecoverInterestTimeout(const Name &name)
 void
 SyncCore::handleRecoverData(const Name &name, PcoPtr content)
 {
-  //cout << "handle recover data" << endl;
+  //cout << "handle recover data" << end;
   handleStateData(*content->contentPtr ());
   sendSyncInterest();
 }
@@ -284,11 +288,11 @@ SyncCore::handleStateData(const Bytes &content)
   if(!success)
   {
     // ignore misformed SyncData
-    cerr << "Misformed SyncData"<< endl;
+    _LOG_ERROR ("Misformed SyncData");
     return;
   }
 
-  cerr << m_log->GetLocalName () << " receives Msg " << endl;
+  _LOG_DEBUG (m_log->GetLocalName () << " receives Msg ");
   printMsg (msg);
   int size = msg->state_size();
   int index = 0;
@@ -311,12 +315,12 @@ SyncCore::handleStateData(const Bytes &content)
         m_log->UpdateLocator(deviceName, locatorName);
         // WriteLock lock(m_ypMutex);
         // m_yp[deviceName] = locatorName;
-        cerr << "self: " << m_log->GetLocalName () << ", device: " << deviceName << " < == > " << locatorName << endl;
+        _LOG_DEBUG ("self: " << m_log->GetLocalName () << ", device: " << deviceName << " < == > " << locatorName);
       }
     }
     else
     {
-      cerr << "nani" << endl;
+      _LOG_TRACE ("nani");
       deregister(deviceName);
     }
     index++;
@@ -339,7 +343,7 @@ SyncCore::sendSyncInterest()
 {
   Name syncInterest = constructSyncName(m_rootHash);
   m_handle->sendInterest(syncInterest, m_syncClosure);
-  cerr << m_log->GetLocalName () << " send SYNC interest: " << *m_rootHash << endl;
+  _LOG_DEBUG (m_log->GetLocalName () << " send SYNC interest: " << *m_rootHash);
 }
 
 void
@@ -347,7 +351,7 @@ SyncCore::recover(const HashPtr &hash)
 {
   if (!(*hash == *m_rootHash) && m_log->LookupSyncLog(*hash) <= 0)
   {
-    cerr << m_log->GetLocalName () << ", Recover for: " << *hash << endl;
+    _LOG_DEBUG (m_log->GetLocalName () << ", Recover for: " << *hash);
     // unfortunately we still don't recognize this hash
     Bytes bytes;
     readRaw(bytes, (const unsigned char *)hash->GetHash(), hash->GetHashBytes());
@@ -356,7 +360,7 @@ SyncCore::recover(const HashPtr &hash)
     // append the unknown hash
     recoverInterest.appendComp(bytes);
     m_handle->sendInterest(recoverInterest, m_recoverClosure);
-    cerr << m_log->GetLocalName () << " send RECOVER Interest: " << *hash << endl;
+    _LOG_DEBUG (m_log->GetLocalName () << " send RECOVER Interest: " << *hash);
   }
   else
   {

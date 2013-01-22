@@ -96,7 +96,7 @@ public:
   sqlite3_int64
   seq(const Name &name);
 
-protected:
+private:
   void
   sendSyncInterest();
 
@@ -115,7 +115,7 @@ protected:
   static void
   msgToBytes(const SyncStateMsgPtr &msg, Bytes &bytes);
 
-protected:
+private:
   SyncLogPtr m_log;
   SchedulerPtr m_scheduler;
   StateMsgCallback m_stateMsgCallback;
@@ -130,7 +130,6 @@ protected:
   Closure m_recoverClosure;
 
   IntervalGeneratorPtr m_recoverWaitGenerator;
-
 };
 
 #endif // SYNC_CORE_H

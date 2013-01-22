@@ -9,6 +9,7 @@ def options(opt):
     opt.add_option('--debug',action='store_true',default=False,dest='debug',help='''debugging mode''')
     opt.add_option('--test', action='store_true',default=False,dest='_test',help='''build unit tests''')
     opt.add_option('--yes',action='store_true',default=False) # for autoconf/automake/make compatibility
+    opt.add_option('--log4cxx', action='store_true',default=False,dest='log4cxx',help='''Compile with log4cxx logging support''')
 
     opt.load('compiler_cxx boost ccnx protoc ice_cxx qt4')
 
@@ -31,6 +32,10 @@ def configure(conf):
     if not conf.get_define ("HAVE_SSL"):
         conf.fatal ("Cannot find SSL libraries")
 
+    if conf.options.log4cxx:
+        conf.check_cfg(package='liblog4cxx', args=['--cflags', '--libs'], uselib_store='LOG4CXX', mandatory=True)
+        conf.define ("HAVE_LOG4CXX", 1)
+
     conf.load ('ccnx')
 
     conf.load('protoc')
@@ -51,9 +56,10 @@ def configure(conf):
 
     if conf.options.debug:
         conf.define ('_DEBUG', 1)
-        conf.env.append_value('CXXFLAGS', ['-O0', '-Wall', '-Wno-unused-variable', '-fcolor-diagnostics', '-g3'])
+        conf.env.append_value('CXXFLAGS', ['-O0', '-Wall', '-Wno-unused-variable',
+                                           '-fcolor-diagnostics', '-g3', '-Qunused-arguments'])
     else:
-        conf.env.append_value('CXXFLAGS', ['-O3', '-g'])
+        conf.env.append_value('CXXFLAGS', ['-O3', '-g', '-Qunused-arguments'])
 
     if conf.options._test:
         conf.env.TEST = 1
@@ -65,23 +71,23 @@ def build (bld):
         target = "scheduler",
         features = ["cxx"],
         source = bld.path.ant_glob(['scheduler/**/*.cc']),
-        use = 'BOOST BOOST_THREAD LIBEVENT LIBEVENT_PTHREADS',
-        includes = ['scheduler'],
+        use = 'BOOST BOOST_THREAD LIBEVENT LIBEVENT_PTHREADS LOG4CXX',
+        includes = "scheduler",
         )
 
     libccnx = bld (
         target="ccnx",
         features=['cxx'],
         source = bld.path.ant_glob(['ccnx/**/*.cc', 'ccnx/**/*.cpp']),
-        use = 'BOOST BOOST_THREAD SSL CCNX scheduler',
-        includes = ['ccnx', 'scheduler'],
+        use = 'BOOST BOOST_THREAD SSL CCNX LOG4CXX scheduler',
+        includes = "ccnx scheduler",
         )
 
     chornoshare = bld (
         target="chronoshare",
         features=['cxx'],
         source = bld.path.ant_glob(['src/**/*.cc', 'src/**/*.cpp', 'src/**/*.proto']),
-        use = "BOOST BOOST_FILESYSTEM SQLITE3 scheduler ccnx",
+        use = "BOOST BOOST_FILESYSTEM SQLITE3 LOG4CXX scheduler ccnx",
         includes = "ccnx scheduler src",
         )
 
@@ -91,7 +97,7 @@ def build (bld):
           target="unit-tests",
           source = bld.path.ant_glob(['test/*.cc']),
           features=['cxx', 'cxxprogram'],
-          use = 'BOOST_TEST BOOST_FILESYSTEM ccnx database chronoshare',
+          use = 'BOOST_TEST BOOST_FILESYSTEM LOG4CXX ccnx database chronoshare',
           includes = "ccnx scheduler src",
           )
 
@@ -101,7 +107,7 @@ def build (bld):
         defines = "WAF",
           source = bld.path.ant_glob(['filesystemwatcher/*.cpp']),
         includes = "filesystemwatcher . ",
-        use = "QTCORE QTGUI"
+        use = "QTCORE QTGUI LOG4CXX"
         )
 
     qt = bld (
@@ -110,5 +116,5 @@ def build (bld):
 	defines = "WAF",
 	source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.qrc']),
 	includes = "gui . ",
-	use = "QTCORE QTGUI"
+	use = "QTCORE QTGUI LOG4CXX"
 	)
