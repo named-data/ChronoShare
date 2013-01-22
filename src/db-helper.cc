@@ -32,7 +32,7 @@ using namespace boost;
 namespace fs = boost::filesystem;
 
 const std::string INIT_DATABASE = "\
-PRAGMA foreign_keys = ON;                                       \n\
+    PRAGMA foreign_keys = ON;      \
 ";
 
 DbHelper::DbHelper (const fs::path &path)

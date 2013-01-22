@@ -37,11 +37,16 @@ public:
   CcnxCharbuf();
   CcnxCharbuf(ccn_charbuf *buf);
   CcnxCharbuf(const CcnxCharbuf &other);
+  CcnxCharbuf(const void *buf, size_t length);
   ~CcnxCharbuf();
 
   // expose internal data structure, use with caution!!
   ccn_charbuf *
   getBuf() { return m_buf; }
+
+  const ccn_charbuf *
+  getBuf() const { return m_buf; }
+
   static CcnxCharbufPtr Null;
 
   const unsigned char *
@@ -72,6 +77,8 @@ public:
   Name(const Name &other);
   Name(const unsigned char *data, const ccn_indexbuf *comps);
   Name (const unsigned char *buf, const size_t length);
+  Name (const CcnxCharbuf &buf);
+  Name (const ccn_charbuf *buf);
   virtual ~Name() {}
 
   CcnxCharbufPtr
@@ -141,7 +148,7 @@ public:
   friend Name
   operator+(const Name &n1, const Name &n2);
 
-protected:
+private:
   vector<Bytes> m_comps;
 };
 

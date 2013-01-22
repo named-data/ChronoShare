@@ -57,6 +57,14 @@ CcnxCharbuf::CcnxCharbuf(const CcnxCharbuf &other)
   init(other.m_buf);
 }
 
+CcnxCharbuf::CcnxCharbuf(const void *buf, size_t length)
+{
+  m_buf = ccn_charbuf_create ();
+  ccn_charbuf_reserve (m_buf, length);
+  memcpy (m_buf->buf, buf, length);
+  m_buf->length = length;
+}
+
 CcnxCharbuf::~CcnxCharbuf()
 {
   ccn_charbuf_destroy(&m_buf);
@@ -126,6 +134,41 @@ Name::Name (const unsigned char *buf, const size_t length)
   ccn_indexbuf_destroy(&idx);
 }
 
+Name::Name (const CcnxCharbuf &buf)
+{
+  ccn_indexbuf *idx = ccn_indexbuf_create();
+  ccn_name_split (buf.getBuf (), idx);
+
+  const unsigned char *compPtr = NULL;
+  size_t size = 0;
+  int i = 0;
+  while (ccn_name_comp_get(buf.getBuf ()->buf, idx, i, &compPtr, &size) == 0)
+    {
+      Bytes comp;
+      readRaw (comp, compPtr, size);
+      m_comps.push_back(comp);
+      i++;
+    }
+  ccn_indexbuf_destroy(&idx);
+}
+
+Name::Name (const ccn_charbuf *buf)
+{
+  ccn_indexbuf *idx = ccn_indexbuf_create();
+  ccn_name_split (buf, idx);
+
+  const unsigned char *compPtr = NULL;
+  size_t size = 0;
+  int i = 0;
+  while (ccn_name_comp_get(buf->buf, idx, i, &compPtr, &size) == 0)
+    {
+      Bytes comp;
+      readRaw (comp, compPtr, size);
+      m_comps.push_back(comp);
+      i++;
+    }
+  ccn_indexbuf_destroy(&idx);
+}
 
 Name &
 Name::operator=(const Name &other)

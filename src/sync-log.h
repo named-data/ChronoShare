@@ -41,12 +41,6 @@ public:
   inline const Ccnx::Name &
   GetLocalName () const;
 
-  /**
-   * @brief Get database ID of the local sync node (make sense only for the local database)
-   */
-  inline const sqlite3_int64
-  GetLocalSyncNodeId () const;
-
   sqlite3_int64
   GetNextLocalSeqNo (); // side effect: local seq_no will be increased
 
@@ -115,12 +109,5 @@ SyncLog::GetLocalName () const
 {
   return m_localName;
 }
-
-const sqlite3_int64
-SyncLog::GetLocalSyncNodeId () const
-{
-  return m_localDeviceId;
-}
-
 
 #endif // SYNC_LOG_H

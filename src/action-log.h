@@ -56,8 +56,8 @@ public:
   KnownFileState(const std::string &filename, const Hash &hash);
 
 private:
-  boost::tuple<sqlite3_int64, sqlite3_int64, sqlite3_int64, std::string>
-  GetExistingRecord (const std::string &filename);
+  boost::tuple<sqlite3_int64 /*version*/, Ccnx::CcnxCharbufPtr /*device name*/, sqlite3_int64 /*seq_no*/>
+  GetLatestActionForFile (const std::string &filename);
 
   static void
   apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
