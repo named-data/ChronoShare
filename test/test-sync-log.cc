@@ -22,6 +22,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include "logging.h"
 #include <unistd.h>
 #include "action-log.h"
 #include <iostream>
@@ -33,11 +34,13 @@ using namespace boost;
 using namespace Ccnx;
 namespace fs = boost::filesystem;
 
-BOOST_AUTO_TEST_SUITE(DatabaseTest)
+BOOST_AUTO_TEST_SUITE(TestSyncLog)
 
 
 BOOST_AUTO_TEST_CASE (BasicDatabaseTest)
 {
+  INIT_LOGGERS ();
+
   fs::path tmpdir = fs::unique_path (fs::temp_directory_path () / "%%%%-%%%%-%%%%-%%%%");
   SyncLog db (tmpdir, "/alex");
 
@@ -73,7 +76,7 @@ BOOST_AUTO_TEST_CASE (BasicDatabaseTest)
   BOOST_CHECK_EQUAL (msg->state_size(), 1);
   BOOST_CHECK_EQUAL (msg->state (0).type (), SyncState::UPDATE);
   BOOST_CHECK_EQUAL (msg->state (0).seq (), 2);
-  
+
   msg = db.FindStateDifferences ("2ff304769cdb0125ac039e6fe7575f8576dceffc62618a431715aaf6eea2bf1c", "00");
   BOOST_CHECK_EQUAL (msg->state_size(), 1);
   BOOST_CHECK_EQUAL (msg->state (0).type (), SyncState::DELETE);
@@ -89,7 +92,7 @@ BOOST_AUTO_TEST_CASE (BasicDatabaseTest)
   BOOST_CHECK_EQUAL (msg->state_size(), 1);
   BOOST_CHECK_EQUAL (msg->state (0).type (), SyncState::UPDATE);
   BOOST_CHECK_EQUAL (msg->state (0).seq (), 0);
-  
+
   db.UpdateDeviceSeqNo (Name ("/bob"), 1);
   hash = db.RememberStateInStateLog ();
   BOOST_CHECK_EQUAL (lexical_cast<string> (*hash), "5df5affc07120335089525e82ec9fda60c6dccd7addb667106fb79de80610519");

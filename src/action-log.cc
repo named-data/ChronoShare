@@ -20,17 +20,104 @@
  */
 
 #include "action-log.h"
+#include "logging.h"
 
 using namespace boost;
 using namespace std;
 using namespace Ccnx;
 
+INIT_LOGGER ("ActionLog");
+
+const std::string INIT_DATABASE = "\
+CREATE TABLE ActionLog (                                                \n\
+    device_id   INTEGER NOT NULL,                                       \n\
+    seq_no      INTEGER NOT NULL,                                       \n\
+                                                                        \n\
+    action      CHAR(1) NOT NULL, /* 0 for \"update\", 1 for \"delete\". */ \n\
+    filename    TEXT NOT NULL,                                          \n\
+                                                                        \n\
+    version     INTEGER NOT NULL,                                       \n\
+    action_timestamp TIMESTAMP NOT NULL,                                \n\
+                                                                        \n\
+    file_hash   BLOB, /* NULL if action is \"delete\" */                \n\
+    file_atime  TIMESTAMP,                                              \n\
+    file_mtime  TIMESTAMP,                                              \n\
+    file_ctime  TIMESTAMP,                                              \n\
+    file_chmod  INTEGER,                                                \n\
+    file_seg_num INTEGER, /* NULL if action is \"delete\" */            \n\
+                                                                        \n\
+    parent_device_id INTEGER,                                           \n\
+    parent_seq_no    INTEGER,                                           \n\
+                                                                        \n\
+    action_name	     TEXT,                                              \n\
+    action_content_object BLOB,                                         \n\
+                                                                        \n\
+    PRIMARY KEY (device_id, seq_no),                                    \n\
+                                                                        \n\
+    FOREIGN KEY (parent_device_id, parent_seq_no)                       \n\
+	REFERENCES ActionLog (device_id, seq_no)                        \n\
+	ON UPDATE RESTRICT                                              \n\
+	ON DELETE SET NULL                                              \n\
+);                                                                      \n\
+                                                                        \n\
+CREATE INDEX ActionLog_filename_version ON ActionLog (filename,version);        \n\
+CREATE INDEX ActionLog_parent ON ActionLog (parent_device_id, parent_seq_no);   \n\
+CREATE INDEX ActionLog_action_name ON ActionLog (action_name);          \n\
+                                                                        \n\
+CREATE TRIGGER ActionLogInsert_trigger                                  \n\
+    AFTER INSERT ON ActionLog                                           \n\
+    FOR EACH ROW                                                        \n\
+    WHEN (SELECT device_id                                              \n\
+            FROM ActionLog                                              \n\
+            WHERE filename=NEW.filename AND                             \n\
+                  version > NEW.version) IS NULL AND                    \n\
+         (SELECT a.device_id                                            \n\
+            FROM ActionLog a                                            \n\
+                LEFT JOIN SyncNodes s ON s.device_id=a.device_id        \n\
+            WHERE filename=NEW.filename AND                             \n\
+                  version = NEW.version AND                             \n\
+                  a.device_id != NEW.device_id AND                      \n\
+                  s.device_name > (SELECT device_name                   \n\
+                                    FROM SyncNodes                      \n\
+                                    WHERE device_id=NEW.device_id)) IS NULL      \n\
+    BEGIN                                                               \n\
+        SELECT apply_action ((SELECT device_name FROM SyncNodes where device_id=NEW.device_id), \
+                             NEW.device_id, NEW.seq_no,                 \
+                             NEW.action,NEW.filename,NEW.file_hash,     \
+                             strftime('%s', NEW.file_atime),strftime('%s', NEW.file_mtime),strftime('%s', NEW.file_ctime), \
+                             NEW.file_chmod, NEW.file_seg_num); /* function that applies action and adds record the FileState */  \n \
+    END;                                                                \n\
+                                                                        \n\
+CREATE TABLE FileState (                                                \n\
+    type        INTEGER NOT NULL, /* 0 - newest, 1 - oldest */          \n\
+    filename    TEXT NOT NULL,                                          \n\
+    device_id   INTEGER NOT NULL,                                       \n\
+    seq_no      INTEGER NOT NULL,                                       \n\
+    file_hash   BLOB, /* NULL if action is \"delete\" */                \n\
+    file_atime  TIMESTAMP,                                              \n\
+    file_mtime  TIMESTAMP,                                              \n\
+    file_ctime  TIMESTAMP,                                              \n\
+    file_chmod  INTEGER,                                                \n\
+    file_seg_num INTEGER,                                               \n\
+                                                                        \n\
+    PRIMARY KEY (type, filename)                                        \n\
+);                                                                      \n\
+                                                                        \n\
+CREATE INDEX FileState_device_id_seq_no ON FileState (device_id, seq_no); \n\
+";
+
+
 ActionLog::ActionLog (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &path,
+                      SyncLogPtr syncLog,
                       const std::string &localName, const std::string &sharedFolder)
-  : SyncLog (path, localName)
+  : DbHelper (path)
+  , m_syncLog (syncLog)
   , m_ccnx (ccnx)
   , m_sharedFolderName (sharedFolder)
 {
+  sqlite3_exec (m_db, INIT_DATABASE.c_str (), NULL, NULL, NULL);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
   int res = sqlite3_create_function (m_db, "apply_action", -1, SQLITE_ANY, reinterpret_cast<void*> (this),
                                  ActionLog::apply_action_xFun,
                                  0, 0);
@@ -89,7 +176,7 @@ ActionLog::AddActionUpdate (const std::string &filename,
 {
   sqlite3_exec (m_db, "BEGIN TRANSACTION;", 0,0,0);
 
-  sqlite3_int64 seq_no = GetNextLocalSeqNo ();
+  sqlite3_int64 seq_no = m_syncLog->GetNextLocalSeqNo ();
   sqlite3_int64 version = 0;
   sqlite3_int64 parent_device_id = -1;
   string        parent_device_name;
@@ -127,7 +214,7 @@ ActionLog::AddActionUpdate (const std::string &filename,
     }
 
 
-  sqlite3_bind_int64 (stmt, 1, m_localDeviceId);
+  sqlite3_bind_int64 (stmt, 1, m_syncLog->GetLocalSyncNodeId ());
   sqlite3_bind_int64 (stmt, 2, seq_no);
   sqlite3_bind_int   (stmt, 3, 0);
   sqlite3_bind_text  (stmt, 4, filename.c_str (), filename.size (), SQLITE_TRANSIENT);
@@ -180,7 +267,7 @@ ActionLog::AddActionUpdate (const std::string &filename,
 
   string item_msg;
   item.SerializeToString (&item_msg);
-  Name actionName = Name (m_localName)("action")(m_sharedFolderName)(seq_no);
+  Name actionName = Name (m_syncLog->GetLocalName ())("action")(m_sharedFolderName)(seq_no);
 
   Bytes actionData = m_ccnx->createContentObject (actionName, item_msg.c_str (), item_msg.size ());
   CcnxCharbufPtr namePtr = actionName.toCcnxCharbuf ();
@@ -222,7 +309,7 @@ ActionLog::AddActionDelete (const std::string &filename)
       return;
     }
 
-  sqlite3_int64 seq_no = GetNextLocalSeqNo ();
+  sqlite3_int64 seq_no = m_syncLog->GetNextLocalSeqNo ();
 
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "INSERT INTO ActionLog "
@@ -233,7 +320,7 @@ ActionLog::AddActionDelete (const std::string &filename)
                       "        ?, ?,"
                       "        ?, ?)", -1, &stmt, 0);
 
-  sqlite3_bind_int64 (stmt, 1, m_localDeviceId);
+  sqlite3_bind_int64 (stmt, 1, m_syncLog->GetLocalSyncNodeId ());
   sqlite3_bind_int64 (stmt, 2, seq_no);
   sqlite3_bind_int   (stmt, 3, 1);
   sqlite3_bind_text  (stmt, 4, filename.c_str (), filename.size (), SQLITE_TRANSIENT);
@@ -254,7 +341,7 @@ ActionLog::AddActionDelete (const std::string &filename)
 
   string item_msg;
   item.SerializeToString (&item_msg);
-  Name actionName = Name (m_localName)("action")(m_sharedFolderName)(seq_no);
+  Name actionName = Name (m_syncLog->GetLocalName ())("action")(m_sharedFolderName)(seq_no);
 
   Bytes actionData = m_ccnx->createContentObject (actionName, item_msg.c_str (), item_msg.size ());
   CcnxCharbufPtr namePtr = actionName.toCcnxCharbuf ();

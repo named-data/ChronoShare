@@ -37,11 +37,73 @@ void xTrace (void*, const char* q)
   cout << q << endl;
 }
 
+const std::string INIT_DATABASE = "\
+CREATE TABLE                                                    \n\
+    SyncNodes(                                                  \n\
+        device_id       INTEGER PRIMARY KEY AUTOINCREMENT,      \n\
+        device_name     BLOB NOT NULL,                          \n\
+        description     TEXT,                                   \n\
+        seq_no          INTEGER NOT NULL,                       \n\
+        last_known_locator  BLOB,                               \n\
+        last_update     TIMESTAMP                               \n\
+    );                                                          \n\
+                                                                \n\
+CREATE TRIGGER SyncNodesUpdater_trigger                                \n\
+    BEFORE INSERT ON SyncNodes                                         \n\
+    FOR EACH ROW                                                       \n\
+    WHEN (SELECT device_id                                             \n\
+             FROM SyncNodes                                            \n\
+             WHERE device_name=NEW.device_name)                        \n\
+         IS NOT NULL                                                   \n\
+    BEGIN                                                              \n\
+        UPDATE SyncNodes                                               \n\
+            SET seq_no=max(seq_no,NEW.seq_no)                          \n\
+            WHERE device_name=NEW.device_name;                         \n\
+        SELECT RAISE(IGNORE);                                          \n\
+    END;                                                               \n\
+                                                                       \n\
+CREATE INDEX SyncNodes_device_name ON SyncNodes (device_name);         \n\
+                                                                       \n\
+CREATE TABLE SyncLog(                                                  \n\
+        state_id    INTEGER PRIMARY KEY AUTOINCREMENT,                 \n\
+        state_hash  BLOB NOT NULL UNIQUE,                              \n\
+        last_update TIMESTAMP NOT NULL                                 \n\
+    );                                                                 \n\
+                                                                       \n\
+CREATE TABLE                                                            \n\
+    SyncStateNodes(                                                     \n\
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,                  \n\
+        state_id    INTEGER NOT NULL                                    \n\
+            REFERENCES SyncLog (state_id) ON UPDATE CASCADE ON DELETE CASCADE, \n\
+        device_id   INTEGER NOT NULL                                    \n\
+            REFERENCES SyncNodes (device_id) ON UPDATE CASCADE ON DELETE CASCADE, \n\
+        seq_no      INTEGER NOT NULL                                    \n\
+    );                                                                  \n\
+                                                                        \n\
+CREATE INDEX SyncStateNodes_device_id ON SyncStateNodes (device_id);    \n\
+CREATE INDEX SyncStateNodes_state_id  ON SyncStateNodes (state_id);     \n\
+CREATE INDEX SyncStateNodes_seq_no    ON SyncStateNodes (seq_no);       \n\
+                                                                        \n\
+CREATE TRIGGER SyncLogGuard_trigger                                     \n\
+    BEFORE INSERT ON SyncLog                                            \n\
+    FOR EACH ROW                                                        \n\
+    WHEN (SELECT state_hash                                             \n\
+            FROM SyncLog                                                \n\
+            WHERE state_hash=NEW.state_hash)                            \n\
+        IS NOT NULL                                                     \n\
+    BEGIN                                                               \n\
+        DELETE FROM SyncLog WHERE state_hash=NEW.state_hash;            \n\
+    END;                                                                \n\
+";
+
 
 SyncLog::SyncLog (const boost::filesystem::path &path, const std::string &localName)
   : DbHelper (path)
   , m_localName (localName)
 {
+  sqlite3_exec (m_db, INIT_DATABASE.c_str (), NULL, NULL, NULL);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
   UpdateDeviceSeqNo (localName, 0);
 
   sqlite3_stmt *stmt;

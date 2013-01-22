@@ -35,12 +35,17 @@ class SyncLog : public DbHelper
 public:
   SyncLog (const boost::filesystem::path &path, const std::string &localName);
 
-  // // fill in the map with device-name <-> locator pairs
-  // void
-  // initYP(map<Ccnx::Name, Ccnx::Name> &yp);
-
+  /**
+   * @brief Get local username
+   */
   inline const Ccnx::Name &
   GetLocalName () const;
+
+  /**
+   * @brief Get database ID of the local sync node (make sense only for the local database)
+   */
+  inline const sqlite3_int64
+  GetLocalSyncNodeId () const;
 
   sqlite3_int64
   GetNextLocalSeqNo (); // side effect: local seq_no will be increased
@@ -109,6 +114,12 @@ const Ccnx::Name &
 SyncLog::GetLocalName () const
 {
   return m_localName;
+}
+
+const sqlite3_int64
+SyncLog::GetLocalSyncNodeId () const
+{
+  return m_localDeviceId;
 }
 
 

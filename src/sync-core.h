@@ -15,8 +15,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
- * Author: Alexander Afanasyev <alexander.afanasyev@ucla.edu>
+ * Author: Zhenkai Zhu <zhenkai@cs.ucla.edu>
+ *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
 #ifndef SYNC_CORE_H
@@ -32,10 +32,6 @@ class SyncCore
 {
 public:
   typedef boost::function<void (const SyncStateMsgPtr & stateMsg) > StateMsgCallback;
-  // typedef map<Name, Name> YellowPage;
-  typedef boost::shared_mutex Mutex;
-  typedef boost::shared_lock<Mutex> ReadLock;
-  typedef boost::unique_lock<Mutex> WriteLock;
 
   static const int FRESHNESS = 2; // seconds
   static const string RECOVER;
@@ -50,7 +46,7 @@ public:
            , const StateMsgCallback &callback   // callback when state change is detected
            , Ccnx::CcnxWrapperPtr ccnx
            , SchedulerPtr scheduler);
-  ~SyncCore();
+  ~SyncCore ();
 
   void
   updateLocalState (sqlite3_int64);
