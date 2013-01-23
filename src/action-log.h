@@ -41,6 +41,9 @@ public:
              SyncLogPtr syncLog,
              const std::string &sharedFolder);
 
+  //////////////////////////
+  // Local operations     //
+  //////////////////////////
   void
   AddLocalActionUpdate (const std::string &filename,
                         const Hash &hash,
@@ -57,6 +60,25 @@ public:
   bool
   KnownFileState(const std::string &filename, const Hash &hash);
 
+  //////////////////////////
+  // Remote operations    //
+  //////////////////////////
+
+  void
+  AddRemoteAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno, Ccnx::PcoPtr actionPco);
+
+  /**
+   * @brief Add remote action using just action's parsed content object
+   *
+   * This function extracts device name and sequence number from the content object's and calls the overloaded method
+   */
+  void
+  AddRemoteAction (Ccnx::PcoPtr actionPco);
+
+  ///////////////////////////
+  // General operations    //
+  ///////////////////////////
+
   Ccnx::PcoPtr
   LookupActionPco (const Ccnx::Name &deviceName, sqlite3_int64 seqno);
 
@@ -68,6 +90,8 @@ public:
 
   ActionItemPtr
   LookupAction (const Ccnx::Name &actionName);
+
+
 
 public:
   // for test purposes
@@ -87,5 +111,10 @@ private:
   Ccnx::CcnxWrapperPtr m_ccnx;
   std::string m_sharedFolderName;
 };
+
+namespace Error {
+struct ActionLog : virtual boost::exception, virtual std::exception { };
+}
+
 
 #endif // ACTION_LOG_H

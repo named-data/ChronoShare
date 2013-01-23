@@ -427,6 +427,84 @@ ActionLog::LookupAction (const Ccnx::Name &actionName)
 }
 
 void
+ActionLog::AddRemoteAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno, Ccnx::PcoPtr actionPco)
+{
+  if (!actionPco)
+    {
+      BOOST_THROW_EXCEPTION (Error::ActionLog () << errmsg_info_str ("actionPco is not valid"));
+    }
+  ActionItemPtr action = deserializeMsg<ActionItem> (actionPco->content ());
+
+  if (!action)
+    {
+      BOOST_THROW_EXCEPTION (Error::ActionLog () << errmsg_info_str ("action cannot be decoded"));
+    }
+
+  sqlite3_stmt *stmt;
+  int res = sqlite3_prepare_v2 (m_db, "INSERT INTO ActionLog "
+                                "(device_name, seq_no, action, filename, version, action_timestamp, "
+                                "file_hash, file_atime, file_mtime, file_ctime, file_chmod, file_seg_num, "
+                                "parent_device_name, parent_seq_no, "
+                                "action_name, action_content_object) "
+                                "VALUES (?, ?, ?, ?, ?, datetime(?, 'unixepoch'),"
+                                "        ?, datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), ?,?, "
+                                "        ?, ?, "
+                                "        ?, ?);", -1, &stmt, 0);
+
+  CcnxCharbufPtr device_name = deviceName.toCcnxCharbuf ();
+  sqlite3_bind_blob  (stmt, 1, device_name->buf (), device_name->length (), SQLITE_STATIC);
+  sqlite3_bind_int64 (stmt, 2, seqno);
+
+  sqlite3_bind_int   (stmt, 3, action->action ());
+  sqlite3_bind_text  (stmt, 4, action->filename ().c_str (), action->filename ().size (), SQLITE_STATIC);
+  sqlite3_bind_int64 (stmt, 5, action->version ());
+  sqlite3_bind_int64 (stmt, 6, action->timestamp ());
+
+  if (action->action () == ActionItem::UPDATE)
+    {
+      sqlite3_bind_blob  (stmt, 7, action->file_hash ().c_str (), action->file_hash ().size (), SQLITE_STATIC);
+
+      // sqlite3_bind_int64 (stmt, 8, atime); // NULL
+      sqlite3_bind_int64 (stmt, 9, action->mtime ());
+      // sqlite3_bind_int64 (stmt, 10, ctime); // NULL
+
+      sqlite3_bind_int   (stmt, 11, action->mode ());
+      sqlite3_bind_int   (stmt, 12, action->seg_num ());
+    }
+
+  if (action->has_parent_device_name ())
+    {
+      sqlite3_bind_blob (stmt, 13, action->parent_device_name ().c_str (), action->parent_device_name ().size (), SQLITE_TRANSIENT);
+      sqlite3_bind_int64 (stmt, 14, action->parent_seq_no ());
+    }
+
+  Name actionName = Name (deviceName)("action")(m_sharedFolderName)(seqno);
+  CcnxCharbufPtr namePtr = actionName.toCcnxCharbuf ();
+
+  sqlite3_bind_blob (stmt, 15, namePtr->buf (), namePtr->length (), SQLITE_STATIC);
+  sqlite3_bind_blob (stmt, 16, head (actionPco->buf ()), actionPco->buf ().size (), SQLITE_STATIC);
+  sqlite3_step (stmt);
+
+  // if action needs to be applied to file state, the trigger will take care of it
+
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK && sqlite3_errcode (m_db) != SQLITE_ROW, sqlite3_errmsg (m_db));
+
+  sqlite3_finalize (stmt);
+}
+
+void
+ActionLog::AddRemoteAction (Ccnx::PcoPtr actionPco)
+{
+  Name name = actionPco->name ();
+  // <device_name>/"action"/<shared_folder_name_one_component>/<seqno>
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+// SHOULD BE MOVED TO SEPARATE FILESTATE CLASS "EVENTUALLY"
+///////////////////////////////////////////////////////////////////////////////////
+
+void
 ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value **argv)
 {
   ActionLog *the = reinterpret_cast<ActionLog*> (sqlite3_user_data (context));

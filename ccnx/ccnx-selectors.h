@@ -27,7 +27,7 @@
 namespace Ccnx {
 
 struct InterestSelectorException:
-  virtual boost::exception, virtual exception {};
+    virtual boost::exception, virtual std::exception {};
 
 class Selectors
 {

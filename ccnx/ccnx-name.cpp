@@ -24,8 +24,9 @@
 #include <ctype.h>
 #include <boost/algorithm/string/join.hpp>
 
+using namespace std;
+
 namespace Ccnx{
-CcnxCharbufPtr CcnxCharbuf::Null;
 
 void
 CcnxCharbuf::init(ccn_charbuf *buf)

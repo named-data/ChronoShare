@@ -94,7 +94,7 @@ protected:
   boost::thread m_thread;
   bool m_running;
   bool m_connected;
-  map<Name, InterestCallback> m_registeredInterests;
+  std::map<Name, InterestCallback> m_registeredInterests;
 };
 
 typedef boost::shared_ptr<CcnxWrapper> CcnxWrapperPtr;

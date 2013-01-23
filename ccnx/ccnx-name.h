@@ -47,8 +47,6 @@ public:
   const ccn_charbuf *
   getBuf() const { return m_buf; }
 
-  static CcnxCharbufPtr Null;
-
   const unsigned char *
   buf () const
   { return m_buf->buf; }
@@ -66,14 +64,14 @@ protected:
 
 
 struct NameException:
-  virtual boost::exception, virtual exception {};
+    virtual boost::exception, virtual std::exception {};
 
 class Name
 {
 public:
   Name();
-  Name(const string &name);
-  Name(const vector<Bytes> &comps);
+  Name(const std::string &name);
+  Name(const std::vector<Bytes> &comps);
   Name(const Name &other);
   Name(const unsigned char *data, const ccn_indexbuf *comps);
   Name (const unsigned char *buf, const size_t length);
@@ -93,7 +91,7 @@ public:
   appendComp(const Bytes &comp);
 
   Name &
-  appendComp(const string &compStr);
+  appendComp(const std::string &compStr);
 
   Name &
   appendComp(const void *buf, size_t size);
@@ -121,39 +119,45 @@ public:
   Bytes
   getComp(int index) const;
 
-  // return string format of the comp
+  // return std::string format of the comp
   // if all characters are printable, simply returns the string
   // if not, print the bytes in hex string format
-  string
+  std::string
   getCompAsString(int index) const;
 
   uint64_t
   getCompAsInt (int index) const;
 
+  inline std::string
+  getCompFromBackAsString(int index) const;
+
+  inline uint64_t
+  getCompFromBackAsInt (int index) const;
+
   Name
   getPartialName(int start, int n = -1) const;
 
-  string
+  std::string
   toString() const;
 
   Name &
   operator=(const Name &other);
 
   bool
-  operator==(const string &str) const;
+  operator==(const std::string &str) const;
 
   bool
-  operator!=(const string &str) const;
+  operator!=(const std::string &str) const;
 
   friend Name
   operator+(const Name &n1, const Name &n2);
 
 private:
-  vector<Bytes> m_comps;
+  std::vector<Bytes> m_comps;
 };
 
-ostream&
-operator <<(ostream &os, const Name &name);
+std::ostream&
+operator <<(std::ostream &os, const Name &name);
 
 bool
 operator ==(const Name &n1, const Name &n2);
@@ -164,6 +168,18 @@ operator !=(const Name &n1, const Name &n2);
 bool
 operator <(const Name &n1, const Name &n2);
 
+
+std::string
+Name::getCompFromBackAsString(int index) const
+{
+  return getCompAsString (m_comps.size () - 1 - index);
+}
+
+uint64_t
+Name::getCompFromBackAsInt (int index) const
+{
+  return getCompAsInt (m_comps.size () - 1 - index);
+}
 
 
 } // Ccnx

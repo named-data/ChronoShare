@@ -40,10 +40,9 @@ extern "C" {
 #include <utility>
 #include <string.h>
 
-using namespace std;
 namespace Ccnx {
-typedef vector<unsigned char> Bytes;
-typedef vector<string>Comps;
+typedef std::vector<unsigned char> Bytes;
+typedef std::vector<std::string>Comps;
 
 typedef boost::shared_ptr<Bytes> BytesPtr;
 

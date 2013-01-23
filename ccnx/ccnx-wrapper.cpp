@@ -325,7 +325,7 @@ int CcnxWrapper::sendInterest (const Name &interest, const Closure &closure, con
 
   CcnxCharbufPtr selectorsPtr = selectors.toCcnxCharbuf();
   ccn_charbuf *templ = NULL;
-  if (selectorsPtr != CcnxCharbuf::Null)
+  if (selectorsPtr)
   {
     templ = selectorsPtr->getBuf();
   }
