@@ -97,8 +97,8 @@ CREATE TRIGGER SyncLogGuard_trigger                                     \n\
 ";
 
 
-SyncLog::SyncLog (const boost::filesystem::path &path, const std::string &localName)
-  : DbHelper (path)
+SyncLog::SyncLog (const boost::filesystem::path &path, const Ccnx::Name &localName)
+  : DbHelper (path / ".chronoshare", "sync-log.db")
   , m_localName (localName)
 {
   sqlite3_exec (m_db, INIT_DATABASE.c_str (), NULL, NULL, NULL);
@@ -154,8 +154,10 @@ SyncLog::GetNextLocalSeqNo ()
   if (sqlite3_step (stmt_seq) != SQLITE_ROW)
     {
       BOOST_THROW_EXCEPTION (Error::Db ()
-                             << errmsg_info_str ("Impossible thing in ActionLog::AddActionUpdate"));
+                             << errmsg_info_str ("Impossible thing in SyncLog::GetNextLocalSeqNo"));
     }
+
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
 
   sqlite3_int64 seq_no = sqlite3_column_int64 (stmt_seq, 0) + 1;
   sqlite3_finalize (stmt_seq);
@@ -328,6 +330,9 @@ SyncLog::UpdateDeviceSeqNo (sqlite3_int64 deviceId, sqlite3_int64 seqNo)
       BOOST_THROW_EXCEPTION (Error::Db ()
                              << errmsg_info_str ("Some error with UpdateDeviceSeqNo (id)"));
     }
+
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
   sqlite3_finalize (stmt);
 }
 
@@ -513,3 +518,19 @@ SyncLog::SeqNo(const Name &name)
 
   return seq;
 }
+
+sqlite3_int64
+SyncLog::LogSize ()
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "SELECT count(*) FROM SyncLog", -1, &stmt, 0);
+
+  sqlite3_int64 retval = -1;
+  if (sqlite3_step (stmt) == SQLITE_ROW)
+  {
+    retval = sqlite3_column_int64 (stmt, 0);
+  }
+
+  return retval;
+}
+

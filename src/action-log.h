@@ -24,40 +24,83 @@
 
 #include "db-helper.h"
 #include "sync-log.h"
+#include "action-item.pb.h"
+#include "ccnx-wrapper.h"
+#include "ccnx-pco.h"
 
 #include <boost/tuple/tuple.hpp>
-#include <action-item.pb.h>
-#include <ccnx-wrapper.h>
 
 class ActionLog;
 typedef boost::shared_ptr<ActionLog> ActionLogPtr;
+typedef boost::shared_ptr<ActionItem> ActionItemPtr;
 
 class ActionLog : public DbHelper
 {
 public:
   ActionLog (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &path,
              SyncLogPtr syncLog,
-             const std::string &localName, const std::string &sharedFolder);
+             const std::string &sharedFolder);
+
+  //////////////////////////
+  // Local operations     //
+  //////////////////////////
+  void
+  AddLocalActionUpdate (const std::string &filename,
+                        const Hash &hash,
+                        time_t wtime,
+                        int mode,
+                        int seg_num);
+
+  // void
+  // AddActionMove (const std::string &oldFile, const std::string &newFile);
 
   void
-  AddActionUpdate (const std::string &filename,
-                   const Hash &hash,
-                   time_t wtime,
-                   int mode,
-                   int seg_num);
-
-  void
-  AddActionMove (const std::string &oldFile, const std::string &newFile);
-
-  void
-  AddActionDelete (const std::string &filename);
+  AddLocalActionDelete (const std::string &filename);
 
   bool
   KnownFileState(const std::string &filename, const Hash &hash);
 
+  //////////////////////////
+  // Remote operations    //
+  //////////////////////////
+
+  void
+  AddRemoteAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno, Ccnx::PcoPtr actionPco);
+
+  /**
+   * @brief Add remote action using just action's parsed content object
+   *
+   * This function extracts device name and sequence number from the content object's and calls the overloaded method
+   */
+  void
+  AddRemoteAction (Ccnx::PcoPtr actionPco);
+
+  ///////////////////////////
+  // General operations    //
+  ///////////////////////////
+
+  Ccnx::PcoPtr
+  LookupActionPco (const Ccnx::Name &deviceName, sqlite3_int64 seqno);
+
+  Ccnx::PcoPtr
+  LookupActionPco (const Ccnx::Name &actionName);
+
+  ActionItemPtr
+  LookupAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno);
+
+  ActionItemPtr
+  LookupAction (const Ccnx::Name &actionName);
+
+
+
+public:
+  // for test purposes
+  sqlite3_int64
+  LogSize ();
+
 private:
-  boost::tuple<sqlite3_int64, sqlite3_int64, sqlite3_int64, std::string>
-  GetExistingRecord (const std::string &filename);
+  boost::tuple<sqlite3_int64 /*version*/, Ccnx::CcnxCharbufPtr /*device name*/, sqlite3_int64 /*seq_no*/>
+  GetLatestActionForFile (const std::string &filename);
 
   static void
   apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
@@ -66,7 +109,12 @@ private:
   SyncLogPtr m_syncLog;
 
   Ccnx::CcnxWrapperPtr m_ccnx;
-  Ccnx::Name m_sharedFolderName;
+  std::string m_sharedFolderName;
 };
+
+namespace Error {
+struct ActionLog : virtual boost::exception, virtual std::exception { };
+}
+
 
 #endif // ACTION_LOG_H

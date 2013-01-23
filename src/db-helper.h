@@ -30,14 +30,14 @@
 #include "hash-helper.h"
 #include <boost/filesystem.hpp>
 
-typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str; 
+typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;
 
 class DbHelper
 {
 public:
-  DbHelper (const boost::filesystem::path &path);
+  DbHelper (const boost::filesystem::path &path, const std::string &dbname);
   virtual ~DbHelper ();
-  
+
 private:
   static void
   hash_xStep (sqlite3_context *context, int argc, sqlite3_value **argv);

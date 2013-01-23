@@ -40,10 +40,9 @@ extern "C" {
 #include <utility>
 #include <string.h>
 
-using namespace std;
 namespace Ccnx {
-typedef vector<unsigned char> Bytes;
-typedef vector<string>Comps;
+typedef std::vector<unsigned char> Bytes;
+typedef std::vector<std::string>Comps;
 
 typedef boost::shared_ptr<Bytes> BytesPtr;
 
@@ -90,10 +89,19 @@ template<class Msg>
 inline BytesPtr
 serializeMsg(const Msg &msg)
 {
-  int size = msg->ByteSize ();
+  int size = msg.ByteSize ();
   BytesPtr bytes (new Bytes (size));
-  msg->SerializeToArray (head(*bytes), size);
+  msg.SerializeToArray (head(*bytes), size);
   return bytes;
+}
+
+template<class Msg>
+inline boost::shared_ptr<Msg>
+deserializeMsg (const Bytes &bytes)
+{
+  boost::shared_ptr<Msg> retval (new Msg ());
+  retval->ParseFromArray (head (bytes), bytes.size ());
+  return retval;
 }
 
 // --- Bytes operations end ---

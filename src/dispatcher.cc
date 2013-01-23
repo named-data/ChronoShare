@@ -40,8 +40,8 @@ Dispatcher::Dispatcher(const filesystem::path &path, const std::string &localUse
            , m_server(NULL)
 {
   m_syncLog = make_shared<SyncLog>(path, localUserName);
-  m_actionLog = make_shared<ActionLog>(m_ccnx, path, m_syncLog, localUserName, sharedFolder);
-  Name syncPrefix(BROADCAST_DOMAIN + sharedFolder);
+  m_actionLog = make_shared<ActionLog>(m_ccnx, path, m_syncLog, sharedFolder);
+  Name syncPrefix = Name(BROADCAST_DOMAIN)(sharedFolder);
 
   m_server = new ContentServer(m_ccnx, m_actionLog, rootDir);
   m_server->registerPrefix(localPrefix);
@@ -114,7 +114,7 @@ Dispatcher::fileChanged(const filesystem::path &relativeFilePath, ActionType typ
       if (filesystem::exists(absolutePath))
       {
         HashPtr hash = Hash::FromFileContent(absolutePath);
-        if (m_actionLog->KnownFileState(relativeFilePath.string(), *hash))
+        if (m_actionLog->KnownFileState(relativeFilePath.generic_string(), *hash))
         {
           // the file state is known; i.e. the detected changed file is identical to
           // the file state kept in FileState table
@@ -124,13 +124,16 @@ Dispatcher::fileChanged(const filesystem::path &relativeFilePath, ActionType typ
         else
         {
           uintmax_t fileSize = filesystem::file_size(absolutePath);
-          int seg_num = fileSize / MAX_FILE_SEGMENT_SIZE + ((fileSize % MAX_FILE_SEGMENT_SIZE == 0) ? 0 : 1);
+          int seg_num;
+          tie (hash, seg_num) = m_objectManager.localFileToObjects (absolutePath, m_localUserName);
+
           time_t wtime = filesystem::last_write_time(absolutePath);
           filesystem::file_status stat = filesystem::status(absolutePath);
           int mode = stat.permissions();
-          m_actionLog->AddActionUpdate (relativeFilePath.string(), *hash, wtime, mode, seg_num);
+
+          m_actionLog->AddLocalActionUpdate (relativeFilePath.generic_string(), *hash, wtime, mode, seg_num);
           // publish the file
-          m_objectManager.localFileToObjects(relativeFilePath, m_localUserName);
+
           // notify SyncCore to propagate the change
           m_core->localStateChanged();
         }
@@ -143,7 +146,7 @@ Dispatcher::fileChanged(const filesystem::path &relativeFilePath, ActionType typ
     }
     case DELETE:
     {
-      m_actionLog->AddActionDelete (relativeFilePath.string());
+      m_actionLog->AddLocalActionDelete (relativeFilePath.generic_string());
       // notify SyncCore to propagate the change
       m_core->localStateChanged();
       break;

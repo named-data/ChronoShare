@@ -48,6 +48,9 @@ public:
   Name
   name() const;
 
+  inline const Bytes &
+  buf () const;
+
 private:
   void
   init(const unsigned char *data, size_t len);
@@ -57,6 +60,13 @@ protected:
   ccn_indexbuf *m_comps;
   Bytes m_bytes;
 };
+
+const Bytes &
+ParsedContentObject::buf () const
+{
+  return m_bytes;
+}
+
 
 typedef boost::shared_ptr<ParsedContentObject> PcoPtr;
 

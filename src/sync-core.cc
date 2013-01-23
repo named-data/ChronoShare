@@ -82,7 +82,7 @@ SyncCore::localStateChanged()
 
   // reply sync Interest with oldHash as last component
   Name syncName = Name (m_syncPrefix)(oldHash->GetHash(), oldHash->GetHashBytes());
-  BytesPtr syncData = serializeMsg (msg);
+  BytesPtr syncData = serializeMsg (*msg);
 
   m_ccnx->publishData(syncName, *syncData, FRESHNESS);
   _LOG_TRACE (m_log->GetLocalName () << " publishes: " << *oldHash);
@@ -125,7 +125,7 @@ SyncCore::handleRecoverInterest(const Name &name)
     // we know the hash, should reply everything
     SyncStateMsgPtr msg = m_log->FindStateDifferences(*(Hash::Origin), *m_rootHash);
 
-    BytesPtr syncData = serializeMsg (msg);
+    BytesPtr syncData = serializeMsg (*msg);
     m_ccnx->publishData(name, *syncData, FRESHNESS);
     _LOG_TRACE (m_log->GetLocalName () << " publishes " << hash);
     _LOG_TRACE (msg);
@@ -153,7 +153,7 @@ SyncCore::handleSyncInterest(const Name &name)
     _LOG_TRACE ("found hash in sync log");
     SyncStateMsgPtr msg = m_log->FindStateDifferences(*hash, *m_rootHash);
 
-    BytesPtr syncData = serializeMsg (msg);
+    BytesPtr syncData = serializeMsg (*msg);
     m_ccnx->publishData(name, *syncData, FRESHNESS);
     _LOG_TRACE (m_log->GetLocalName () << " publishes: " << *hash);
     _LOG_TRACE (msg);

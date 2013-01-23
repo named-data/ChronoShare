@@ -2,6 +2,8 @@
 #include "ccnx-common.h"
 #include <boost/lexical_cast.hpp>
 
+using namespace std;
+
 namespace Ccnx {
 
 Selectors::Selectors()
@@ -53,7 +55,7 @@ Selectors::toCcnxCharbuf() const
 {
   if (isEmpty())
   {
-    return CcnxCharbuf::Null;
+    return CcnxCharbufPtr ();
   }
   CcnxCharbufPtr ptr(new CcnxCharbuf());
   ccn_charbuf *cbuf = ptr->getBuf();
