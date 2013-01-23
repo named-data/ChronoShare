@@ -137,6 +137,9 @@ public:
   Name
   getPartialName(int start, int n = -1) const;
 
+  inline Name
+  getPartialNameFromBack(int start, int n = -1) const;
+
   std::string
   toString() const;
 
@@ -179,6 +182,12 @@ uint64_t
 Name::getCompFromBackAsInt (int index) const
 {
   return getCompAsInt (m_comps.size () - 1 - index);
+}
+
+Name
+Name::getPartialNameFromBack(int start, int n/* = -1*/) const
+{
+  return getPartialName (m_comps.size () - 1 - start, n);
 }
 
 

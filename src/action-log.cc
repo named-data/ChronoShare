@@ -498,6 +498,25 @@ ActionLog::AddRemoteAction (Ccnx::PcoPtr actionPco)
   Name name = actionPco->name ();
   // <device_name>/"action"/<shared_folder_name_one_component>/<seqno>
 
+  uint64_t seqno = name.getCompFromBackAsInt (0);
+  string sharedFolder = name.getCompFromBackAsString (1);
+
+  if (sharedFolder != m_sharedFolderName)
+    {
+      BOOST_THROW_EXCEPTION (Error::ActionLog () << errmsg_info_str ("Action doesn't belong to this shared folder"));
+    }
+
+  string action = name.getCompFromBackAsString (2);
+
+  if (action != "action")
+    {
+      BOOST_THROW_EXCEPTION (Error::ActionLog () << errmsg_info_str ("not an action"));
+    }
+  Name deviceName = name.getPartialName (0, name.size ()-3);
+
+  _LOG_DEBUG ("From [" << name << "] extracted deviceName: " << deviceName << ", sharedFolder: " << sharedFolder << ", seqno: " << seqno);
+
+  AddRemoteAction (deviceName, seqno, actionPco);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////

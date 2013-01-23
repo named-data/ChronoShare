@@ -89,9 +89,9 @@ template<class Msg>
 inline BytesPtr
 serializeMsg(const Msg &msg)
 {
-  int size = msg->ByteSize ();
+  int size = msg.ByteSize ();
   BytesPtr bytes (new Bytes (size));
-  msg->SerializeToArray (head(*bytes), size);
+  msg.SerializeToArray (head(*bytes), size);
   return bytes;
 }
 

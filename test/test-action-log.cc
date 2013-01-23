@@ -110,6 +110,24 @@ BOOST_AUTO_TEST_CASE (ActionLogTest)
   BOOST_CHECK_EQUAL (action->parent_seq_no (), 1);
   BOOST_CHECK_EQUAL (action->version (), 1);
 
+  BOOST_CHECK_NO_THROW (actionLog->AddRemoteAction (pco));
+  BOOST_CHECK_EQUAL (actionLog->LogSize (), 2);
+
+  // create a real remote action
+  ActionItem item;
+  item.set_action (ActionItem::UPDATE);
+  item.set_filename ("file.txt");
+  item.set_version (2);
+  item.set_timestamp (time (NULL));
+
+  BytesPtr item_msg = serializeMsg (item);
+  Name actionName = Name ("/zhenkai")("action")("top-secret")(1);
+  Bytes actionData = ccnx->createContentObject (actionName, head (*item_msg), item_msg->size ());
+
+  pco = make_shared<ParsedContentObject> (actionData);
+  BOOST_CHECK_NO_THROW (actionLog->AddRemoteAction (pco));
+  BOOST_CHECK_EQUAL (actionLog->LogSize (), 3);
+
   remove_all (tmpdir);
 }
 

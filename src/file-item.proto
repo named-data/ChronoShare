@@ -1,0 +1,18 @@
+message FileItem
+{
+  enum FileType
+  {
+    LATEST = 0;
+    OLDEST = 1;
+  }
+  required FileType type = 1;
+
+  required string filename = 2;
+  required bytes  device_name = 3;
+  required uint64 seq_no = 4;
+
+  required bytes  file_hash = 5;
+  required uint32 mtime = 6;
+  required uint32 mode  = 7;
+  required uint64 seg_num = 8;
+}
