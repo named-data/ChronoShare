@@ -37,13 +37,19 @@ Dispatcher::Dispatcher(const filesystem::path &path, const std::string &localUse
            , m_objectManager(ccnx, rootDir)
            , m_localUserName(localUserName)
            , m_sharedFolder(sharedFolder)
+           , m_server(NULL)
 {
   m_syncLog = make_shared<SyncLog>(path, localUserName);
   m_actionLog = make_shared<ActionLog>(m_ccnx, path, m_syncLog, localUserName, sharedFolder);
-
   Name syncPrefix(BROADCAST_DOMAIN + sharedFolder);
+
+  m_server = new ContentServer(m_ccnx, m_actionLog, rootDir);
+  m_server->registerPrefix(localPrefix);
+  m_server->registerPrefix(syncPrefix);
+
   m_core = new SyncCore (m_syncLog, localUserName, localPrefix, syncPrefix,
                          bind(&Dispatcher::syncStateChanged, this, _1), ccnx, scheduler);
+
 }
 
 Dispatcher::~Dispatcher()
@@ -52,6 +58,12 @@ Dispatcher::~Dispatcher()
   {
     delete m_core;
     m_core = NULL;
+  }
+
+  if (m_server != NULL)
+  {
+    delete m_server;
+    m_server = NULL;
   }
 }
 

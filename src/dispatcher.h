@@ -28,6 +28,7 @@
 #include "executor.h"
 #include "object-db.h"
 #include "object-manager.h"
+#include "content-server.h"
 #include <boost/function.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/shared_ptr.hpp>
@@ -106,6 +107,7 @@ private:
   // for every fetched segment of a file
   map<Ccnx::Name, ObjectDbPtr> m_objectDbMap;
   std::string m_sharedFolder;
+  ContentServer *m_server;
 };
 
 namespace Error
