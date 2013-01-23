@@ -33,7 +33,7 @@ typedef boost::shared_ptr<SyncStateMsg> SyncStateMsgPtr;
 class SyncLog : public DbHelper
 {
 public:
-  SyncLog (const boost::filesystem::path &path, const std::string &localName);
+  SyncLog (const boost::filesystem::path &path, const Ccnx::Name &localName);
 
   /**
    * @brief Get local username
@@ -86,10 +86,12 @@ public:
   sqlite3_int64
   SeqNo(const Ccnx::Name &name);
 
+  sqlite3_int64
+  LogSize ();
+
 protected:
   void
   UpdateDeviceSeqNo (sqlite3_int64 deviceId, sqlite3_int64 seqNo);
-
 
 protected:
   Ccnx::Name m_localName;

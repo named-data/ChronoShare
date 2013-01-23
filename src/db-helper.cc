@@ -35,16 +35,15 @@ const std::string INIT_DATABASE = "\
     PRAGMA foreign_keys = ON;      \
 ";
 
-DbHelper::DbHelper (const fs::path &path)
+DbHelper::DbHelper (const fs::path &path, const std::string &dbname)
 {
-  fs::path chronoshareDirectory = path / ".chronoshare";
-  fs::create_directories (chronoshareDirectory);
+  fs::create_directories (path);
 
-  int res = sqlite3_open((chronoshareDirectory / "state.db").c_str (), &m_db);
+  int res = sqlite3_open((path / dbname).c_str (), &m_db);
   if (res != SQLITE_OK)
     {
       BOOST_THROW_EXCEPTION (Error::Db ()
-                             << errmsg_info_str ("Cannot open/create dabatabase: [" + (chronoshareDirectory / "state.db").string () + "]"));
+                             << errmsg_info_str ("Cannot open/create dabatabase: [" + (path / dbname).string () + "]"));
     }
 
   res = sqlite3_create_function (m_db, "hash", 2, SQLITE_ANY, 0, 0,

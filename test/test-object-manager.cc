@@ -19,6 +19,7 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
+#include "logging.h"
 #include "object-manager.h"
 
 #include <boost/filesystem.hpp>
@@ -30,25 +31,31 @@
 #include <iostream>
 #include <iterator>
 
+INIT_LOGGER ("Test.ObjectManager");
+
 using namespace Ccnx;
 using namespace std;
 using namespace boost;
 namespace fs = boost::filesystem;
 
-BOOST_AUTO_TEST_SUITE(ObjectManagerTests)
+BOOST_AUTO_TEST_SUITE(TestObjectManager)
 
 BOOST_AUTO_TEST_CASE (ObjectManagerTest)
 {
+  INIT_LOGGERS ();
+
   fs::path tmpdir = fs::unique_path (fs::temp_directory_path () / "%%%%-%%%%-%%%%-%%%%");
-  cout << tmpdir << endl;
+  _LOG_DEBUG ("tmpdir: " << tmpdir);
   Name deviceName ("/device");
-  
+
   CcnxWrapperPtr ccnx = make_shared<CcnxWrapper> ();
   ObjectManager manager (ccnx, tmpdir);
 
-  HashPtr hash = manager.localFileToObjects (fs::path("test") / "test-object-manager.cc", deviceName);
+  tuple<HashPtr,int> hash_semgents = manager.localFileToObjects (fs::path("test") / "test-object-manager.cc", deviceName);
 
-  bool ok = manager.objectsToLocalFile (deviceName, *hash, tmpdir / "test.cc");
+  BOOST_CHECK_EQUAL (hash_semgents.get<1> (), 3);
+
+  bool ok = manager.objectsToLocalFile (deviceName, *hash_semgents.get<0> (), tmpdir / "test.cc");
   BOOST_CHECK_EQUAL (ok, true);
 
   {
@@ -61,7 +68,7 @@ BOOST_AUTO_TEST_CASE (ObjectManagerTest)
 
     BOOST_CHECK_EQUAL_COLLECTIONS (origFileI, eof, newFileI, eof);
   }
-  
+
   remove_all (tmpdir);
 }
 

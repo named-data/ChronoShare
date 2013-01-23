@@ -26,6 +26,7 @@
 #include <ccnx-wrapper.h>
 #include <hash-helper.h>
 #include <boost/filesystem.hpp>
+#include <boost/tuple/tuple.hpp>
 
 // everything related to managing object files
 
@@ -35,12 +36,12 @@ public:
   ObjectManager (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &folder);
   virtual ~ObjectManager ();
 
-  HashPtr
+  boost::tuple<HashPtr /*object-db name*/, size_t /* number of segments*/>
   localFileToObjects (const boost::filesystem::path &file, const Ccnx::Name &deviceName);
 
   bool
   objectsToLocalFile (/*in*/const Ccnx::Name &deviceName, /*in*/const Hash &hash, /*out*/ const boost::filesystem::path &file);
-  
+
 private:
   Ccnx::CcnxWrapperPtr m_ccnx;
   boost::filesystem::path m_folder;

@@ -96,6 +96,15 @@ serializeMsg(const Msg &msg)
   return bytes;
 }
 
+template<class Msg>
+inline boost::shared_ptr<Msg>
+deserializeMsg (const Bytes &bytes)
+{
+  boost::shared_ptr<Msg> retval (new Msg ());
+  retval->ParseFromArray (head (bytes), bytes.size ());
+  return retval;
+}
+
 // --- Bytes operations end ---
 
 // Exceptions

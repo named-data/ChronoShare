@@ -24,6 +24,7 @@
 #include "ccnx-common.h"
 #include "ccnx-pco.h"
 #include "object-db.h"
+#include "logging.h"
 
 #include <sys/stat.h>
 
@@ -31,6 +32,8 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/throw_exception.hpp>
 #include <boost/filesystem/fstream.hpp>
+
+INIT_LOGGER ("Object.Manager");
 
 using namespace Ccnx;
 using namespace boost;
@@ -50,7 +53,7 @@ ObjectManager::~ObjectManager ()
 {
 }
 
-HashPtr
+boost::tuple<HashPtr /*object-db name*/, size_t /* number of segments*/>
 ObjectManager::localFileToObjects (const fs::path &file, const Ccnx::Name &deviceName)
 {
   HashPtr fileHash = Hash::FromFileContent (file);
@@ -74,7 +77,7 @@ ObjectManager::localFileToObjects (const fs::path &file, const Ccnx::Name &devic
       segment ++;
     }
 
-  return fileHash;
+  return make_tuple (fileHash, segment);
 }
 
 bool
@@ -83,8 +86,7 @@ ObjectManager::objectsToLocalFile (/*in*/const Ccnx::Name &deviceName, /*in*/con
   string hashStr = lexical_cast<string> (fileHash);
   if (!ObjectDb::DoesExist (m_folder, deviceName, hashStr))
     {
-      cout << "Brr" << endl;
-      // file does not exist or not all segments are available
+      _LOG_ERROR ("ObjectDb for [" << m_folder << ", " << deviceName << ", " << hashStr << "] does not exist or not all segments are available");
       return false;
     }
 

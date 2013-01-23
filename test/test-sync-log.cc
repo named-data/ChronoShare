@@ -42,7 +42,7 @@ BOOST_AUTO_TEST_CASE (BasicDatabaseTest)
   INIT_LOGGERS ();
 
   fs::path tmpdir = fs::unique_path (fs::temp_directory_path () / "%%%%-%%%%-%%%%-%%%%");
-  SyncLog db (tmpdir, "/alex");
+  SyncLog db (tmpdir, Name ("/alex"));
 
   HashPtr hash = db.RememberStateInStateLog ();
   // should be empty
