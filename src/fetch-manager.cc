@@ -31,9 +31,9 @@ using namespace Ccnx;
 //The disposer object function
 struct fetcher_disposer { void operator() (Fetcher *delete_this) { delete delete_this; } };
 
-FetchManager::FetchManager (CcnxWrapperPtr ccnx, SyncLogPtr sync, uint32_t parallelFetches/* = 3*/)
+FetchManager::FetchManager (CcnxWrapperPtr ccnx, const Mapping &mapping, uint64_t parallelFetches/* = 3*/)
   : m_ccnx (ccnx)
-  , m_sync (sync)
+  , m_mapping (mapping)
   , m_maxParallelFetches (parallelFetches)
   , m_currentParallelFetches (0)
 
@@ -51,22 +51,20 @@ FetchManager::~FetchManager ()
 }
 
 void
-FetchManager::Enqueue (const Ccnx::Name &deviceName, uint32_t minSeqNo, uint32_t maxSeqNo, int priority/*=PRIORITY_NORMAL*/)
+FetchManager::Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
+         const SegmentCallback &segmentCallback, const FinishCallback &finishCallback,
+         uint64_t minSeqNo, uint64_t maxSeqNo, int priority/*PRIORITY_NORMAL*/)
 {
   // we may need to guarantee that LookupLocator will gives an answer and not throw exception...
   Name forwardingHint;
-  try {
-    forwardingHint = m_sync->LookupLocator (deviceName);
-  }
-  catch (Error::Db &exception) {
-    // just ignore for now
-  }
+  forwardingHint = m_mapping (deviceName);
 
   Fetcher &fetcher = *(new Fetcher (m_ccnx,
-                                    bind (&FetchManager::DidDataSegmentFetched, this, _1, _2, _3, _4, _5),
+                                    segmentCallback,
+                                    finishCallback,
                                     bind (&FetchManager::DidFetchComplete, this, _1),
                                     bind (&FetchManager::DidNoDataTimeout, this, _1),
-                                    deviceName, minSeqNo, maxSeqNo
+                                    deviceName, baseName, minSeqNo, maxSeqNo
                                     /* Alex: should or should not include hint initially?*/));
 
   switch (priority)
@@ -102,13 +100,6 @@ FetchManager::ScheduleFetches ()
 }
 
 void
-FetchManager::DidDataSegmentFetched (Fetcher &fetcher, uint32_t seqno, const Ccnx::Name &basename,
-                                     const Ccnx::Name &name, Ccnx::PcoPtr data)
-{
-  // do something
-}
-
-void
 FetchManager::DidNoDataTimeout (Fetcher &fetcher)
 {
   fetcher.SetForwardingHint (Ccnx::Name ("/ndn/broadcast"));
@@ -130,5 +121,4 @@ FetchManager::DidFetchComplete (Fetcher &fetcher)
     m_fetchList.erase_and_dispose (FetchList::s_iterator_to (fetcher), fetcher_disposer ());
   }
 
-  // ? do something else
 }

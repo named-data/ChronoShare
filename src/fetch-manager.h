@@ -24,13 +24,12 @@
 
 #include <boost/exception/all.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/function.hpp>
 #include <string>
 #include <list>
 #include <stdint.h>
 #include "scheduler.h"
-
 #include "ccnx-wrapper.h"
-#include "sync-log.h"
 
 #include "fetcher.h"
 
@@ -43,22 +42,29 @@ class FetchManager
     };
 
 public:
-  FetchManager (Ccnx::CcnxWrapperPtr ccnx, SyncLogPtr sync, uint32_t parallelFetches = 3);
+  typedef boost::function<Ccnx::Name(const Ccnx::Name &)> Mapping;
+  typedef boost::function<void(Ccnx::Name &deviceName, Ccnx::Name &baseName, uint64_t seq, Ccnx::PcoPtr pco)> SegmentCallback;
+  typedef boost::function<void(Ccnx::Name &deviceName, Ccnx::Name &baseName)> FinishCallback;
+  FetchManager (Ccnx::CcnxWrapperPtr ccnx, const Mapping &mapping, uint64_t parallelFetches = 3);
   virtual ~FetchManager ();
 
   void
-  Enqueue (const Ccnx::Name &deviceName,
-           uint32_t minSeqNo, uint32_t maxSeqNo, int priority=PRIORITY_NORMAL);
+  Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
+           const SegmentCallback &segmentCallback, const FinishCallback &finishCallback,
+           uint64_t minSeqNo, uint64_t maxSeqNo, int priority=PRIORITY_NORMAL);
 
+  // only for Fetcher
   inline Ccnx::CcnxWrapperPtr
   GetCcnx ();
+
+private:
 
   inline SchedulerPtr
   GetScheduler ();
 
   // Fetch Events
   void
-  DidDataSegmentFetched (Fetcher &fetcher, uint32_t seqno, const Ccnx::Name &basename,
+  DidDataSegmentFetched (Fetcher &fetcher, uint64_t seqno, const Ccnx::Name &basename,
                          const Ccnx::Name &name, Ccnx::PcoPtr data);
 
   void
@@ -67,19 +73,16 @@ public:
   void
   DidFetchComplete (Fetcher &fetcher);
 
-private:
   void
   ScheduleFetches ();
 
 private:
-
-private:
   Ccnx::CcnxWrapperPtr m_ccnx;
-  SyncLogPtr m_sync; // to access forwarding hints
+  Mapping m_mapping;
   SchedulerPtr m_scheduler;
 
-  uint32_t m_maxParallelFetches;
-  uint32_t m_currentParallelFetches;
+  uint64_t m_maxParallelFetches;
+  uint64_t m_currentParallelFetches;
   boost::mutex m_parellelFetchMutex;
 
   // optimized list structure for fetch queue

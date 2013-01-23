@@ -32,20 +32,23 @@ using namespace boost;
 using namespace std;
 using namespace Ccnx;
 
-Fetcher::Fetcher (CcnxWrapperPtr ccnx,
-                  OnDataSegmentCallback onDataSegment,
+Fetcher::Fetcher (Ccnx::CcnxWrapperPtr ccnx,
+                  const SegmentCallback &segmentCallback,
+                  const FinishCallback &finishCallback,
                   OnFetchCompleteCallback onFetchComplete, OnFetchFailedCallback onFetchFailed,
-                  const Ccnx::Name &name, int32_t minSeqNo, int32_t maxSeqNo,
+                  const Ccnx::Name &deviceName, const Ccnx::Name &name, int64_t minSeqNo, int64_t maxSeqNo,
                   boost::posix_time::time_duration timeout/* = boost::posix_time::seconds (30)*/,
                   const Ccnx::Name &forwardingHint/* = Ccnx::Name ()*/)
   : m_ccnx (ccnx)
 
-  , m_onDataSegment (onDataSegment)
+  , m_segmentCallback (segmentCallback)
   , m_onFetchComplete (onFetchComplete)
   , m_onFetchFailed (onFetchFailed)
+  , m_finishCallback (finishCallback)
 
   , m_active (false)
   , m_name (name)
+  , m_deviceName (deviceName)
   , m_forwardingHint (forwardingHint)
   , m_maximumNoActivityPeriod (timeout)
 
@@ -99,15 +102,19 @@ Fetcher::FillPipeline ()
 }
 
 void
-Fetcher::OnData (uint32_t seqno, const Ccnx::Name &name, PcoPtr data)
+Fetcher::OnData (uint64_t seqno, const Ccnx::Name &name, PcoPtr data)
 {
   if (m_forwardingHint == Name ())
-    m_onDataSegment (*this, seqno, m_name, name, data);
+  {
+    // invoke callback
+    m_segmentCallback (m_deviceName, m_name, seqno, data);
+    // we don't have to tell FetchManager about this
+  }
   else
     {
       try {
         PcoPtr pco = make_shared<ParsedContentObject> (*data->contentPtr ());
-        m_onDataSegment (*this, seqno, m_name, pco->name (), pco);
+        m_segmentCallback (m_deviceName, m_name, seqno, pco);
       }
       catch (MisformedContentObjectException &e)
         {
@@ -122,7 +129,7 @@ Fetcher::OnData (uint32_t seqno, const Ccnx::Name &name, PcoPtr data)
 
   ////////////////////////////////////////////////////////////////////////////
   m_outOfOrderRecvSeqNo.insert (seqno);
-  set<int32_t>::iterator inOrderSeqNo = m_outOfOrderRecvSeqNo.begin ();
+  set<int64_t>::iterator inOrderSeqNo = m_outOfOrderRecvSeqNo.begin ();
   for (; inOrderSeqNo != m_outOfOrderRecvSeqNo.end ();
        inOrderSeqNo++)
     {
@@ -139,6 +146,9 @@ Fetcher::OnData (uint32_t seqno, const Ccnx::Name &name, PcoPtr data)
   if (m_maxInOrderRecvSeqNo == m_maxSeqNo)
     {
       m_active = false;
+      // invoke callback
+      m_finishCallback(m_deviceName, m_name);
+      // tell FetchManager that we have finish our job
       m_onFetchComplete (*this);
     }
   else
@@ -148,7 +158,7 @@ Fetcher::OnData (uint32_t seqno, const Ccnx::Name &name, PcoPtr data)
 }
 
 Closure::TimeoutCallbackReturnValue
-Fetcher::OnTimeout (uint32_t seqno, const Ccnx::Name &name)
+Fetcher::OnTimeout (uint64_t seqno, const Ccnx::Name &name)
 {
   // cout << "Fetcher::OnTimeout: " << name << endl;
   // cout << "Last: " << m_lastPositiveActivity << ", config: " << m_maximumNoActivityPeriod

@@ -34,15 +34,16 @@ class FetchManager;
 class Fetcher
 {
 public:
-  typedef boost::function<void (Fetcher &, uint32_t /*requested seqno*/, const Ccnx::Name & /*requested base name*/,
-                                const Ccnx::Name & /*actual name*/, Ccnx::PcoPtr /*content object*/)> OnDataSegmentCallback;
+  typedef boost::function<void(Ccnx::Name &deviceName, Ccnx::Name &baseName, uint64_t seq, Ccnx::PcoPtr pco)> SegmentCallback;
+  typedef boost::function<void(Ccnx::Name &deviceName, Ccnx::Name &baseName)> FinishCallback;
   typedef boost::function<void (Fetcher &)> OnFetchCompleteCallback;
   typedef boost::function<void (Fetcher &)> OnFetchFailedCallback;
 
   Fetcher (Ccnx::CcnxWrapperPtr ccnx,
-           OnDataSegmentCallback onDataSegment,
-           OnFetchCompleteCallback onFetchComplete, OnFetchFailedCallback onFetchFailed,
-           const Ccnx::Name &name, int32_t minSeqNo, int32_t maxSeqNo,
+           const SegmentCallback &segmentCallback, // callback passed by caller of FetchManager
+           const FinishCallback &finishCallback, // callback passed by caller of FetchManager
+           OnFetchCompleteCallback onFetchComplete, OnFetchFailedCallback onFetchFailed, // callbacks provided by FetchManager
+           const Ccnx::Name &deviceName, const Ccnx::Name &name, int64_t minSeqNo, int64_t maxSeqNo,
            boost::posix_time::time_duration timeout = boost::posix_time::seconds (30), // this time is not precise, but sets min bound
                                                                                   // actual time depends on how fast Interests timeout
            const Ccnx::Name &forwardingHint = Ccnx::Name ());
@@ -62,10 +63,10 @@ private:
   FillPipeline ();
 
   void
-  OnData (uint32_t seqno, const Ccnx::Name &name, Ccnx::PcoPtr data);
+  OnData (uint64_t seqno, const Ccnx::Name &name, Ccnx::PcoPtr data);
 
   Ccnx::Closure::TimeoutCallbackReturnValue
-  OnTimeout (uint32_t seqno, const Ccnx::Name &name);
+  OnTimeout (uint64_t seqno, const Ccnx::Name &name);
 
 public:
   boost::intrusive::list_member_hook<> m_managerListHook;
@@ -73,26 +74,29 @@ public:
 private:
   Ccnx::CcnxWrapperPtr m_ccnx;
 
-  OnDataSegmentCallback m_onDataSegment;
+  SegmentCallback m_segmentCallback;
   OnFetchCompleteCallback m_onFetchComplete;
   OnFetchFailedCallback m_onFetchFailed;
+
+  FinishCallback m_finishCallback;
 
   bool m_active;
 
   Ccnx::Name m_name;
+  Ccnx::Name m_deviceName;
   Ccnx::Name m_forwardingHint;
 
   boost::posix_time::time_duration m_maximumNoActivityPeriod;
 
-  int32_t m_minSendSeqNo;
-  int32_t m_maxInOrderRecvSeqNo;
-  std::set<int32_t> m_outOfOrderRecvSeqNo;
+  int64_t m_minSendSeqNo;
+  int64_t m_maxInOrderRecvSeqNo;
+  std::set<int64_t> m_outOfOrderRecvSeqNo;
 
-  int32_t m_minSeqNo;
-  int32_t m_maxSeqNo;
+  int64_t m_minSeqNo;
+  int64_t m_maxSeqNo;
 
-  uint32_t m_pipeline;
-  uint32_t m_activePipeline;
+  uint64_t m_pipeline;
+  uint64_t m_activePipeline;
 
   boost::posix_time::ptime m_lastPositiveActivity;
 

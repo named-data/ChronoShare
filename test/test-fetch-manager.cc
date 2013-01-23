@@ -33,8 +33,8 @@ BOOST_AUTO_TEST_SUITE(TestFetchManager)
 
 struct FetcherTestData
 {
-  set<uint32_t> recvData;
-  set<uint32_t> recvContent;
+  set<uint64_t> recvData;
+  set<uint64_t> recvContent;
 
   set<Name> differentNames;
   set<Name> segmentNames;
@@ -49,11 +49,12 @@ struct FetcherTestData
   }
 
   void
-  onData (Fetcher &fetcher, uint32_t seqno, const Ccnx::Name &basename,
-          const Ccnx::Name &name, Ccnx::PcoPtr pco)
+  onData (const Ccnx::Name &deviceName, const Ccnx::Name &basename, uint64_t seqno, Ccnx::PcoPtr pco)
   {
     recvData.insert (seqno);
     differentNames.insert (basename);
+    Name name = basename;
+    name.appendComp(seqno);
     segmentNames.insert (name);
 
     BytesPtr data = pco->contentPtr ();
@@ -64,6 +65,11 @@ struct FetcherTestData
       }
 
     // cout << "<<< " << basename << ", " << name << ", " << seqno << endl;
+  }
+
+  void
+  finish(const Ccnx::Name &deviceName, const Ccnx::Name &baseName)
+  {
   }
 
   void
@@ -87,6 +93,7 @@ BOOST_AUTO_TEST_CASE (TestFetcher)
   CcnxWrapperPtr ccnx = make_shared<CcnxWrapper> ();
 
   Name baseName ("/base");
+  Name deviceName ("/device");
   /* publish seqnos:  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, <gap 5>, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, <gap 1>, 26 */
   // this will allow us to test our pipeline of 6
   for (int i = 0; i < 10; i++)
@@ -105,10 +112,11 @@ BOOST_AUTO_TEST_CASE (TestFetcher)
   FetcherTestData data;
 
   Fetcher fetcher (ccnx,
-                   bind (&FetcherTestData::onData, &data, _1, _2, _3, _4, _5),
+                   bind (&FetcherTestData::onData, &data, _1, _2, _3, _4),
+                   bind (&FetcherTestData::finish, &data, _1, _2),
                    bind (&FetcherTestData::onComplete, &data, _1),
                    bind (&FetcherTestData::onFail, &data, _1),
-                   Name ("/base"), 0, 26,
+                   deviceName, Name ("/base"), 0, 26,
                    boost::posix_time::seconds (5)); // this time is not precise
 
   BOOST_CHECK_EQUAL (fetcher.IsActive (), false);
@@ -124,11 +132,11 @@ BOOST_AUTO_TEST_CASE (TestFetcher)
 
   {
     ostringstream recvData;
-    for (set<uint32_t>::iterator i = data.recvData.begin (); i != data.recvData.end (); i++)
+    for (set<uint64_t>::iterator i = data.recvData.begin (); i != data.recvData.end (); i++)
       recvData << *i << ", ";
 
     ostringstream recvContent;
-    for (set<uint32_t>::iterator i = data.recvContent.begin (); i != data.recvContent.end (); i++)
+    for (set<uint64_t>::iterator i = data.recvContent.begin (); i != data.recvContent.end (); i++)
       recvContent << *i << ", ";
 
     BOOST_CHECK_EQUAL (recvData.str (), "0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, ");
@@ -156,11 +164,11 @@ BOOST_AUTO_TEST_CASE (TestFetcher)
 
   {
     ostringstream recvData;
-    for (set<uint32_t>::iterator i = data.recvData.begin (); i != data.recvData.end (); i++)
+    for (set<uint64_t>::iterator i = data.recvData.begin (); i != data.recvData.end (); i++)
       recvData << *i << ", ";
 
     ostringstream recvContent;
-    for (set<uint32_t>::iterator i = data.recvContent.begin (); i != data.recvContent.end (); i++)
+    for (set<uint64_t>::iterator i = data.recvContent.begin (); i != data.recvContent.end (); i++)
       recvContent << *i << ", ";
 
     BOOST_CHECK_EQUAL (recvData.str (), "0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, ");
