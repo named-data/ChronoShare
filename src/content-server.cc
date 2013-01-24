@@ -83,11 +83,22 @@ ContentServer::serve(const Name &interest)
       {
         Name deviceName = originalName.getPartialName(0, nameSize - 3);
         string type = originalName.getCompAsString(nameSize - 3);
-        BytesPtr co;
         if (type == "action")
         {
-          // TODO:
-          // get co from m_actionLog
+          int64_t seqno = originalName.getCompAsInt(nameSize - 1);
+          PcoPtr pco = m_actionLog->LookupActionPco(deviceName, seqno);
+          if (pco)
+          {
+            Bytes content = pco->buf();
+            if (m_freshness > 0)
+            {
+              m_ccnx->publishData(interest, content, m_freshness);
+            }
+            else
+            {
+              m_ccnx->publishData(interest, content);
+            }
+          }
         }
         else if (type == "file")
         {
@@ -97,24 +108,24 @@ ContentServer::serve(const Name &interest)
           oss << hash;
           int64_t segment = originalName.getCompAsInt(nameSize - 1);
           ObjectDb db(m_dbFolder, oss.str());
-          co = db.fetchSegment(deviceName, segment);
+          BytesPtr co = db.fetchSegment(deviceName, segment);
+          if (co)
+          {
+            if (m_freshness > 0)
+            {
+              m_ccnx->publishData(interest, *co, m_freshness);
+            }
+            else
+            {
+              m_ccnx->publishData(interest, *co);
+            }
+          }
         }
         else
         {
           cerr << "Discard interest that ContentServer does not know how to handle: " << interest << ", prefix: " << prefix << endl;
         }
 
-        if (co)
-        {
-          if (m_freshness > 0)
-          {
-            m_ccnx->publishData(interest, *co, m_freshness);
-          }
-          else
-          {
-            m_ccnx->publishData(interest, *co);
-          }
-        }
       }
     }
   }
