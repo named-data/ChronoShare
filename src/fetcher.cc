@@ -22,11 +22,14 @@
 #include "fetcher.h"
 #include "fetch-manager.h"
 #include "ccnx-pco.h"
+#include "logging.h"
 
 #include <boost/make_shared.hpp>
 #include <boost/ref.hpp>
 #include <boost/throw_exception.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+
+INIT_LOGGER ("Fetcher");
 
 using namespace boost;
 using namespace std;
@@ -90,6 +93,8 @@ Fetcher::FillPipeline ()
     {
       if (m_outOfOrderRecvSeqNo.find (m_minSendSeqNo+1) != m_outOfOrderRecvSeqNo.end ())
         continue;
+
+      _LOG_DEBUG (" >>> i " << Name (m_forwardingHint)(m_name)(m_minSendSeqNo+1));
 
       // cout << ">>> " << m_minSendSeqNo+1 << endl;
       m_ccnx->sendInterest (Name (m_forwardingHint)(m_name)(m_minSendSeqNo+1),

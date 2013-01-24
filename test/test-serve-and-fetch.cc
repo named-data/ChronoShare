@@ -131,7 +131,7 @@ BOOST_AUTO_TEST_CASE (TestServeAndFetch)
   server.registerPrefix(broadcastPrefix);
 
   FetchManager fm(ccnx_fetch, bind(simpleMap, _1));
-  HashPtr hash = get<0>(pub);
+  HashPtr hash = pub.get<0> ();
   Name baseName = Name (deviceName)("file")(hash->GetHash(), hash->GetHashBytes());
   fm.Enqueue(deviceName, baseName, bind(segmentCallback, _1, _2, _3, _4), bind(finishCallback, _1, _2), 0, get<1>(pub));
 
