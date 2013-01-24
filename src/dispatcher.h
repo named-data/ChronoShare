@@ -29,6 +29,8 @@
 #include "object-db.h"
 #include "object-manager.h"
 #include "content-server.h"
+#include "fetch-manager.h"
+
 #include <boost/function.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/shared_ptr.hpp>
@@ -42,12 +44,6 @@ typedef boost::shared_ptr<ActionItem> ActionItemPtr;
 class Dispatcher
 {
 public:
-  typedef enum
-  {
-    UPDATE = 0,
-    DELETE = 1
-  } ActionType;
-
   // sharedFolder is the name to be used in NDN name;
   // rootDir is the shared folder dir in local file system;
   Dispatcher(const boost::filesystem::path &path, const std::string &localUserName,  const Ccnx::Name &localPrefix,
@@ -57,41 +53,86 @@ public:
 
   // ----- Callbacks, they only submit the job to executor and immediately return so that event processing thread won't be blocked for too long -------
 
+
   // callback to process local file change
   void
-  fileChangedCallback(const boost::filesystem::path &relativeFilepath, ActionType type);
+  Did_LocalFile_AddOrModify (const boost::filesystem::path &relativeFilepath);
 
-  // callback to process remote sync state change
   void
-  syncStateChangedCallback(const SyncStateMsgPtr &stateMsg);
-
-  // callback to process remote action data
-  void
-  actionReceivedCallback(const ActionItemPtr &actionItem);
-
-  // callback to porcess file data
-  void
-  fileSegmentReceivedCallback(const Ccnx::Name &name, const Ccnx::Bytes &content);
-
-  // callback to assemble file
-  void
-  fileReadyCallback(const Ccnx::Name &fileNamePrefix);
+  Did_LocalFile_Delete (const boost::filesystem::path &relativeFilepath);
 
 private:
   void
-  fileChanged(const boost::filesystem::path &relativeFilepath, ActionType type);
+  Did_LocalFile_AddOrModify_Execute (boost::filesystem::path relativeFilepath); // cannot be const & for Execute event!!! otherwise there will be segfault
 
   void
-  syncStateChanged(const SyncStateMsgPtr &stateMsg);
+  Did_LocalFile_Delete_Execute (boost::filesystem::path relativeFilepath); // cannot be const & for Execute event!!! otherwise there will be segfault
+
+
+private:
+  /**
+   * Callbacks:
+   *
+ x * - from SyncLog: when state changes -> to fetch missing actions
+   *
+ x * - from FetchManager/Actions: when action is fetched -> to request a file, specified by the action
+   *                                                     -> to add action to the action log
+   *
+   * - from ActionLog/Delete:      when action applied (file state changed, file deleted)           -> to delete local file
+   *
+   * - from ActionLog/AddOrUpdate: when action applied (file state changes, file added or modified) -> to assemble the file if file is available in the ObjectDb, otherwise, do nothing
+   *
+ x * - from FetchManager/Files: when file segment is retrieved -> save it in ObjectDb
+   *                            when file fetch is completed   -> if file belongs to FileState, then assemble it to filesystem. Don't do anything otherwise
+   */
+
+  // callback to process remote sync state change
+  void
+  Did_SyncLog_StateChange (const SyncStateMsgPtr &stateMsg);
 
   void
-  actionReceived(const ActionItemPtr &actionItem);
+  Did_FetchManager_ActionFetch (const Ccnx::Name &deviceName, const Ccnx::Name &actionName, uint32_t seqno, Ccnx::PcoPtr actionPco);
 
   void
-  fileSegmentReceived(const Ccnx::Name &name, const Ccnx::Bytes &content);
+  Did_ActionLog_ActionApply_Delete (const std::string &filename);
 
   void
-  fileReady(const Ccnx::Name &fileNamePrefix);
+  Did_ActionLog_ActionApply_Delete_Execute (std::string filename);
+
+  // void
+  // Did_ActionLog_ActionApply_AddOrModify (const std::string &filename, Ccnx::Name device_name, sqlite3_int64 seq_no,
+  //                                        HashPtr hash, time_t m_time, int mode, int seg_num);
+
+  void
+  Did_FetchManager_FileSegmentFetch (const Ccnx::Name &deviceName, const Ccnx::Name &fileSegmentName, uint32_t segment, Ccnx::PcoPtr fileSegmentPco);
+
+  void
+  Did_FetchManager_FileSegmentFetch_Execute (Ccnx::Name deviceName, Ccnx::Name fileSegmentName, uint32_t segment, Ccnx::PcoPtr fileSegmentPco);
+
+  void
+  Did_FetchManager_FileFetchComplete (const Ccnx::Name &deviceName, const Ccnx::Name &fileBaseName);
+
+  void
+  Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, Ccnx::Name fileBaseName);
+
+private:
+  void
+  AssembleFile_Execute (const Ccnx::Name &deviceName, const Hash &filehash, const boost::filesystem::path &relativeFilepath);
+
+  // void
+  // fileChanged(const boost::filesystem::path &relativeFilepath, ActionType type);
+
+  // void
+  // syncStateChanged(const SyncStateMsgPtr &stateMsg);
+
+  // void
+  // actionReceived(const ActionItemPtr &actionItem);
+
+  // void
+  // fileSegmentReceived(const Ccnx::Name &name, const Ccnx::Bytes &content);
+
+  // void
+  // fileReady(const Ccnx::Name &fileNamePrefix);
 
 private:
   Ccnx::CcnxWrapperPtr m_ccnx;
@@ -105,9 +146,14 @@ private:
   Ccnx::Name m_localUserName;
   // maintain object db ptrs so that we don't need to create them
   // for every fetched segment of a file
-  map<Ccnx::Name, ObjectDbPtr> m_objectDbMap;
+
+  std::map<Hash, ObjectDbPtr> m_objectDbMap;
+
   std::string m_sharedFolder;
   ContentServer *m_server;
+
+  FetchManagerPtr m_actionFetcher;
+  FetchManagerPtr m_fileFetcher;
 };
 
 namespace Error

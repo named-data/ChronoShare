@@ -20,16 +20,23 @@
  */
 
 #include "dispatcher.h"
+#include "logging.h"
+
 #include <boost/make_shared.hpp>
+#include <boost/lexical_cast.hpp>
 
 using namespace Ccnx;
 using namespace std;
 using namespace boost;
 
-static const string BROADCAST_DOMAIN = "/ndn/broadcast/chronoshare";
-static const int MAX_FILE_SEGMENT_SIZE = 1024;
+INIT_LOGGER ("Dispatcher");
 
-Dispatcher::Dispatcher(const filesystem::path &path, const std::string &localUserName, const Ccnx::Name &localPrefix, const std::string &sharedFolder, const filesystem::path &rootDir, Ccnx::CcnxWrapperPtr ccnx, SchedulerPtr scheduler, int poolSize)
+static const string BROADCAST_DOMAIN = "/ndn/broadcast/chronoshare";
+
+Dispatcher::Dispatcher(const filesystem::path &path, const std::string &localUserName,
+                       const Ccnx::Name &localPrefix, const std::string &sharedFolder,
+                       const filesystem::path &rootDir, Ccnx::CcnxWrapperPtr ccnx,
+                       SchedulerPtr scheduler, int poolSize)
            : m_ccnx(ccnx)
            , m_core(NULL)
            , m_rootDir(rootDir)
@@ -40,7 +47,10 @@ Dispatcher::Dispatcher(const filesystem::path &path, const std::string &localUse
            , m_server(NULL)
 {
   m_syncLog = make_shared<SyncLog>(path, localUserName);
-  m_actionLog = make_shared<ActionLog>(m_ccnx, path, m_syncLog, sharedFolder);
+  m_actionLog = make_shared<ActionLog>(m_ccnx, path, m_syncLog, sharedFolder,
+                                       // bind (&Dispatcher::Did_ActionLog_ActionApply_AddOrModify, this, _1, _2, _3, _4, _5, _6, _7),
+                                       ActionLog::OnFileAddedOrChangedCallback (), // don't really need this callback
+                                       bind (&Dispatcher::Did_ActionLog_ActionApply_Delete, this, _1));
   Name syncPrefix = Name(BROADCAST_DOMAIN)(sharedFolder);
 
   m_server = new ContentServer(m_ccnx, m_actionLog, rootDir);
@@ -48,8 +58,10 @@ Dispatcher::Dispatcher(const filesystem::path &path, const std::string &localUse
   m_server->registerPrefix(syncPrefix);
 
   m_core = new SyncCore (m_syncLog, localUserName, localPrefix, syncPrefix,
-                         bind(&Dispatcher::syncStateChanged, this, _1), ccnx, scheduler);
+                         bind(&Dispatcher::Did_SyncLog_StateChange, this, _1), ccnx, scheduler);
 
+  m_actionFetcher = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3);
+  m_fileFetcher   = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3);
 }
 
 Dispatcher::~Dispatcher()
@@ -67,61 +79,31 @@ Dispatcher::~Dispatcher()
   }
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void
-Dispatcher::fileChangedCallback(const filesystem::path &relativeFilePath, ActionType type)
+Dispatcher::Did_LocalFile_AddOrModify (const filesystem::path &relativeFilePath)
 {
-  Executor::Job job = bind(&Dispatcher::fileChanged, this, relativeFilePath, type);
-  m_executor.execute(job);
+  m_executor.execute (bind (&Dispatcher::Did_LocalFile_AddOrModify_Execute, this, relativeFilePath));
 }
 
 void
-Dispatcher::syncStateChangedCallback(const SyncStateMsgPtr &stateMsg)
+Dispatcher::Did_LocalFile_AddOrModify_Execute (filesystem::path relativeFilePath)
 {
-  Executor::Job job = bind(&Dispatcher::syncStateChanged, this, stateMsg);
-  m_executor.execute(job);
-}
-
-void
-Dispatcher::actionReceivedCallback(const ActionItemPtr &actionItem)
-{
-  Executor::Job job = bind(&Dispatcher::actionReceived, this, actionItem);
-  m_executor.execute(job);
-}
-
-void
-Dispatcher::fileSegmentReceivedCallback(const Ccnx::Name &name, const Ccnx::Bytes &content)
-{
-  Executor::Job job = bind(&Dispatcher::fileSegmentReceived, this, name, content);
-  m_executor.execute(job);
-}
-
-void
-Dispatcher::fileReadyCallback(const Ccnx::Name &fileNamePrefix)
-{
-  Executor::Job job = bind(&Dispatcher::fileReady, this, fileNamePrefix);
-  m_executor.execute(job);
-}
-
-void
-Dispatcher::fileChanged(const filesystem::path &relativeFilePath, ActionType type)
-{
-
-  switch (type)
-  {
-    case UPDATE:
+  filesystem::path absolutePath = m_rootDir / relativeFilePath;
+  if (filesystem::exists(absolutePath))
     {
-      filesystem::path absolutePath = m_rootDir / relativeFilePath;
-      if (filesystem::exists(absolutePath))
-      {
-        HashPtr hash = Hash::FromFileContent(absolutePath);
-        if (m_actionLog->KnownFileState(relativeFilePath.generic_string(), *hash))
+      HashPtr hash = Hash::FromFileContent(absolutePath);
+      if (m_actionLog->KnownFileState(relativeFilePath.generic_string(), *hash))
         {
           // the file state is known; i.e. the detected changed file is identical to
           // the file state kept in FileState table
           // it is the case that backend puts the file fetched from remote;
           // we should not publish action for this.
         }
-        else
+      else
         {
           uintmax_t fileSize = filesystem::file_size(absolutePath);
           int seg_num;
@@ -137,27 +119,49 @@ Dispatcher::fileChanged(const filesystem::path &relativeFilePath, ActionType typ
           // notify SyncCore to propagate the change
           m_core->localStateChanged();
         }
-        break;
-      }
-      else
-      {
-        BOOST_THROW_EXCEPTION (Error::Dispatcher() << error_info_str("Update non exist file: " + absolutePath.string() ));
-      }
     }
-    case DELETE:
+  else
     {
-      m_actionLog->AddLocalActionDelete (relativeFilePath.generic_string());
-      // notify SyncCore to propagate the change
-      m_core->localStateChanged();
-      break;
+      BOOST_THROW_EXCEPTION (Error::Dispatcher() << error_info_str("Update non exist file: " + absolutePath.string() ));
     }
-    default:
-      break;
-  }
 }
 
 void
-Dispatcher::syncStateChanged(const SyncStateMsgPtr &stateMsg)
+Dispatcher::Did_LocalFile_Delete (const filesystem::path &relativeFilePath)
+{
+  m_executor.execute (bind (&Dispatcher::Did_LocalFile_Delete_Execute, this, relativeFilePath));
+}
+
+void
+Dispatcher::Did_LocalFile_Delete_Execute (filesystem::path relativeFilePath)
+{
+  m_actionLog->AddLocalActionDelete (relativeFilePath.generic_string());
+  // notify SyncCore to propagate the change
+  m_core->localStateChanged();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Callbacks:
+ *
+ * - from SyncLog: when state changes -> to fetch missing actions
+ *
+ * - from FetchManager/Actions: when action is fetched -> to request a file, specified by the action
+ *                                                     -> to add action to the action log
+ *
+ * - from ActionLog/Delete:      when action applied (file state changed, file deleted)           -> to delete local file
+ *
+ * - from ActionLog/AddOrUpdate: when action applied (file state changes, file added or modified) -> do nothing?
+ *
+ * - from FetchManager/Files: when file segment is retrieved -> save it in ObjectDb
+ *                            when file fetch is completed   -> if file belongs to FileState, then assemble it to filesystem. Don't do anything otherwise
+ */
+
+void
+Dispatcher::Did_SyncLog_StateChange (const SyncStateMsgPtr &stateMsg)
 {
   int size = stateMsg->state_size();
   int index = 0;
@@ -170,101 +174,115 @@ Dispatcher::syncStateChanged(const SyncStateMsgPtr &stateMsg)
       uint64_t oldSeq = state.old_seq();
       uint64_t newSeq = state.seq();
       Name userName = state.name();
-      Name locator = state.locator();
 
       // fetch actions with oldSeq + 1 to newSeq (inclusive)
-      Name actionNameBase(userName);
-      actionNameBase.appendComp("action")
-                .appendComp(m_sharedFolder);
+      Name actionNameBase = Name(userName)("action")(m_sharedFolder);
 
-      for (uint64_t seqNo = oldSeq + 1; seqNo <= newSeq; seqNo++)
-      {
-        Name actionName = actionNameBase;
-        actionName.appendComp(seqNo);
-
-        // TODO:
-        // use fetcher to fetch the name with callback "actionRecieved"
-      }
+      m_actionFetcher->Enqueue (userName, actionNameBase,
+                                bind (&Dispatcher::Did_FetchManager_ActionFetch, this, _1, _2, _3, _4), FetchManager::FinishCallback (),
+                                oldSeq + 1, newSeq, FetchManager::PRIORITY_HIGH);
     }
   }
 }
 
 void
-Dispatcher::actionReceived(const ActionItemPtr &actionItem)
+Dispatcher::Did_FetchManager_ActionFetch (const Ccnx::Name &deviceName, const Ccnx::Name &actionName, uint32_t seqno, Ccnx::PcoPtr actionPco)
 {
-  switch (actionItem->action())
-  {
-    case ActionItem::UPDATE:
-    {
-      // @TODO
-      // need a function in ActionLog to apply received action, i.e. record remote action in ActionLog
+  /// @todo Errors and exception checking
+  _LOG_DEBUG ("Received action deviceName: " << deviceName << ", actionName: " << actionName << ", seqno: " << seqno);
 
-      string hashBytes = actionItem->file_hash();
-      Hash hash(hashBytes.c_str(), hashBytes.size());
-      ostringstream oss;
-      oss << hash;
-      string hashString = oss.str();
-      ObjectDbPtr db = make_shared<ObjectDb>(m_rootDir, hashString);
-      m_objectDbMap[hashString] = db;
+  ActionItemPtr action = m_actionLog->AddRemoteAction (deviceName, seqno, actionPco);
+  // trigger may invoke Did_ActionLog_ActionApply_Delete or Did_ActionLog_ActionApply_AddOrModify callbacks
 
-      // TODO:
-      // user fetcher to fetch the file with callback "fileSegmentReceived" for segment callback and "fileReady" for file ready callback
-      break;
-    }
-    case ActionItem::DELETE:
+  if (action->action () == ActionItem::UPDATE)
     {
-      string filename = actionItem->filename();
-      // TODO:
-      // m_actionLog->AddRemoteActionDelete(filename);
-      break;
+      Hash hash (action->file_hash ().c_str(), action->file_hash ().size ());
+
+      Name fileNameBase = Name (deviceName)("file")(hash.GetHash (), hash.GetHashBytes ());
+
+      if (m_objectDbMap.find (hash) == m_objectDbMap.end ())
+        {
+          m_objectDbMap [hash] = make_shared<ObjectDb> (m_rootDir, lexical_cast<string> (hash));
+        }
+
+      m_fileFetcher->Enqueue (deviceName, fileNameBase,
+                              bind (&Dispatcher::Did_FetchManager_FileSegmentFetch, this, _1, _2, _3, _4),
+                              bind (&Dispatcher::Did_FetchManager_FileFetchComplete, this, _1, _2),
+                              0, action->seg_num (), FetchManager::PRIORITY_NORMAL);
     }
-    default:
-      break;
-  }
 }
 
 void
-Dispatcher::fileSegmentReceived(const Ccnx::Name &name, const Ccnx::Bytes &content)
+Dispatcher::Did_ActionLog_ActionApply_Delete (const std::string &filename)
 {
-  int size = name.size();
-  uint64_t segment = name.getCompAsInt(size - 1);
-  Bytes hashBytes = name.getComp(size - 2);
-  Hash hash(head(hashBytes), hashBytes.size());
-  ostringstream oss;
-  oss << hash;
-  string hashString = oss.str();
-  if (m_objectDbMap.find(hashString) != m_objectDbMap.end())
+  m_executor.execute (bind (&Dispatcher::Did_ActionLog_ActionApply_Delete_Execute, this, filename));
+}
+
+void
+Dispatcher::Did_ActionLog_ActionApply_Delete_Execute (std::string filename)
+{
+  _LOG_DEBUG ("Action to delete " << filename);
+
+  filesystem::path absolutePath = m_rootDir / filename;
+  if (filesystem::exists(absolutePath))
+    {
+      // need some protection from local detection of removal
+      remove (absolutePath);
+    }
+  // don't exist
+}
+
+void
+Dispatcher::Did_FetchManager_FileSegmentFetch (const Ccnx::Name &deviceName, const Ccnx::Name &fileSegmentName, uint32_t segment, Ccnx::PcoPtr fileSegmentPco)
+{
+  m_executor.execute (bind (&Dispatcher::Did_FetchManager_FileSegmentFetch_Execute, this, deviceName, fileSegmentName, segment, fileSegmentPco));
+}
+
+void
+Dispatcher::Did_FetchManager_FileSegmentFetch_Execute (Ccnx::Name deviceName, Ccnx::Name fileSegmentName, uint32_t segment, Ccnx::PcoPtr fileSegmentPco)
+{
+  const Bytes &hashBytes = fileSegmentName.getCompFromBack (1);
+  Hash hash (head(hashBytes), hashBytes.size());
+
+  _LOG_DEBUG ("Received segment deviceName: " << deviceName << ", segmentName: " << fileSegmentName << ", segment: " << segment);
+
+  map<Hash, ObjectDbPtr>::iterator db = m_objectDbMap.find (hash);
+  if (db != m_objectDbMap.end())
   {
-    ObjectDbPtr db = m_objectDbMap[hashString];
-    // get the device name
-    // Name deviceName = name.getPartialName();
-    // db->saveContenObject(deviceName, segment, content);
+    db->second->saveContentObject(deviceName, segment, fileSegmentPco->buf ());
   }
   else
   {
-    cout << "no db available for this content object: " << name << ", size: " << content.size() << endl;
+    _LOG_ERROR ("no db available for this content object: " << fileSegmentName << ", size: " << fileSegmentPco->buf ().size());
   }
 }
 
 void
-Dispatcher::fileReady(const Ccnx::Name &fileNamePrefix)
+Dispatcher::Did_FetchManager_FileFetchComplete (const Ccnx::Name &deviceName, const Ccnx::Name &fileBaseName)
 {
-  int size = fileNamePrefix.size();
-  Bytes hashBytes = fileNamePrefix.getComp(size - 1);
-  Hash hash(head(hashBytes), hashBytes.size());
-  ostringstream oss;
-  oss << hash;
-  string hashString = oss.str();
+  m_executor.execute (bind (&Dispatcher::Did_FetchManager_FileFetchComplete_Execute, this, deviceName, fileBaseName));
+}
 
-  if (m_objectDbMap.find(hashString) != m_objectDbMap.end())
-  {
-    // remove the db handle
-    m_objectDbMap.erase(hashString);
-  }
-  else
-  {
-    cout << "no db available for this file: " << fileNamePrefix << endl;
-  }
+void
+Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, Ccnx::Name fileBaseName)
+{
+  _LOG_DEBUG ("Finished fetching " << deviceName << ", fileBaseName: " << fileBaseName);
+  // int size = fileNamePrefix.size();
+  // Bytes hashBytes = fileNamePrefix.getComp(size - 1);
+  // Hash hash(head(hashBytes), hashBytes.size());
+  // ostringstream oss;
+  // oss << hash;
+  // string hashString = oss.str();
+
+  // if (m_objectDbMap.find(hashString) != m_objectDbMap.end())
+  // {
+  //   // remove the db handle
+  //   m_objectDbMap.erase(hashString);
+  // }
+  // else
+  // {
+  //   cout << "no db available for this file: " << fileNamePrefix << endl;
+  // }
 
   // query the action table to get the path on local file system
   // m_objectManager.objectsToLocalFile(deviceName, hash, relativeFilePath);

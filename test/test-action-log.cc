@@ -47,7 +47,8 @@ BOOST_AUTO_TEST_CASE (ActionLogTest)
   SyncLogPtr syncLog = make_shared<SyncLog> (tmpdir, localName);
   CcnxWrapperPtr ccnx = make_shared<CcnxWrapper> ();
 
-  ActionLogPtr actionLog = make_shared<ActionLog> (ccnx, tmpdir, syncLog, "top-secret");
+  ActionLogPtr actionLog = make_shared<ActionLog> (ccnx, tmpdir, syncLog, "top-secret",
+                                                   ActionLog::OnFileAddedOrChangedCallback(), ActionLog::OnFileRemovedCallback ());
 
 // const std::string &filename,
 //                    const Hash &hash,

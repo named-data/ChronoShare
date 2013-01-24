@@ -281,7 +281,7 @@ Name::getCompAsInt (int index) const
   return ret;
 }
 
-Bytes
+const Bytes &
 Name::getComp(int index) const
 {
   if (index >= m_comps.size())

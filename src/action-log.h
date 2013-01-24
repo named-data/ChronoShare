@@ -37,14 +37,21 @@ typedef boost::shared_ptr<ActionItem> ActionItemPtr;
 class ActionLog : public DbHelper
 {
 public:
+  typedef boost::function<void (std::string /*filename*/, Ccnx::Name /*device_name*/, sqlite3_int64 /*seq_no*/,
+                                HashPtr /*hash*/, time_t /*m_time*/, int /*mode*/, int /*seg_num*/)> OnFileAddedOrChangedCallback;
+
+  typedef boost::function<void (std::string /*filename*/)> OnFileRemovedCallback;
+
+public:
   ActionLog (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &path,
              SyncLogPtr syncLog,
-             const std::string &sharedFolder);
+             const std::string &sharedFolder,
+             OnFileAddedOrChangedCallback onFileAddedOrChanged, OnFileRemovedCallback onFileRemoved);
 
   //////////////////////////
   // Local operations     //
   //////////////////////////
-  void
+  ActionItemPtr
   AddLocalActionUpdate (const std::string &filename,
                         const Hash &hash,
                         time_t wtime,
@@ -54,7 +61,7 @@ public:
   // void
   // AddActionMove (const std::string &oldFile, const std::string &newFile);
 
-  void
+  ActionItemPtr
   AddLocalActionDelete (const std::string &filename);
 
   bool
@@ -64,7 +71,7 @@ public:
   // Remote operations    //
   //////////////////////////
 
-  void
+  ActionItemPtr
   AddRemoteAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno, Ccnx::PcoPtr actionPco);
 
   /**
@@ -72,7 +79,7 @@ public:
    *
    * This function extracts device name and sequence number from the content object's and calls the overloaded method
    */
-  void
+  ActionItemPtr
   AddRemoteAction (Ccnx::PcoPtr actionPco);
 
   ///////////////////////////
@@ -110,6 +117,9 @@ private:
 
   Ccnx::CcnxWrapperPtr m_ccnx;
   std::string m_sharedFolderName;
+
+  OnFileAddedOrChangedCallback m_onFileAddedOrChanged;
+  OnFileRemovedCallback        m_onFileRemoved;
 };
 
 namespace Error {

@@ -1,12 +1,5 @@
 message FileItem
 {
-  enum FileType
-  {
-    LATEST = 0;
-    OLDEST = 1;
-  }
-  required FileType type = 1;
-
   required string filename = 2;
   required bytes  device_name = 3;
   required uint64 seq_no = 4;

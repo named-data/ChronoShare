@@ -35,17 +35,17 @@
 
 class FetchManager
 {
+public:
   enum
     {
       PRIORITY_NORMAL,
       PRIORITY_HIGH
     };
 
-public:
   typedef boost::function<Ccnx::Name(const Ccnx::Name &)> Mapping;
   typedef boost::function<void(Ccnx::Name &deviceName, Ccnx::Name &baseName, uint64_t seq, Ccnx::PcoPtr pco)> SegmentCallback;
   typedef boost::function<void(Ccnx::Name &deviceName, Ccnx::Name &baseName)> FinishCallback;
-  FetchManager (Ccnx::CcnxWrapperPtr ccnx, const Mapping &mapping, uint64_t parallelFetches = 3);
+  FetchManager (Ccnx::CcnxWrapperPtr ccnx, const Mapping &mapping, uint32_t parallelFetches = 3);
   virtual ~FetchManager ();
 
   void
@@ -81,8 +81,8 @@ private:
   Mapping m_mapping;
   SchedulerPtr m_scheduler;
 
-  uint64_t m_maxParallelFetches;
-  uint64_t m_currentParallelFetches;
+  uint32_t m_maxParallelFetches;
+  uint32_t m_currentParallelFetches;
   boost::mutex m_parellelFetchMutex;
 
   // optimized list structure for fetch queue

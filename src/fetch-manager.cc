@@ -31,7 +31,7 @@ using namespace Ccnx;
 //The disposer object function
 struct fetcher_disposer { void operator() (Fetcher *delete_this) { delete delete_this; } };
 
-FetchManager::FetchManager (CcnxWrapperPtr ccnx, const Mapping &mapping, uint64_t parallelFetches/* = 3*/)
+FetchManager::FetchManager (CcnxWrapperPtr ccnx, const Mapping &mapping, uint32_t parallelFetches/* = 3*/)
   : m_ccnx (ccnx)
   , m_mapping (mapping)
   , m_maxParallelFetches (parallelFetches)
