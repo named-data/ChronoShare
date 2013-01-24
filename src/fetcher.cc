@@ -94,7 +94,9 @@ Fetcher::FillPipeline ()
       if (m_outOfOrderRecvSeqNo.find (m_minSendSeqNo+1) != m_outOfOrderRecvSeqNo.end ())
         continue;
 
-      _LOG_DEBUG (" >>> i " << Name (m_forwardingHint)(m_name)(m_minSendSeqNo+1));
+      Name x = Name(m_forwardingHint)(m_name)(m_minSendSeqNo+1);
+      int xsize = x.size();
+      _LOG_DEBUG (" >>> i " << x.getPartialName(0, xsize - 2) << ", seq = " << (m_minSendSeqNo + 1 ));
 
       // cout << ">>> " << m_minSendSeqNo+1 << endl;
       m_ccnx->sendInterest (Name (m_forwardingHint)(m_name)(m_minSendSeqNo+1),

@@ -75,7 +75,7 @@ ObjectManager::localFileToObjects (const fs::path &file, const Ccnx::Name &devic
 
       // cout << *fileHash << endl;
       // cout << name << endl;
-      _LOG_DEBUG ("Read " << iff.gcount () << " from " << file << " for segment " << segment);
+      //_LOG_DEBUG ("Read " << iff.gcount () << " from " << file << " for segment " << segment);
 
       Bytes data = m_ccnx->createContentObject (name, buf, iff.gcount ());
       fileDb.saveContentObject (deviceName, segment, data);

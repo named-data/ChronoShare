@@ -64,6 +64,11 @@ ContentServer::deregisterPrefix(const Name &prefix)
 void
 ContentServer::serve(const Name &interest)
 {
+  int size = interest.size();
+  cout << ">>> Serving: " << interest.getPartialName(0, size - 2) << ", seq = " << interest.getCompAsInt(size -1) << endl;
+
+
+
   ReadLock lock(m_mutex);
   for (PrefixIt it = m_prefixes.begin(); it != m_prefixes.end(); ++it)
   {
