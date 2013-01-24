@@ -19,17 +19,20 @@
  */
 
 #include "chronosharegui.h"
+#include "logging.h"
 #include <QApplication>
 
 int main(int argc, char *argv[])
 {
-    QApplication app(argc, argv);
+  INIT_LOGGERS ();
 
-    // do not quit when last window closes
-    app.setQuitOnLastWindowClosed(false);
+  QApplication app(argc, argv);
 
-    // invoke gui
-    ChronoShareGui gui;
-    
-    return app.exec();
+  // do not quit when last window closes
+  app.setQuitOnLastWindowClosed(false);
+
+  // invoke gui
+  ChronoShareGui gui;
+
+  return app.exec();
 }

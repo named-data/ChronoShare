@@ -35,65 +35,66 @@
 
 class ChronoShareGui : public QWidget
 {
-    Q_OBJECT
-    
-public:
-    // constructor
-    explicit ChronoShareGui(QWidget* parent = 0);
+  Q_OBJECT
 
-    // destructor
-    ~ChronoShareGui();
+  public:
+  // constructor
+  explicit ChronoShareGui(QWidget* parent = 0);
+
+  // destructor
+  ~ChronoShareGui();
 
 private slots:
-    // open the shared folder
-    void openSharedFolder();
+  // open the shared folder
+  void openSharedFolder();
 
-    // open file dialog
-    void openFileDialog();
+  // open file dialog
+  void openFileDialog();
 
-    // handle left click of tray icon
-    void trayIconClicked(QSystemTrayIcon::ActivationReason reason);
+  // handle left click of tray icon
+  void trayIconClicked(QSystemTrayIcon::ActivationReason reason);
 
-    // view chronoshare settings
-    void viewSettings();
-
-private:
-    // create actions that result from clicking a menu option
-    void createActions();
-
-    // create tray icon
-    void createTrayIcon();
-
-    // set icon image
-    void setIcon();
-
-    // load persistent settings
-    bool loadSettings();
-
-    // save persistent settings
-    void saveSettings();
-
-    // prompt user dialog box
-    void openMessageBox(QString title, QString text);
-
-    // overload
-    void openMessageBox(QString title, QString text, QString infotext);
-
-    // capture close event
-    void closeEvent(QCloseEvent* event);
+  // view chronoshare settings
+  void viewSettings();
 
 private:
-    QSystemTrayIcon* m_trayIcon; // tray icon
-    QMenu* m_trayIconMenu; // tray icon menu
+  // create actions that result from clicking a menu option
+  void createActions();
 
-    QAction* m_openFolder; // open the shared folder action
-    QAction* m_viewSettings; // chronoShare settings
-    QAction* m_changeFolder; // change the shared folder action
-    QAction* m_quitProgram; // quit program action
+  // create tray icon
+  void createTrayIcon();
 
-    QString m_dirPath; // shared directory
+  // set icon image
+  void setIcon();
 
-    QString m_settingsFilePath; // settings file path
+  // load persistent settings
+  bool loadSettings();
+
+  // save persistent settings
+  void saveSettings();
+
+  // prompt user dialog box
+  void openMessageBox(QString title, QString text);
+
+  // overload
+  void openMessageBox(QString title, QString text, QString infotext);
+
+  // capture close event
+  void closeEvent(QCloseEvent* event);
+
+private:
+  QSystemTrayIcon* m_trayIcon; // tray icon
+  QMenu* m_trayIconMenu; // tray icon menu
+
+  QAction* m_openFolder; // open the shared folder action
+  QAction* m_viewSettings; // chronoShare settings
+  QAction* m_changeFolder; // change the shared folder action
+  QAction* m_quitProgram; // quit program action
+
+  QString m_dirPath; // shared directory
+
+  // QString m_settingsFilePath; // settings file path
+  // QString m_settings;
 };
 
 #endif // CHRONOSHAREGUI_H

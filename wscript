@@ -110,11 +110,32 @@ def build (bld):
         use = "QTCORE QTGUI LOG4CXX"
         )
 
+    app_plist = '''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist SYSTEM "file://localhost/System/Library/DTDs/PropertyList.dtd">
+<plist version="0.9">
+<dict>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleGetInfoString</key>
+    <string>Created by Waf</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>NOTE</key>
+    <string>THIS IS A GENERATED FILE, DO NOT MODIFY</string>
+    <key>CFBundleExecutable</key>
+    <string>%s</string>
+    <key>LSUIElement</key>
+    <string>1</string>
+</dict>
+</plist>'''
+
     qt = bld (
-	target = "chronoshare-gui",
+	target = "ChronoShare",
+        mac_app = "ChronoShare.app",
+        mac_plist = app_plist % "ChronoShare",
 	features = "qt4 cxx cxxprogram",
 	defines = "WAF",
 	source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.qrc']),
-	includes = "gui . ",
-	use = "QTCORE QTGUI LOG4CXX"
+	includes = "src gui . ",
+	use = "QTCORE QTGUI LOG4CXX ccnx database chronoshare"
 	)
