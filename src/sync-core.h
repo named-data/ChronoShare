@@ -44,8 +44,7 @@ public:
            , const Ccnx::Name &localPrefix      // routable name used by the local user
            , const Ccnx::Name &syncPrefix       // the prefix for the sync collection
            , const StateMsgCallback &callback   // callback when state change is detected
-           , Ccnx::CcnxWrapperPtr ccnx
-           , SchedulerPtr scheduler);
+           , Ccnx::CcnxWrapperPtr ccnx);
   ~SyncCore();
 
   void

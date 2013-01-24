@@ -37,7 +37,7 @@ static const string BROADCAST_DOMAIN = "/ndn/broadcast/chronoshare";
 Dispatcher::Dispatcher(const filesystem::path &path, const std::string &localUserName,
                        const std::string &sharedFolder,
                        const filesystem::path &rootDir, Ccnx::CcnxWrapperPtr ccnx,
-                       SchedulerPtr scheduler, int poolSize)
+                       int poolSize)
            : m_ccnx(ccnx)
            , m_core(NULL)
            , m_rootDir(rootDir)
@@ -59,7 +59,7 @@ Dispatcher::Dispatcher(const filesystem::path &path, const std::string &localUse
   m_server->registerPrefix(syncPrefix);
 
   m_core = new SyncCore (m_syncLog, localUserName, Name ("/"), syncPrefix,
-                         bind(&Dispatcher::Did_SyncLog_StateChange, this, _1), ccnx, scheduler);
+                         bind(&Dispatcher::Did_SyncLog_StateChange, this, _1), ccnx);
 
   m_actionFetcher = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3);
   m_fileFetcher   = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3);

@@ -36,13 +36,13 @@ using namespace boost;
 using namespace Ccnx;
 
 SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPrefix, const Name &syncPrefix,
-                   const StateMsgCallback &callback, CcnxWrapperPtr ccnx, SchedulerPtr scheduler)
+                   const StateMsgCallback &callback, CcnxWrapperPtr ccnx)
   : m_ccnx (ccnx)
   , m_log(syncLog)
-         , m_scheduler(scheduler)
-         , m_stateMsgCallback(callback)
-         , m_syncPrefix(syncPrefix)
-         , m_recoverWaitGenerator(new RandomIntervalGenerator(WAIT, RANDOM_PERCENT, RandomIntervalGenerator::UP))
+  , m_scheduler(new Scheduler ())
+  , m_stateMsgCallback(callback)
+  , m_syncPrefix(syncPrefix)
+  , m_recoverWaitGenerator(new RandomIntervalGenerator(WAIT, RANDOM_PERCENT, RandomIntervalGenerator::UP))
 {
   m_rootHash = m_log->RememberStateInStateLog();
 
@@ -56,6 +56,7 @@ SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPr
 
 SyncCore::~SyncCore()
 {
+  m_scheduler->shutdown ();
   // need to "deregister" closures
 }
 

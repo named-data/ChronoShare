@@ -61,13 +61,9 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   SyncLogPtr log1(new SyncLog(dir1, user1.toString()));
   SyncLogPtr log2(new SyncLog(dir2, user2.toString()));
 
-  // should not have used the same scheduler...
-  SchedulerPtr scheduler1 = make_shared<Scheduler> ();
-  SchedulerPtr scheduler2 = make_shared<Scheduler> ();
-
-  SyncCore *core1 = new SyncCore(log1, user1, loc1, syncPrefix, bind(callback, _1), c1, scheduler1);
+  SyncCore *core1 = new SyncCore(log1, user1, loc1, syncPrefix, bind(callback, _1), c1);
   usleep(10000);
-  SyncCore *core2 = new SyncCore(log2, user2, loc2, syncPrefix, bind(callback, _1), c2, scheduler2);
+  SyncCore *core2 = new SyncCore(log2, user2, loc2, syncPrefix, bind(callback, _1), c2);
   usleep(1000000);
   checkRoots(core1->root(), core2->root());
 
