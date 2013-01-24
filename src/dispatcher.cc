@@ -116,9 +116,12 @@ Dispatcher::Did_LocalFile_AddOrModify_Execute (filesystem::path relativeFilePath
 
   FileItemPtr currentFile = m_actionLog->LookupFile (relativeFilePath.generic_string ());
   if (currentFile &&
-      *Hash::FromFileContent (absolutePath) == Hash (currentFile->file_hash ().c_str (), currentFile->file_hash ().size ()) &&
-      last_write_time (absolutePath) == currentFile->mtime () &&
-      status (absolutePath).permissions () == static_cast<filesystem::perms> (currentFile->mode ()))
+      *Hash::FromFileContent (absolutePath) == Hash (currentFile->file_hash ().c_str (), currentFile->file_hash ().size ())
+      // The following two are commented out to prevent front end from reporting intermediate files
+      // should enable it if there is other way to prevent this
+      // && last_write_time (absolutePath) == currentFile->mtime ()
+      // && status (absolutePath).permissions () == static_cast<filesystem::perms> (currentFile->mode ())
+      )
     {
       _LOG_ERROR ("Got notification about the same file [" << relativeFilePath << "]");
       return;
@@ -231,7 +234,7 @@ Dispatcher::Did_FetchManager_ActionFetch (const Ccnx::Name &deviceName, const Cc
       m_fileFetcher->Enqueue (deviceName, fileNameBase,
                               bind (&Dispatcher::Did_FetchManager_FileSegmentFetch, this, _1, _2, _3, _4),
                               bind (&Dispatcher::Did_FetchManager_FileFetchComplete, this, _1, _2),
-                              0, action->seg_num (), FetchManager::PRIORITY_NORMAL);
+                              0, action->seg_num () - 1, FetchManager::PRIORITY_NORMAL);
     }
 }
 
