@@ -106,11 +106,14 @@ CREATE INDEX FileState_device_name_seq_no ON FileState (device_name, seq_no); \n
 
 ActionLog::ActionLog (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &path,
                       SyncLogPtr syncLog,
-                      const std::string &sharedFolder)
+                      const std::string &sharedFolder,
+                      OnFileAddedOrChangedCallback onFileAddedOrChanged, OnFileRemovedCallback onFileRemoved)
   : DbHelper (path / ".chronoshare", "action-log.db")
   , m_syncLog (syncLog)
   , m_ccnx (ccnx)
   , m_sharedFolderName (sharedFolder)
+  , m_onFileAddedOrChanged (onFileAddedOrChanged)
+  , m_onFileRemoved (onFileRemoved)
 {
   sqlite3_exec (m_db, INIT_DATABASE.c_str (), NULL, NULL, NULL);
   _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
@@ -161,7 +164,7 @@ ActionLog::GetLatestActionForFile (const std::string &filename)
 }
 
 // local add action. remote action is extracted from content object
-void
+ActionItemPtr
 ActionLog::AddLocalActionUpdate (const std::string &filename,
                                  const Hash &hash,
                                  time_t wtime,
@@ -222,30 +225,30 @@ ActionLog::AddLocalActionUpdate (const std::string &filename,
       sqlite3_bind_int64 (stmt, 14, parent_seq_no);
     }
 
-  ActionItem item;
-  item.set_action (ActionItem::UPDATE);
-  item.set_filename (filename);
-  item.set_version (version);
-  item.set_timestamp (action_time);
-  item.set_file_hash (hash.GetHash (), hash.GetHashBytes ());
-  // item.set_atime (atime);
-  item.set_mtime (wtime);
-  // item.set_ctime (ctime);
-  item.set_mode (mode);
-  item.set_seg_num (seg_num);
+  ActionItemPtr item = make_shared<ActionItem> ();
+  item->set_action (ActionItem::UPDATE);
+  item->set_filename (filename);
+  item->set_version (version);
+  item->set_timestamp (action_time);
+  item->set_file_hash (hash.GetHash (), hash.GetHashBytes ());
+  // item->set_atime (atime);
+  item->set_mtime (wtime);
+  // item->set_ctime (ctime);
+  item->set_mode (mode);
+  item->set_seg_num (seg_num);
 
   if (parent_device_name && parent_seq_no > 0)
     {
       // cout << Name (*parent_device_name) << endl;
 
-      item.set_parent_device_name (parent_device_name->buf (), parent_device_name->length ());
-      item.set_parent_seq_no (parent_seq_no);
+      item->set_parent_device_name (parent_device_name->buf (), parent_device_name->length ());
+      item->set_parent_seq_no (parent_seq_no);
     }
 
   // assign name to the action, serialize action, and create content object
 
   string item_msg;
-  item.SerializeToString (&item_msg);
+  item->SerializeToString (&item_msg);
   Name actionName = Name (m_syncLog->GetLocalName ())("action")(m_sharedFolderName)(seq_no);
   _LOG_DEBUG ("ActionName: " << actionName);
 
@@ -264,6 +267,8 @@ ActionLog::AddLocalActionUpdate (const std::string &filename,
   sqlite3_finalize (stmt);
 
   sqlite3_exec (m_db, "END TRANSACTION;", 0,0,0);
+
+  return item;
 }
 
 // void
@@ -274,7 +279,7 @@ ActionLog::AddLocalActionUpdate (const std::string &filename,
 //                          << errmsg_info_str ("Move operation is not yet supported"));
 // }
 
-void
+ActionItemPtr
 ActionLog::AddLocalActionDelete (const std::string &filename)
 {
   sqlite3_exec (m_db, "BEGIN TRANSACTION;", 0,0,0);
@@ -290,7 +295,7 @@ ActionLog::AddLocalActionDelete (const std::string &filename)
   if (!parent_device_name) // no records exist or file was already deleted
     {
       sqlite3_exec (m_db, "END TRANSACTION;", 0,0,0);
-      return;
+      return ActionItemPtr ();
     }
   version ++;
 
@@ -316,16 +321,16 @@ ActionLog::AddLocalActionDelete (const std::string &filename)
   sqlite3_bind_int64 (stmt, 8, parent_seq_no);
 
 
-  ActionItem item;
-  item.set_action (ActionItem::UPDATE);
-  item.set_filename (filename);
-  item.set_version (version);
-  item.set_timestamp (action_time);
-  item.set_parent_device_name (parent_device_name->buf (), parent_device_name->length ());
-  item.set_parent_seq_no (parent_seq_no);
+  ActionItemPtr item = make_shared<ActionItem> ();
+  item->set_action (ActionItem::UPDATE);
+  item->set_filename (filename);
+  item->set_version (version);
+  item->set_timestamp (action_time);
+  item->set_parent_device_name (parent_device_name->buf (), parent_device_name->length ());
+  item->set_parent_seq_no (parent_seq_no);
 
   string item_msg;
-  item.SerializeToString (&item_msg);
+  item->SerializeToString (&item_msg);
   Name actionName = Name (m_syncLog->GetLocalName ())("action")(m_sharedFolderName)(seq_no);
 
   Bytes actionData = m_ccnx->createContentObject (actionName, item_msg.c_str (), item_msg.size ());
@@ -345,6 +350,8 @@ ActionLog::AddLocalActionDelete (const std::string &filename)
   sqlite3_finalize (stmt);
 
   sqlite3_exec (m_db, "END TRANSACTION;", 0,0,0);
+
+  return item;
 }
 
 
@@ -426,7 +433,7 @@ ActionLog::LookupAction (const Ccnx::Name &actionName)
   return action;
 }
 
-void
+ActionItemPtr
 ActionLog::AddRemoteAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno, Ccnx::PcoPtr actionPco)
 {
   if (!actionPco)
@@ -490,9 +497,11 @@ ActionLog::AddRemoteAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno, C
   _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK && sqlite3_errcode (m_db) != SQLITE_ROW, sqlite3_errmsg (m_db));
 
   sqlite3_finalize (stmt);
+
+  return action;
 }
 
-void
+ActionItemPtr
 ActionLog::AddRemoteAction (Ccnx::PcoPtr actionPco)
 {
   Name name = actionPco->name ();
@@ -516,7 +525,7 @@ ActionLog::AddRemoteAction (Ccnx::PcoPtr actionPco)
 
   _LOG_DEBUG ("From [" << name << "] extracted deviceName: " << deviceName << ", sharedFolder: " << sharedFolder << ", seqno: " << seqno);
 
-  AddRemoteAction (deviceName, seqno, actionPco);
+  return AddRemoteAction (deviceName, seqno, actionPco);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////

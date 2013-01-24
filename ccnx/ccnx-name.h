@@ -116,8 +116,11 @@ public:
   int
   size() const {return m_comps.size();}
 
-  Bytes
-  getComp(int index) const;
+  const Bytes &
+  getComp (int index) const;
+
+  inline const Bytes &
+  getCompFromBack (int index) const;
 
   // return std::string format of the comp
   // if all characters are printable, simply returns the string
@@ -188,6 +191,12 @@ Name
 Name::getPartialNameFromBack(int start, int n/* = -1*/) const
 {
   return getPartialName (m_comps.size () - 1 - start, n);
+}
+
+const Bytes &
+Name::getCompFromBack (int index) const
+{
+  return getComp (m_comps.size () - 1 - index);
 }
 
 

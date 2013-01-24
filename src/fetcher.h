@@ -95,8 +95,8 @@ private:
   int64_t m_minSeqNo;
   int64_t m_maxSeqNo;
 
-  uint64_t m_pipeline;
-  uint64_t m_activePipeline;
+  uint32_t m_pipeline;
+  uint32_t m_activePipeline;
 
   boost::posix_time::ptime m_lastPositiveActivity;
 
