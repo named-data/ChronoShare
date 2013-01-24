@@ -33,6 +33,8 @@
 #include <QMessageBox>
 #include <QApplication>
 
+#include "fs-watcher.h"
+
 class ChronoShareGui : public QWidget
 {
   Q_OBJECT
@@ -93,6 +95,7 @@ private:
 
   QString m_dirPath; // shared directory
 
+  FsWatcher *m_watcher;
   // QString m_settingsFilePath; // settings file path
   // QString m_settings;
 };

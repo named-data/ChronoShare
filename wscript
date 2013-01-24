@@ -62,6 +62,7 @@ def configure(conf):
         conf.env.append_value('CXXFLAGS', ['-O3', '-g', '-Qunused-arguments'])
 
     if conf.options._test:
+        conf.define ('_TESTS', 1)
         conf.env.TEST = 1
 
     conf.write_config_header('src/config.h')
@@ -102,11 +103,11 @@ def build (bld):
           )
 
     qt = bld (
-        target = "filewatcher",
-        features = "qt4 cxx cxxprogram",
+        target = "fs-watcher",
+        features = "qt4 cxx",
         defines = "WAF",
-          source = bld.path.ant_glob(['filesystemwatcher/*.cpp']),
-        includes = "filesystemwatcher . ",
+          source = bld.path.ant_glob(['fs-watcher/*.cc']),
+        includes = "fs-watcher . src ",
         use = "QTCORE QTGUI LOG4CXX"
         )
 
@@ -136,6 +137,6 @@ def build (bld):
 	features = "qt4 cxx cxxprogram",
 	defines = "WAF",
 	source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.qrc']),
-	includes = "src gui . ",
-	use = "QTCORE QTGUI LOG4CXX ccnx database chronoshare"
+	includes = "src gui fs-watcher src . ",
+	use = "QTCORE QTGUI LOG4CXX fs-watcher ccnx database chronoshare"
 	)

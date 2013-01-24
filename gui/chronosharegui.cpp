@@ -21,10 +21,13 @@
 #include "chronosharegui.h"
 #include "logging.h"
 
+
+
 INIT_LOGGER ("Gui");
 
 ChronoShareGui::ChronoShareGui(QWidget *parent)
   : QWidget(parent)
+  , m_watcher (0)
   // , m_settingsFilePath(QDir::homePath() + "/.chronoshare")
 {
   // load settings
@@ -46,10 +49,21 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
 
   // show tray icon
   m_trayIcon->show();
+
+  // Dispatcher(const boost::filesystem::path &path, const std::string &localUserName,  const Ccnx::Name &localPrefix,
+  //            const std::string &sharedFolder, const boost::filesystem::path &rootDir,
+  //            Ccnx::CcnxWrapperPtr ccnx, SchedulerPtr scheduler, int poolSize = 2);
+
+  m_watcher = new FsWatcher (m_dirPath);
 }
 
 ChronoShareGui::~ChronoShareGui()
 {
+  if (!m_watcher)
+    {
+      delete m_watcher;
+    }
+
   // cleanup
   delete m_trayIcon;
   delete m_trayIconMenu;
@@ -158,9 +172,8 @@ void ChronoShareGui::openFileDialog()
 {
   // prompt user for new directory
   QString tempPath = QFileDialog::getExistingDirectory(this, tr("Choose a new folder"),
-                                                       m_dirPath, QFileDialog::ShowDirsOnly |
-                                                       QFileDialog::DontResolveSymlinks);
-  QFileInfo qFileInfo(tempPath);
+                                                       m_dirPath, QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+  QFileInfo qFileInfo (tempPath);
 
   if(qFileInfo.isDir())
     m_dirPath = tempPath;
