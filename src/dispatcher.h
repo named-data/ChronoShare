@@ -46,7 +46,7 @@ class Dispatcher
 public:
   // sharedFolder is the name to be used in NDN name;
   // rootDir is the shared folder dir in local file system;
-  Dispatcher(const boost::filesystem::path &path, const std::string &localUserName,  const Ccnx::Name &localPrefix,
+  Dispatcher(const boost::filesystem::path &path, const std::string &localUserName,
              const std::string &sharedFolder, const boost::filesystem::path &rootDir,
              Ccnx::CcnxWrapperPtr ccnx, SchedulerPtr scheduler, int poolSize = 2);
   ~Dispatcher();
@@ -114,6 +114,9 @@ private:
 
   void
   Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, Ccnx::Name fileBaseName);
+
+  void
+  Did_LocalPrefix_Updated (const Ccnx::Name &prefix);
 
 private:
   void

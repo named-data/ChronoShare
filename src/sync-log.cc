@@ -337,7 +337,7 @@ SyncLog::UpdateDeviceSeqNo (sqlite3_int64 deviceId, sqlite3_int64 seqNo)
 }
 
 Name
-SyncLog::LookupLocator(const Name &deviceName)
+SyncLog::LookupLocator (const Name &deviceName)
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "SELECT last_known_locator FROM SyncNodes WHERE device_name=?;", -1, &stmt, 0);
@@ -359,6 +359,12 @@ SyncLog::LookupLocator(const Name &deviceName)
   sqlite3_finalize(stmt);
 
   return locator;
+}
+
+Ccnx::Name
+SyncLog::LookupLocalLocator ()
+{
+  return LookupLocator (m_localName);
 }
 
 void

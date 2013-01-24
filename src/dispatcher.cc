@@ -21,6 +21,7 @@
 
 #include "dispatcher.h"
 #include "logging.h"
+#include "ccnx-discovery.h"
 
 #include <boost/make_shared.hpp>
 #include <boost/lexical_cast.hpp>
@@ -34,7 +35,7 @@ INIT_LOGGER ("Dispatcher");
 static const string BROADCAST_DOMAIN = "/ndn/broadcast/chronoshare";
 
 Dispatcher::Dispatcher(const filesystem::path &path, const std::string &localUserName,
-                       const Ccnx::Name &localPrefix, const std::string &sharedFolder,
+                       const std::string &sharedFolder,
                        const filesystem::path &rootDir, Ccnx::CcnxWrapperPtr ccnx,
                        SchedulerPtr scheduler, int poolSize)
            : m_ccnx(ccnx)
@@ -54,18 +55,22 @@ Dispatcher::Dispatcher(const filesystem::path &path, const std::string &localUse
   Name syncPrefix = Name(BROADCAST_DOMAIN)(sharedFolder);
 
   m_server = new ContentServer(m_ccnx, m_actionLog, rootDir);
-  m_server->registerPrefix(localPrefix);
+  m_server->registerPrefix(Name ("/"));
   m_server->registerPrefix(syncPrefix);
 
-  m_core = new SyncCore (m_syncLog, localUserName, localPrefix, syncPrefix,
+  m_core = new SyncCore (m_syncLog, localUserName, Name ("/"), syncPrefix,
                          bind(&Dispatcher::Did_SyncLog_StateChange, this, _1), ccnx, scheduler);
 
   m_actionFetcher = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3);
   m_fileFetcher   = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3);
+
+  Ccnx::CcnxDiscovery::registerCallback (TaggedFunction (bind (&Dispatcher::Did_LocalPrefix_Updated, this, _1), "dispatcher"));
 }
 
 Dispatcher::~Dispatcher()
 {
+  Ccnx::CcnxDiscovery::deregisterCallback (TaggedFunction (bind (&Dispatcher::Did_LocalPrefix_Updated, this, _1), "dispatcher"));
+
   if (m_core != NULL)
   {
     delete m_core;
@@ -77,6 +82,17 @@ Dispatcher::~Dispatcher()
     delete m_server;
     m_server = NULL;
   }
+}
+
+void
+Dispatcher::Did_LocalPrefix_Updated (const Ccnx::Name &prefix)
+{
+  Name oldLocalPrefix = m_syncLog->LookupLocalLocator ();
+  _LOG_DEBUG ("LocalPrefix changed from: " << oldLocalPrefix << " to: " << prefix);
+
+  m_server->deregisterPrefix(prefix);
+  m_syncLog->UpdateLocalLocator (prefix);
+  m_server->deregisterPrefix(oldLocalPrefix);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////

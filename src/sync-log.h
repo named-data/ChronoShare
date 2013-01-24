@@ -54,6 +54,9 @@ public:
   Ccnx::Name
   LookupLocator (const Ccnx::Name &deviceName);
 
+  Ccnx::Name
+  LookupLocalLocator ();
+
   void
   UpdateLocator (const Ccnx::Name &deviceName, const Ccnx::Name &locator);
 
