@@ -64,8 +64,8 @@ FetchManager::Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
                                     finishCallback,
                                     bind (&FetchManager::DidFetchComplete, this, _1),
                                     bind (&FetchManager::DidNoDataTimeout, this, _1),
-                                    deviceName, baseName, minSeqNo, maxSeqNo
-                                    /* Alex: should or should not include hint initially?*/));
+                                    deviceName, baseName, minSeqNo, maxSeqNo));
+  fetcher.SetForwardingHint (forwardingHint);
 
   switch (priority)
     {
