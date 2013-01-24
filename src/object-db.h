@@ -47,7 +47,14 @@ public:
 
   static bool
   DoesExist (const boost::filesystem::path &folder, const Ccnx::Name &deviceName, const std::string &hash);
-  
+
+private:
+  void
+  willStartSave ();
+
+  void
+  didStopSave ();
+
 private:
   sqlite3 *m_db;
 };
