@@ -61,15 +61,21 @@ ObjectManager::localFileToObjects (const fs::path &file, const Ccnx::Name &devic
 
   fs::ifstream iff (file, std::ios::in | std::ios::binary);
   sqlite3_int64 segment = 0;
-  while (iff.good ())
+  while (iff.good () && !iff.eof ())
     {
       char buf[MAX_FILE_SEGMENT_SIZE];
       iff.read (buf, MAX_FILE_SEGMENT_SIZE);
+      if (iff.gcount () == 0)
+        {
+          // stupid streams...
+          break;
+        }
 
       Name name = Name (deviceName)("file")(fileHash->GetHash (), fileHash->GetHashBytes ())(segment);
 
       // cout << *fileHash << endl;
       // cout << name << endl;
+      _LOG_DEBUG ("Read " << iff.gcount () << " from " << file << " for segment " << segment);
 
       Bytes data = m_ccnx->createContentObject (name, buf, iff.gcount ());
       fileDb.saveContentObject (deviceName, segment, data);

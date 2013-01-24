@@ -40,7 +40,7 @@ using namespace std;
 using namespace boost;
 using namespace boost::filesystem;
 
-BOOST_AUTO_TEST_SUITE(TestFetchManager)
+BOOST_AUTO_TEST_SUITE(TestServeAndFetch)
 
 path root("test-server-and-fetch");
 path filePath = root / "random-file";
