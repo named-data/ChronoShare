@@ -5,6 +5,7 @@
 #include "ccnx-pco.h"
 #include <unistd.h>
 
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/test/unit_test.hpp>
 
 
@@ -94,6 +95,32 @@ BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)
   // reset
   g_dataCallback_counter = 0;
   g_timeout_counter = 0;
+}
+
+BOOST_AUTO_TEST_CASE (CcnxWrapperSigningTest)
+{
+  Bytes data;
+  data.resize(1024);
+  for (int i = 0; i < 1024; i++)
+  {
+    data[i] = 'm';
+  }
+
+  Name name("/signingtest");
+
+  posix_time::ptime start = posix_time::second_clock::local_time();
+  for (uint64_t i = 0; i < 10000; i++)
+  {
+    Name n = name;
+    n.appendComp(i);
+    c1->publishData(n, data, 10);
+  }
+  posix_time::ptime end = posix_time::second_clock::local_time();
+
+  posix_time::time_duration duration = end - start;
+
+  cout << "Publishing 10000 1K size content objects costs " <<duration.total_milliseconds() << " milliseconds" << endl;
+  cout << "Average time to publish one content object is " << (double) duration.total_milliseconds() / 10000.0 << " milliseconds" << endl;
 }
 
 BOOST_AUTO_TEST_SUITE_END()
