@@ -93,37 +93,31 @@ void
 Dispatcher::Did_LocalFile_AddOrModify_Execute (filesystem::path relativeFilePath)
 {
   filesystem::path absolutePath = m_rootDir / relativeFilePath;
-  if (filesystem::exists(absolutePath))
-    {
-      HashPtr hash = Hash::FromFileContent(absolutePath);
-      if (m_actionLog->KnownFileState(relativeFilePath.generic_string(), *hash))
-        {
-          // the file state is known; i.e. the detected changed file is identical to
-          // the file state kept in FileState table
-          // it is the case that backend puts the file fetched from remote;
-          // we should not publish action for this.
-        }
-      else
-        {
-          uintmax_t fileSize = filesystem::file_size(absolutePath);
-          int seg_num;
-          tie (hash, seg_num) = m_objectManager.localFileToObjects (absolutePath, m_localUserName);
-
-          time_t wtime = filesystem::last_write_time(absolutePath);
-          filesystem::file_status stat = filesystem::status(absolutePath);
-          int mode = stat.permissions();
-
-          m_actionLog->AddLocalActionUpdate (relativeFilePath.generic_string(), *hash, wtime, mode, seg_num);
-          // publish the file
-
-          // notify SyncCore to propagate the change
-          m_core->localStateChanged();
-        }
-    }
-  else
+  if (!filesystem::exists(absolutePath))
     {
       BOOST_THROW_EXCEPTION (Error::Dispatcher() << error_info_str("Update non exist file: " + absolutePath.string() ));
     }
+
+  FileItemPtr currentFile = m_actionLog->LookupFile (relativeFilePath.generic_string ());
+  if (currentFile &&
+      *Hash::FromFileContent (absolutePath) == Hash (currentFile->file_hash ().c_str (), currentFile->file_hash ().size ()) &&
+      last_write_time (absolutePath) == currentFile->mtime () &&
+      status (absolutePath).permissions () == static_cast<filesystem::perms> (currentFile->mode ()))
+    {
+      _LOG_ERROR ("Got notification about the same file [" << relativeFilePath << "]");
+      return;
+    }
+
+  int seg_num;
+  HashPtr hash;
+  tie (hash, seg_num) = m_objectManager.localFileToObjects (absolutePath, m_localUserName);
+
+  m_actionLog->AddLocalActionUpdate (relativeFilePath.generic_string(),
+                                     *hash,
+                                     last_write_time (absolutePath), status (absolutePath).permissions (), seg_num);
+
+  // notify SyncCore to propagate the change
+  m_core->localStateChanged();
 }
 
 void
@@ -135,6 +129,19 @@ Dispatcher::Did_LocalFile_Delete (const filesystem::path &relativeFilePath)
 void
 Dispatcher::Did_LocalFile_Delete_Execute (filesystem::path relativeFilePath)
 {
+  filesystem::path absolutePath = m_rootDir / relativeFilePath;
+  if (!filesystem::exists(absolutePath))
+    {
+      BOOST_THROW_EXCEPTION (Error::Dispatcher() << error_info_str("Delete notification but file exists: " + absolutePath.string() ));
+    }
+
+  FileItemPtr currentFile = m_actionLog->LookupFile (relativeFilePath.generic_string ());
+  if (!currentFile)
+    {
+      _LOG_ERROR ("File already deleted [" << relativeFilePath << "]");
+      return;
+    }
+
   m_actionLog->AddLocalActionDelete (relativeFilePath.generic_string());
   // notify SyncCore to propagate the change
   m_core->localStateChanged();
@@ -267,24 +274,30 @@ void
 Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, Ccnx::Name fileBaseName)
 {
   _LOG_DEBUG ("Finished fetching " << deviceName << ", fileBaseName: " << fileBaseName);
-  // int size = fileNamePrefix.size();
-  // Bytes hashBytes = fileNamePrefix.getComp(size - 1);
-  // Hash hash(head(hashBytes), hashBytes.size());
-  // ostringstream oss;
-  // oss << hash;
-  // string hashString = oss.str();
 
-  // if (m_objectDbMap.find(hashString) != m_objectDbMap.end())
-  // {
-  //   // remove the db handle
-  //   m_objectDbMap.erase(hashString);
-  // }
-  // else
-  // {
-  //   cout << "no db available for this file: " << fileNamePrefix << endl;
-  // }
+  const Bytes &hashBytes = fileBaseName.getCompFromBack (1);
+  Hash hash (head (hashBytes), hashBytes.size ());
 
-  // query the action table to get the path on local file system
-  // m_objectManager.objectsToLocalFile(deviceName, hash, relativeFilePath);
+  FileItemsPtr filesToAssemble = m_actionLog->LookupFilesForHash (hash);
 
+  for (FileItems::iterator file = filesToAssemble->begin ();
+       file != filesToAssemble->end ();
+       file++)
+    {
+      boost::filesystem::path filePath = m_rootDir / file->filename ();
+      m_objectManager.objectsToLocalFile (deviceName, hash, filePath);
+
+      last_write_time (filePath, file->mtime ());
+      permissions (filePath, static_cast<filesystem::perms> (file->mode ()));
+    }
+
+  if (m_objectDbMap.find (hash) != m_objectDbMap.end())
+  {
+    // remove the db handle
+    m_objectDbMap.erase (hash);
+  }
+  else
+  {
+    _LOG_ERROR ("no db available for this file: " << hash);
+  }
 }

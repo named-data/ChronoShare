@@ -96,6 +96,11 @@ ObjectManager::objectsToLocalFile (/*in*/const Ccnx::Name &deviceName, /*in*/con
       return false;
     }
 
+  if (!exists (file.parent_path ()))
+    {
+      create_directories (file.parent_path ());
+    }
+
   fs::ofstream off (file, std::ios::out | std::ios::binary);
   ObjectDb fileDb (m_folder, hashStr);
 

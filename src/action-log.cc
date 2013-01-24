@@ -90,7 +90,7 @@ CREATE TABLE FileState (                                                \n\
     filename    TEXT NOT NULL,                                          \n\
     device_name BLOB NOT NULL,                                          \n\
     seq_no      INTEGER NOT NULL,                                       \n\
-    file_hash   BLOB, /* NULL if action is \"delete\" */                \n\
+    file_hash   BLOB NOT NULL,                                          \n\
     file_atime  TIMESTAMP,                                              \n\
     file_mtime  TIMESTAMP,                                              \n\
     file_ctime  TIMESTAMP,                                              \n\
@@ -101,6 +101,7 @@ CREATE TABLE FileState (                                                \n\
 );                                                                      \n\
                                                                         \n\
 CREATE INDEX FileState_device_name_seq_no ON FileState (device_name, seq_no); \n\
+CREATE INDEX FileState_type_file_hash ON FileState (type, file_hash);   \n\
 ";
 
 
@@ -528,6 +529,22 @@ ActionLog::AddRemoteAction (Ccnx::PcoPtr actionPco)
   return AddRemoteAction (deviceName, seqno, actionPco);
 }
 
+sqlite3_int64
+ActionLog::LogSize ()
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db, "SELECT count(*) FROM ActionLog", -1, &stmt, 0);
+
+  sqlite3_int64 retval = -1;
+  if (sqlite3_step (stmt) == SQLITE_ROW)
+  {
+    retval = sqlite3_column_int64 (stmt, 0);
+  }
+
+  return retval;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////////
 // SHOULD BE MOVED TO SEPARATE FILESTATE CLASS "EVENTUALLY"
 ///////////////////////////////////////////////////////////////////////////////////
@@ -636,36 +653,59 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
 /**
  * @todo Implement checking modification time and permissions
  */
-bool
-ActionLog::KnownFileState(const std::string &filename, const Hash &hash
-                          /*, time_t mtime, int chmod*/)
+FileItemPtr
+ActionLog::LookupFile (const std::string &filename)
 {
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "SELECT * FROM FileState WHERE filename = ? AND file_hash = ?;", -1, &stmt, 0);
+  sqlite3_prepare_v2 (m_db,
+                      "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num "
+                      "       FROM FileState "
+                      "       WHERE type = 0 AND filename = ?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, filename.c_str(), -1, SQLITE_STATIC);
-  sqlite3_bind_blob(stmt, 2, hash.GetHash (), hash.GetHashBytes (), SQLITE_STATIC);
 
-  bool retval = false;
+  FileItemPtr retval;
   if (sqlite3_step (stmt) == SQLITE_ROW)
   {
-    retval = true;
+    retval = make_shared<FileItem> ();
+    retval->set_filename    (reinterpret_cast<const char *> (sqlite3_column_text  (stmt, 0)), sqlite3_column_bytes (stmt, 0));
+    retval->set_device_name (sqlite3_column_blob  (stmt, 1), sqlite3_column_bytes (stmt, 1));
+    retval->set_seq_no      (sqlite3_column_int64 (stmt, 2));
+    retval->set_file_hash   (sqlite3_column_blob  (stmt, 3), sqlite3_column_bytes (stmt, 3));
+    retval->set_mtime       (sqlite3_column_int   (stmt, 4));
+    retval->set_mode        (sqlite3_column_int   (stmt, 5));
+    retval->set_seg_num     (sqlite3_column_int64 (stmt, 6));
   }
   sqlite3_finalize (stmt);
 
   return retval;
 }
 
-sqlite3_int64
-ActionLog::LogSize ()
+FileItemsPtr
+ActionLog::LookupFilesForHash (const Hash &hash)
 {
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "SELECT count(*) FROM ActionLog", -1, &stmt, 0);
+  sqlite3_prepare_v2 (m_db,
+                      "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num "
+                      "   FROM FileState "
+                      "   WHERE type = 0 AND file_hash = ?;", -1, &stmt, 0);
+  sqlite3_bind_blob(stmt, 1, hash.GetHash (), hash.GetHashBytes (), SQLITE_STATIC);
 
-  sqlite3_int64 retval = -1;
-  if (sqlite3_step (stmt) == SQLITE_ROW)
-  {
-    retval = sqlite3_column_int64 (stmt, 0);
-  }
+  FileItemsPtr retval = make_shared<FileItems> ();
+  while (sqlite3_step (stmt) == SQLITE_ROW)
+    {
+      FileItem file;
+      file.set_filename    (reinterpret_cast<const char *> (sqlite3_column_text  (stmt, 0)), sqlite3_column_bytes (stmt, 0));
+      file.set_device_name (sqlite3_column_blob  (stmt, 1), sqlite3_column_bytes (stmt, 1));
+      file.set_seq_no      (sqlite3_column_int64 (stmt, 2));
+      file.set_file_hash   (sqlite3_column_blob  (stmt, 3), sqlite3_column_bytes (stmt, 3));
+      file.set_mtime       (sqlite3_column_int   (stmt, 4));
+      file.set_mode        (sqlite3_column_int   (stmt, 5));
+      file.set_seg_num     (sqlite3_column_int64 (stmt, 6));
+
+      retval->push_back (file);
+    }
+
+  sqlite3_finalize (stmt);
 
   return retval;
 }

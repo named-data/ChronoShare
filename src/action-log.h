@@ -25,6 +25,7 @@
 #include "db-helper.h"
 #include "sync-log.h"
 #include "action-item.pb.h"
+#include "file-item.pb.h"
 #include "ccnx-wrapper.h"
 #include "ccnx-pco.h"
 
@@ -33,6 +34,10 @@
 class ActionLog;
 typedef boost::shared_ptr<ActionLog> ActionLogPtr;
 typedef boost::shared_ptr<ActionItem> ActionItemPtr;
+
+typedef std::list<FileItem> FileItems;
+typedef boost::shared_ptr<FileItem>  FileItemPtr;
+typedef boost::shared_ptr<FileItems> FileItemsPtr;
 
 class ActionLog : public DbHelper
 {
@@ -63,9 +68,6 @@ public:
 
   ActionItemPtr
   AddLocalActionDelete (const std::string &filename);
-
-  bool
-  KnownFileState(const std::string &filename, const Hash &hash);
 
   //////////////////////////
   // Remote operations    //
@@ -98,7 +100,14 @@ public:
   ActionItemPtr
   LookupAction (const Ccnx::Name &actionName);
 
+  ///////////////////////////
+  // File state operations //
+  ///////////////////////////
+  FileItemPtr
+  LookupFile (const std::string &filename);
 
+  FileItemsPtr
+  LookupFilesForHash (const Hash &hash);
 
 public:
   // for test purposes
