@@ -34,7 +34,7 @@ using namespace boost;
 namespace fs = boost::filesystem;
 
 const std::string INIT_DATABASE = "\
-CREATE TABLE                                                            \n\
+CREATE TABLE                                                            \n \
     File(                                                               \n\
         device_name     BLOB NOT NULL,                                  \n\
         segment         INTEGER,                                        \n\
@@ -68,6 +68,8 @@ ObjectDb::ObjectDb (const fs::path &folder, const std::string &hash)
       // std::cerr << "DEBUG: " << errmsg << std::endl;
       sqlite3_free (errmsg);
     }
+
+  willStartSave ();
 }
 
 bool
@@ -110,6 +112,8 @@ ObjectDb::DoesExist (const boost::filesystem::path &folder, const Ccnx::Name &de
 
 ObjectDb::~ObjectDb ()
 {
+  didStopSave ();
+
   int res = sqlite3_close (m_db);
   if (res != SQLITE_OK)
     {
@@ -179,3 +183,15 @@ ObjectDb::fetchSegment (const Ccnx::Name &deviceName, sqlite3_int64 segment)
 
 //   return retval;
 // }
+
+void
+ObjectDb::willStartSave ()
+{
+  sqlite3_exec (m_db, "BEGIN TRANSACTION;", 0,0,0);
+}
+
+void
+ObjectDb::didStopSave ()
+{
+  sqlite3_exec (m_db, "END TRANSACTION;", 0,0,0);
+}
