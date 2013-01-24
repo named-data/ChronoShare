@@ -34,6 +34,7 @@
 #include <boost/thread/thread_time.hpp>
 #include <boost/thread/condition_variable.hpp>
 #include <stdio.h>
+#include <ctime>
 
 using namespace Ccnx;
 using namespace std;
@@ -112,6 +113,7 @@ finishCallback(Name &deviceName, Name &baseName)
 
 BOOST_AUTO_TEST_CASE (TestServeAndFetch)
 {
+  cout << "Setting up test environment ..." << endl;
   setup();
 
   CcnxWrapperPtr ccnx_serve = make_shared<CcnxWrapper>();
@@ -119,21 +121,26 @@ BOOST_AUTO_TEST_CASE (TestServeAndFetch)
   CcnxWrapperPtr ccnx_fetch = make_shared<CcnxWrapper>();
   ObjectManager om(ccnx_serve, root);
 
-  Name deviceName("/device");
+  Name deviceName("/test/device");
   Name localPrefix("/local");
   Name broadcastPrefix("/broadcast");
+
+  time_t start = time(NULL);
+  cout << "At time " << start << ", publish local file to database, this is extremely slow ..." << endl;
   // publish file to db
   tuple<HashPtr, size_t> pub = om.localFileToObjects(filePath, deviceName);
+  time_t end = time(NULL);
+  cout << "At time " << end <<", publish finally finished, used " << end - start << " seconds ..."<< endl;
 
   ActionLogPtr dummyLog;
-  ContentServer server(ccnx_serve, dummyLog, root);
+  ContentServer server(ccnx_serve, dummyLog, root, 5);
   server.registerPrefix(localPrefix);
   server.registerPrefix(broadcastPrefix);
 
   FetchManager fm(ccnx_fetch, bind(simpleMap, _1));
   HashPtr hash = pub.get<0> ();
   Name baseName = Name (deviceName)("file")(hash->GetHash(), hash->GetHashBytes());
-  fm.Enqueue(deviceName, baseName, bind(segmentCallback, _1, _2, _3, _4), bind(finishCallback, _1, _2), 0, get<1>(pub));
+  fm.Enqueue(deviceName, baseName, bind(segmentCallback, _1, _2, _3, _4), bind(finishCallback, _1, _2), 0, pub.get<1>() - 1);
 
   unique_lock<mutex> lock(mut);
   system_time timeout = get_system_time() + posix_time::milliseconds(5000);
@@ -145,6 +152,8 @@ BOOST_AUTO_TEST_CASE (TestServeAndFetch)
       break;
     }
   }
+
+  cout << "ack : " << ack << endl;
 
   teardown();
 }

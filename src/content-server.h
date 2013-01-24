@@ -31,7 +31,7 @@
 class ContentServer
 {
 public:
-  ContentServer(Ccnx::CcnxWrapperPtr ccnx, ActionLogPtr actionLog, const boost::filesystem::path &rootDir);
+  ContentServer(Ccnx::CcnxWrapperPtr ccnx, ActionLogPtr actionLog, const boost::filesystem::path &rootDir, int freshness = -1);
   ~ContentServer();
 
   // the assumption is, when the interest comes in, interest is informs of
@@ -54,5 +54,6 @@ private:
   std::set<Ccnx::Name> m_prefixes;
   Mutex m_mutex;
   boost::filesystem::path m_dbFolder;
+  int m_freshness;
 };
 #endif // CONTENT_SERVER_H

@@ -24,10 +24,11 @@
 using namespace Ccnx;
 using namespace std;
 
-ContentServer::ContentServer(CcnxWrapperPtr ccnx, ActionLogPtr actionLog, const boost::filesystem::path &rootDir)
+ContentServer::ContentServer(CcnxWrapperPtr ccnx, ActionLogPtr actionLog, const boost::filesystem::path &rootDir, int freshness)
               : m_ccnx(ccnx)
               , m_actionLog(actionLog)
               , m_dbFolder(rootDir / ".chronoshare")
+              , m_freshness(freshness)
 {
 }
 
@@ -64,11 +65,6 @@ ContentServer::deregisterPrefix(const Name &prefix)
 void
 ContentServer::serve(const Name &interest)
 {
-  int size = interest.size();
-  cout << ">>> Serving: " << interest.getPartialName(0, size - 2) << ", seq = " << interest.getCompAsInt(size -1) << endl;
-
-
-
   ReadLock lock(m_mutex);
   for (PrefixIt it = m_prefixes.begin(); it != m_prefixes.end(); ++it)
   {
@@ -110,7 +106,14 @@ ContentServer::serve(const Name &interest)
 
         if (co)
         {
-          m_ccnx->publishData(interest, *co);
+          if (m_freshness > 0)
+          {
+            m_ccnx->publishData(interest, *co, m_freshness);
+          }
+          else
+          {
+            m_ccnx->publishData(interest, *co);
+          }
         }
       }
     }
