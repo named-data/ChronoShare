@@ -34,10 +34,11 @@ INIT_LOGGER ("Dispatcher");
 
 static const string BROADCAST_DOMAIN = "/ndn/broadcast/chronoshare";
 
-Dispatcher::Dispatcher(const filesystem::path &path, const std::string &localUserName,
-                       const std::string &sharedFolder,
-                       const filesystem::path &rootDir, Ccnx::CcnxWrapperPtr ccnx,
-                       int poolSize)
+Dispatcher::Dispatcher(const std::string &localUserName
+                       , const std::string &sharedFolder
+                       , const filesystem::path &rootDir
+                       , Ccnx::CcnxWrapperPtr ccnx
+                       , int poolSize)
            : m_ccnx(ccnx)
            , m_core(NULL)
            , m_rootDir(rootDir)
@@ -47,8 +48,8 @@ Dispatcher::Dispatcher(const filesystem::path &path, const std::string &localUse
            , m_sharedFolder(sharedFolder)
            , m_server(NULL)
 {
-  m_syncLog = make_shared<SyncLog>(path, localUserName);
-  m_actionLog = make_shared<ActionLog>(m_ccnx, path, m_syncLog, sharedFolder,
+  m_syncLog = make_shared<SyncLog>(m_rootDir, localUserName);
+  m_actionLog = make_shared<ActionLog>(m_ccnx, m_rootDir, m_syncLog, sharedFolder,
                                        // bind (&Dispatcher::Did_ActionLog_ActionApply_AddOrModify, this, _1, _2, _3, _4, _5, _6, _7),
                                        ActionLog::OnFileAddedOrChangedCallback (), // don't really need this callback
                                        bind (&Dispatcher::Did_ActionLog_ActionApply_Delete, this, _1));

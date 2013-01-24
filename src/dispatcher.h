@@ -46,9 +46,11 @@ class Dispatcher
 public:
   // sharedFolder is the name to be used in NDN name;
   // rootDir is the shared folder dir in local file system;
-  Dispatcher(const boost::filesystem::path &path, const std::string &localUserName,
-             const std::string &sharedFolder, const boost::filesystem::path &rootDir,
-             Ccnx::CcnxWrapperPtr ccnx, int poolSize = 2);
+  Dispatcher(const std::string &localUserName
+             , const std::string &sharedFolder
+             , const boost::filesystem::path &rootDir
+             , Ccnx::CcnxWrapperPtr ccnx
+             , int poolSize = 2);
   ~Dispatcher();
 
   // ----- Callbacks, they only submit the job to executor and immediately return so that event processing thread won't be blocked for too long -------
