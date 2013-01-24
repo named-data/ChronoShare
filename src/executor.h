@@ -29,7 +29,7 @@
 #include <boost/thread/thread.hpp>
 #include <deque>
 
-/* A very simple executor to execute submitted tasks immediately or 
+/* A very simple executor to execute submitted tasks immediately or
  * in the future (depending on whether there is idle thread)
  * A fixed number of threads are created for executing tasks;
  * The policy is FIFO
@@ -73,5 +73,7 @@ private:
   Mutex m_mutex;
   Cond m_cond;
   ThreadGroup m_group;
+
+  volatile bool m_needStop;
 };
 #endif // EXECUTOR_H

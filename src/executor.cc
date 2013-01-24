@@ -20,34 +20,44 @@
  */
 
 #include "executor.h"
+#include "logging.h"
+
+INIT_LOGGER ("Executor");
 
 using namespace std;
 using namespace boost;
 
-Executor::Executor(int poolSize)
+Executor::Executor (int poolSize)
+  : m_needStop (false)
 {
   for (int i = 0; i < poolSize; i++)
   {
-    m_group.create_thread(bind(&Executor::run, this));
+    m_group.create_thread (bind(&Executor::run, this));
   }
 }
 
 Executor::~Executor()
 {
-  m_group.interrupt_all();
+  _LOG_DEBUG ("Enter destructor");
+  m_needStop = true;
+  m_group.interrupt_all ();
+  m_group.join_all ();
+  _LOG_DEBUG ("Exit destructor");
 }
 
 void
 Executor::execute(const Job &job)
 {
+  _LOG_DEBUG ("Add to job queue");
+
   Lock lock(m_mutex);
-  bool queueWasEmpty = m_queue.empty();
+  bool queueWasEmpty = m_queue.empty ();
   m_queue.push_back(job);
 
   // notify working threads if the queue was empty
   if (queueWasEmpty)
   {
-    m_cond.notify_one();
+    m_cond.notify_one ();
   }
 }
 
@@ -65,14 +75,18 @@ Executor::jobQueueSize()
 }
 
 void
-Executor::run()
+Executor::run ()
 {
-  while(true)
+  _LOG_DEBUG ("Start thread");
+
+  while(!m_needStop)
   {
     Job job = waitForJob();
 
-    job();
+    job (); // even if job is "null", nothing bad will happen
   }
+
+  _LOG_DEBUG ("Thread finished");
 }
 
 Executor::Job
@@ -86,7 +100,13 @@ Executor::waitForJob()
     m_cond.wait(lock);
   }
 
-  Job job = m_queue.front();
-  m_queue.pop_front();
+  _LOG_DEBUG ("Got signal on condition");
+
+  Job job;
+  if (!m_queue.empty ()) // this is not always guaranteed, especially after interruption from destructor
+    {
+      job = m_queue.front();
+      m_queue.pop_front();
+    }
   return job;
 }

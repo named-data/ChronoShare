@@ -23,49 +23,57 @@
 #include <boost/test/unit_test.hpp>
 #include "executor.h"
 
+#include "logging.h"
+
+INIT_LOGGER ("Test.Executor");
+
 using namespace boost;
 using namespace std;
 
-void timeConsumingJob()
+void timeConsumingJob ()
 {
-  cout << "Start sleep" << endl;
+  _LOG_DEBUG ("Start sleep");
   sleep(1);
-  cout << "finish sleep" << endl;
+  _LOG_DEBUG ("Finish sleep");
 }
 
-BOOST_AUTO_TEST_CASE(ExecutorTest)
+BOOST_AUTO_TEST_CASE(TestExecutor)
 {
-  Executor executor(3);
-  Executor::Job job = bind(timeConsumingJob);
+  INIT_LOGGERS ();
 
-  executor.execute(job);
-  executor.execute(job);
+  {
+    Executor executor (3);
+    Executor::Job job = bind(timeConsumingJob);
 
-  usleep(100);
-  // both jobs should have been taken care of
-  BOOST_CHECK_EQUAL(executor.jobQueueSize(), 0);
+    executor.execute(job);
+    executor.execute(job);
 
-  usleep(500000);
+    usleep(1000);
+    // both jobs should have been taken care of
+    BOOST_CHECK_EQUAL(executor.jobQueueSize(), 0);
 
-  // add four jobs while only one thread is idle
-  executor.execute(job);
-  executor.execute(job);
-  executor.execute(job);
-  executor.execute(job);
+    usleep(500000);
 
-  usleep(100);
-  // three jobs should remain in queue
-  BOOST_CHECK_EQUAL(executor.jobQueueSize(), 3);
+    // add four jobs while only one thread is idle
+    executor.execute(job);
+    executor.execute(job);
+    executor.execute(job);
+    executor.execute(job);
 
-  usleep(500000);
-  // two threads should have finished and 
-  // take care of two queued jobs
-  BOOST_CHECK_EQUAL(executor.jobQueueSize(), 1);
+    usleep(1000);
+    // three jobs should remain in queue
+    BOOST_CHECK_EQUAL(executor.jobQueueSize(), 3);
 
-  // all jobs should have been fetched
-  usleep(500100);
-  BOOST_CHECK_EQUAL(executor.jobQueueSize(), 0);
+    usleep(500000);
+    // two threads should have finished and
+    // take care of two queued jobs
+    BOOST_CHECK_EQUAL(executor.jobQueueSize(), 1);
+
+    // all jobs should have been fetched
+    usleep(501000);
+    BOOST_CHECK_EQUAL(executor.jobQueueSize(), 0);
+  } //separate scope to ensure that destructor is called
+
 
   sleep(1);
-
 }
