@@ -125,7 +125,7 @@ ObjectDb::saveContentObject (const Ccnx::Name &deviceName, sqlite3_int64 segment
                       "(device_name, segment, content_object) "
                       "VALUES (?, ?, ?)", -1, &stmt, 0);
 
-  _LOG_DEBUG ("Saving content object for [" << deviceName << ", seqno: " << segment << ", size: " << data.size () << "]");
+  //_LOG_DEBUG ("Saving content object for [" << deviceName << ", seqno: " << segment << ", size: " << data.size () << "]");
 
   CcnxCharbufPtr buf = deviceName.toCcnxCharbuf ();
   sqlite3_bind_blob (stmt, 1, buf->buf (), buf->length (), SQLITE_TRANSIENT);
