@@ -73,8 +73,9 @@ FetchManager::Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
                                     finishCallback,
                                     bind (&FetchManager::DidFetchComplete, this, _1),
                                     bind (&FetchManager::DidNoDataTimeout, this, _1),
-                                    deviceName, baseName, minSeqNo, maxSeqNo));
-  fetcher.SetForwardingHint (forwardingHint);
+                                    deviceName, baseName, minSeqNo, maxSeqNo,
+                                    boost::posix_time::seconds (30),
+                                    forwardingHint));
 
   switch (priority)
     {

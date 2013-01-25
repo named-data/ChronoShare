@@ -58,7 +58,7 @@ Dispatcher::Dispatcher(const std::string &localUserName
                                        bind (&Dispatcher::Did_ActionLog_ActionApply_Delete, this, _1));
   Name syncPrefix = Name(BROADCAST_DOMAIN)(sharedFolder);
 
-  m_server = new ContentServer(m_ccnx, m_actionLog, rootDir);
+  m_server = new ContentServer(m_ccnx, m_actionLog, rootDir, m_localUserName, m_sharedFolder);
   m_server->registerPrefix(Name ("/"));
   m_server->registerPrefix(syncPrefix);
 
@@ -223,24 +223,24 @@ Dispatcher::Did_SyncLog_StateChange_Execute (SyncStateMsgPtr stateMsg)
     {
       uint64_t oldSeq = state.old_seq();
       uint64_t newSeq = state.seq();
-      Name userName = state.name();
+      Name userName (reinterpret_cast<const unsigned char *> (state.name ().c_str ()), state.name ().size ());
 
       // fetch actions with oldSeq + 1 to newSeq (inclusive)
       Name actionNameBase = Name(userName)("action")(m_sharedFolder);
 
       m_actionFetcher->Enqueue (userName, actionNameBase,
                                 bind (&Dispatcher::Did_FetchManager_ActionFetch, this, _1, _2, _3, _4), FetchManager::FinishCallback (),
-                                oldSeq + 1, newSeq, FetchManager::PRIORITY_HIGH);
+                                std::max<uint64_t> (oldSeq + 1, 1), newSeq, FetchManager::PRIORITY_HIGH);
     }
   }
 }
 
 
 void
-Dispatcher::Did_FetchManager_ActionFetch (const Ccnx::Name &deviceName, const Ccnx::Name &actionName, uint32_t seqno, Ccnx::PcoPtr actionPco)
+Dispatcher::Did_FetchManager_ActionFetch (const Ccnx::Name &deviceName, const Ccnx::Name &actionBaseName, uint32_t seqno, Ccnx::PcoPtr actionPco)
 {
   /// @todo Errors and exception checking
-  _LOG_DEBUG ("Received action deviceName: " << deviceName << ", actionName: " << actionName << ", seqno: " << seqno);
+  _LOG_DEBUG ("Received action deviceName: " << deviceName << ", actionBaseName: " << actionBaseName << ", seqno: " << seqno);
 
   ActionItemPtr action = m_actionLog->AddRemoteAction (deviceName, seqno, actionPco);
   // trigger may invoke Did_ActionLog_ActionApply_Delete or Did_ActionLog_ActionApply_AddOrModify callbacks
@@ -253,6 +253,7 @@ Dispatcher::Did_FetchManager_ActionFetch (const Ccnx::Name &deviceName, const Cc
 
       if (m_objectDbMap.find (hash) == m_objectDbMap.end ())
         {
+          _LOG_DEBUG ("create ObjectDb for " << hash);
           m_objectDbMap [hash] = make_shared<ObjectDb> (m_rootDir, lexical_cast<string> (hash));
         }
 
@@ -284,18 +285,20 @@ Dispatcher::Did_ActionLog_ActionApply_Delete_Execute (std::string filename)
 }
 
 void
-Dispatcher::Did_FetchManager_FileSegmentFetch (const Ccnx::Name &deviceName, const Ccnx::Name &fileSegmentName, uint32_t segment, Ccnx::PcoPtr fileSegmentPco)
+Dispatcher::Did_FetchManager_FileSegmentFetch (const Ccnx::Name &deviceName, const Ccnx::Name &fileSegmentBaseName, uint32_t segment, Ccnx::PcoPtr fileSegmentPco)
 {
-  m_executor.execute (bind (&Dispatcher::Did_FetchManager_FileSegmentFetch_Execute, this, deviceName, fileSegmentName, segment, fileSegmentPco));
+  m_executor.execute (bind (&Dispatcher::Did_FetchManager_FileSegmentFetch_Execute, this, deviceName, fileSegmentBaseName, segment, fileSegmentPco));
 }
 
 void
-Dispatcher::Did_FetchManager_FileSegmentFetch_Execute (Ccnx::Name deviceName, Ccnx::Name fileSegmentName, uint32_t segment, Ccnx::PcoPtr fileSegmentPco)
+Dispatcher::Did_FetchManager_FileSegmentFetch_Execute (Ccnx::Name deviceName, Ccnx::Name fileSegmentBaseName, uint32_t segment, Ccnx::PcoPtr fileSegmentPco)
 {
-  const Bytes &hashBytes = fileSegmentName.getCompFromBack (1);
+  const Bytes &hashBytes = fileSegmentBaseName.getCompFromBack (0);
   Hash hash (head(hashBytes), hashBytes.size());
 
-  _LOG_DEBUG ("Received segment deviceName: " << deviceName << ", segmentName: " << fileSegmentName << ", segment: " << segment);
+  _LOG_DEBUG ("Received segment deviceName: " << deviceName << ", segmentBaseName: " << fileSegmentBaseName << ", segment: " << segment);
+
+  _LOG_DEBUG ("Looking up objectdb for " << hash);
 
   map<Hash, ObjectDbPtr>::iterator db = m_objectDbMap.find (hash);
   if (db != m_objectDbMap.end())
@@ -304,7 +307,7 @@ Dispatcher::Did_FetchManager_FileSegmentFetch_Execute (Ccnx::Name deviceName, Cc
   }
   else
   {
-    _LOG_ERROR ("no db available for this content object: " << fileSegmentName << ", size: " << fileSegmentPco->buf ().size());
+    _LOG_ERROR ("no db available for this content object: " << fileSegmentBaseName << ", size: " << fileSegmentPco->buf ().size());
   }
 }
 
@@ -319,7 +322,7 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
 {
   _LOG_DEBUG ("Finished fetching " << deviceName << ", fileBaseName: " << fileBaseName);
 
-  const Bytes &hashBytes = fileBaseName.getCompFromBack (1);
+  const Bytes &hashBytes = fileBaseName.getCompFromBack (0);
   Hash hash (head (hashBytes), hashBytes.size ());
 
   FileItemsPtr filesToAssemble = m_actionLog->LookupFilesForHash (hash);

@@ -133,7 +133,7 @@ BOOST_AUTO_TEST_CASE (TestServeAndFetch)
   cout << "At time " << end <<", publish finally finished, used " << end - start << " seconds ..."<< endl;
 
   ActionLogPtr dummyLog;
-  ContentServer server(ccnx_serve, dummyLog, root, 5);
+  ContentServer server(ccnx_serve, dummyLog, root, deviceName, "pentagon's secrets", 5);
   server.registerPrefix(localPrefix);
   server.registerPrefix(broadcastPrefix);
 

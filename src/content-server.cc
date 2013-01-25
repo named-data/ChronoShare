@@ -20,113 +20,160 @@
  */
 
 #include "content-server.h"
+#include "logging.h"
+#include <boost/lexical_cast.hpp>
+
+INIT_LOGGER ("ContentServer");
 
 using namespace Ccnx;
 using namespace std;
+using namespace boost;
 
-ContentServer::ContentServer(CcnxWrapperPtr ccnx, ActionLogPtr actionLog, const boost::filesystem::path &rootDir, int freshness)
-              : m_ccnx(ccnx)
-              , m_actionLog(actionLog)
-              , m_dbFolder(rootDir / ".chronoshare")
-              , m_freshness(freshness)
+ContentServer::ContentServer(CcnxWrapperPtr ccnx, ActionLogPtr actionLog,
+                             const boost::filesystem::path &rootDir,
+                             const Ccnx::Name &deviceName, const std::string &sharedFolderName,
+                             int freshness)
+  : m_ccnx(ccnx)
+  , m_actionLog(actionLog)
+  , m_dbFolder(rootDir / ".chronoshare")
+  , m_freshness(freshness)
+  , m_executor (1)
+  , m_deviceName (deviceName)
+  , m_sharedFolderName (sharedFolderName)
 {
+  m_executor.start ();
 }
 
 ContentServer::~ContentServer()
 {
-  WriteLock lock(m_mutex);
-  int size = m_prefixes.size();
+  m_executor.shutdown ();
+
+  ScopedLock lock (m_mutex);
   for (PrefixIt it = m_prefixes.begin(); it != m_prefixes.end(); ++it)
   {
-    m_ccnx->clearInterestFilter(*it);
+    m_ccnx->clearInterestFilter (Name (*it)(m_deviceName)("action")(m_sharedFolderName));
+    m_ccnx->clearInterestFilter (Name (*it)(m_deviceName)("file"));
   }
 }
 
 void
 ContentServer::registerPrefix(const Name &prefix)
 {
-  m_ccnx->setInterestFilter(prefix, bind(&ContentServer::serve, this, _1));
-  WriteLock lock(m_mutex);
+  _LOG_DEBUG (">> register " << prefix);
+  m_ccnx->setInterestFilter (Name (prefix)(m_deviceName)("action")(m_sharedFolderName), bind(&ContentServer::serve_Action, this, prefix, _1));
+  m_ccnx->setInterestFilter (Name (prefix)(m_deviceName)("file"), bind(&ContentServer::serve_File,   this, prefix, _1));
+
+  ScopedLock lock (m_mutex);
   m_prefixes.insert(prefix);
 }
 
 void
-ContentServer::deregisterPrefix(const Name &prefix)
+ContentServer::deregisterPrefix (const Name &prefix)
 {
-  WriteLock lock(m_mutex);
-  PrefixIt it = m_prefixes.find(prefix);
-  if (it != m_prefixes.end())
-  {
-    m_ccnx->clearInterestFilter(*it);
-    m_prefixes.erase(it);
-  }
+  _LOG_DEBUG ("<< deregister " << prefix);
+
+  m_ccnx->clearInterestFilter(Name (prefix)(m_deviceName)("action")(m_sharedFolderName));
+  m_ccnx->clearInterestFilter(Name (prefix)(m_deviceName)("file"));
+
+  ScopedLock lock (m_mutex);
+  m_prefixes.erase (prefix);
 }
 
 void
-ContentServer::serve(const Name &interest)
+ContentServer::serve_Action (Name forwardingHint, const Name &interest)
 {
-  ReadLock lock(m_mutex);
-  for (PrefixIt it = m_prefixes.begin(); it != m_prefixes.end(); ++it)
-  {
-    Name prefix = *it;
-    int prefixSize = prefix.size();
-    int interestSize = interest.size();
-    // this is the prefix of the interest
-    if (prefixSize <= interestSize && interest.getPartialName(0, prefixSize) == prefix)
+  m_executor.execute (bind (&ContentServer::serve_Action_Execute, this, forwardingHint, interest));
+  // need to unlock ccnx mutex... or at least don't lock it
+}
+
+void
+ContentServer::serve_File (Name forwardingHint, const Name &interest)
+{
+  m_executor.execute (bind (&ContentServer::serve_File_Execute, this, forwardingHint, interest));
+  // need to unlock ccnx mutex... or at least don't lock it
+}
+
+void
+ContentServer::serve_File_Execute (Name forwardingHint, Name interest)
+{
+  // /device-name/file/<file-hash>/segment, or
+
+  int64_t segment = interest.getCompFromBackAsInt (0);
+  Name deviceName = interest.getPartialName (forwardingHint.size (), interest.size () - forwardingHint.size () - 3);
+  Hash hash (head(interest.getCompFromBack (1)), interest.getCompFromBack (1).size());
+
+  _LOG_DEBUG (" server FILE for device: " << deviceName << ", file_hash: " << hash << " segment: " << segment);
+
+  string hashStr = lexical_cast<string> (hash);
+  if (ObjectDb::DoesExist (m_dbFolder, deviceName, hashStr)) // this is kind of overkill, as it counts available segments
     {
-      // originalName should be either
-      // /device-name/file/file-hash/segment, or
-      // /device-name/action/shared-folder/seq
-      Name originalName = interest.getPartialName(prefixSize);
-      int nameSize = originalName.size();
-      if (nameSize > 3)
-      {
-        Name deviceName = originalName.getPartialName(0, nameSize - 3);
-        string type = originalName.getCompAsString(nameSize - 3);
-        if (type == "action")
+      ObjectDb db (m_dbFolder, hashStr);
+      // may do prefetching
+
+      BytesPtr co = db.fetchSegment (deviceName, segment);
+      if (co)
         {
-          int64_t seqno = originalName.getCompAsInt(nameSize - 1);
-          PcoPtr pco = m_actionLog->LookupActionPco(deviceName, seqno);
-          if (pco)
-          {
-            Bytes content = pco->buf();
-            if (m_freshness > 0)
+          if (forwardingHint.size () == 0)
+            {
+              m_ccnx->putToCcnd (*co);
+            }
+          else
+            {
+              if (m_freshness > 0)
+                {
+                  m_ccnx->publishData(interest, *co, m_freshness);
+                }
+              else
+                {
+                  m_ccnx->publishData(interest, *co);
+                }
+            }
+
+        }
+      else
+        {
+          _LOG_ERROR ("ObjectDd exists, but no segment " << segment << " for device: " << deviceName << ", file_hash: " << hash);
+        }
+    }
+  else
+    {
+      _LOG_ERROR ("ObjectDd doesn't exist for device: " << deviceName << ", file_hash: " << hash);
+    }
+
+}
+
+void
+ContentServer::serve_Action_Execute (Name forwardingHint, Name interest)
+{
+  // /device-name/action/shared-folder/seq
+
+  int64_t seqno = interest.getCompFromBackAsInt (0);
+  Name deviceName = interest.getPartialName (forwardingHint.size (), interest.size () - forwardingHint.size () - 3);
+
+  _LOG_DEBUG (" server ACTION for device: " << deviceName << " and seqno: " << seqno);
+
+  PcoPtr pco = m_actionLog->LookupActionPco (deviceName, seqno);
+  if (pco)
+    {
+      if (forwardingHint.size () == 0)
+        {
+          m_ccnx->putToCcnd (pco->buf ());
+        }
+      else
+        {
+          const Bytes &content = pco->buf ();
+          if (m_freshness > 0)
             {
               m_ccnx->publishData(interest, content, m_freshness);
             }
-            else
+          else
             {
               m_ccnx->publishData(interest, content);
             }
-          }
         }
-        else if (type == "file")
-        {
-          Bytes hashBytes = originalName.getComp(nameSize - 2);
-          Hash hash(head(hashBytes), hashBytes.size());
-          ostringstream oss;
-          oss << hash;
-          int64_t segment = originalName.getCompAsInt(nameSize - 1);
-          ObjectDb db(m_dbFolder, oss.str());
-          BytesPtr co = db.fetchSegment(deviceName, segment);
-          if (co)
-          {
-            if (m_freshness > 0)
-            {
-              m_ccnx->publishData(interest, *co, m_freshness);
-            }
-            else
-            {
-              m_ccnx->publishData(interest, *co);
-            }
-          }
-        }
-        else
-        {
-          cerr << "Discard interest that ContentServer does not know how to handle: " << interest << ", prefix: " << prefix << endl;
-        }
-
-      }
     }
-  }
+  else
+    {
+      _LOG_ERROR ("ACTION not found for device: " << deviceName << " and seqno: " << seqno);
+    }
 }

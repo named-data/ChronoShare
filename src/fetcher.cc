@@ -55,8 +55,8 @@ Fetcher::Fetcher (Ccnx::CcnxWrapperPtr ccnx,
   , m_forwardingHint (forwardingHint)
   , m_maximumNoActivityPeriod (timeout)
 
-  , m_minSendSeqNo (-1)
-  , m_maxInOrderRecvSeqNo (-1)
+  , m_minSendSeqNo (minSeqNo-1)
+  , m_maxInOrderRecvSeqNo (minSeqNo-1)
   , m_minSeqNo (minSeqNo)
   , m_maxSeqNo (maxSeqNo)
 
@@ -114,14 +114,20 @@ Fetcher::OnData (uint64_t seqno, const Ccnx::Name &name, PcoPtr data)
   if (m_forwardingHint == Name ())
   {
     // invoke callback
-    m_segmentCallback (m_deviceName, m_name, seqno, data);
+    if (!m_segmentCallback.empty ())
+      {
+        m_segmentCallback (m_deviceName, m_name, seqno, data);
+      }
     // we don't have to tell FetchManager about this
   }
   else
     {
       try {
         PcoPtr pco = make_shared<ParsedContentObject> (*data->contentPtr ());
-        m_segmentCallback (m_deviceName, m_name, seqno, pco);
+        if (!m_segmentCallback.empty ())
+          {
+            m_segmentCallback (m_deviceName, m_name, seqno, pco);
+          }
       }
       catch (MisformedContentObjectException &e)
         {
@@ -154,7 +160,11 @@ Fetcher::OnData (uint64_t seqno, const Ccnx::Name &name, PcoPtr data)
     {
       m_active = false;
       // invoke callback
-      m_finishCallback(m_deviceName, m_name);
+      if (!m_finishCallback.empty ())
+        {
+          m_finishCallback(m_deviceName, m_name);
+        }
+
       // tell FetchManager that we have finish our job
       m_onFetchComplete (*this);
     }
