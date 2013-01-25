@@ -86,6 +86,7 @@ SyncCore::localStateChanged()
   BytesPtr syncData = serializeMsg (*msg);
 
   m_ccnx->publishData(syncName, *syncData, FRESHNESS);
+  _LOG_DEBUG (m_log->GetLocalName () << " localStateChanged ");
   _LOG_TRACE (m_log->GetLocalName () << " publishes: " << *oldHash);
   _LOG_TRACE (msg);
 

@@ -39,6 +39,8 @@ struct CcnxOperationException : virtual boost::exception, virtual std::exception
 class CcnxWrapper
 {
 public:
+  const static int MAX_FRESHNESS = 2147; // max value for ccnx
+  const static int DEFAULT_FRESHNESS = 60;
   typedef boost::function<void (const Name &)> InterestCallback;
 
   CcnxWrapper();
@@ -54,16 +56,16 @@ public:
   sendInterest (const Name &interest, const Closure &closure, const Selectors &selector = Selectors());
 
   virtual int
-  publishData (const Name &name, const unsigned char *buf, size_t len, int freshness = 2147/* max value for ccnx*/);
+  publishData (const Name &name, const unsigned char *buf, size_t len, int freshness = DEFAULT_FRESHNESS/* max value for ccnx*/);
 
   int
-  publishData (const Name &name, const Bytes &content, int freshness = 2147/* max value for ccnx*/);
+  publishData (const Name &name, const Bytes &content, int freshness = DEFAULT_FRESHNESS/* max value for ccnx*/);
 
   static Name
   getLocalPrefix ();
 
   Bytes
-  createContentObject(const Name &name, const void *buf, size_t len, int freshness = 2147/* max value for ccnx*/);
+  createContentObject(const Name &name, const void *buf, size_t len, int freshness = DEFAULT_FRESHNESS/* max value for ccnx*/);
 
   int
   putToCcnd (const Bytes &contentObject);

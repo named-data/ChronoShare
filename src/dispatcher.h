@@ -50,7 +50,9 @@ public:
              , const std::string &sharedFolder
              , const boost::filesystem::path &rootDir
              , Ccnx::CcnxWrapperPtr ccnx
-             , int poolSize = 2);
+             , int poolSize = 2
+             , bool enablePrefixDiscovery = true
+             );
   ~Dispatcher();
 
   // ----- Callbacks, they only submit the job to executor and immediately return so that event processing thread won't be blocked for too long -------
@@ -62,6 +64,10 @@ public:
 
   void
   Did_LocalFile_Delete (const boost::filesystem::path &relativeFilepath);
+
+  // for test
+  HashPtr
+  SyncRoot() { return m_core->root(); }
 
 private:
   void
@@ -156,6 +162,7 @@ private:
 
   std::string m_sharedFolder;
   ContentServer *m_server;
+  bool m_enablePrefixDiscovery;
 
   FetchManagerPtr m_actionFetcher;
   FetchManagerPtr m_fileFetcher;

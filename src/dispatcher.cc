@@ -38,7 +38,9 @@ Dispatcher::Dispatcher(const std::string &localUserName
                        , const std::string &sharedFolder
                        , const filesystem::path &rootDir
                        , Ccnx::CcnxWrapperPtr ccnx
-                       , int poolSize)
+                       , int poolSize
+                       , bool enablePrefixDiscovery
+                       )
            : m_ccnx(ccnx)
            , m_core(NULL)
            , m_rootDir(rootDir)
@@ -47,6 +49,7 @@ Dispatcher::Dispatcher(const std::string &localUserName
            , m_localUserName(localUserName)
            , m_sharedFolder(sharedFolder)
            , m_server(NULL)
+           , m_enablePrefixDiscovery(enablePrefixDiscovery)
 {
   m_syncLog = make_shared<SyncLog>(m_rootDir, localUserName);
   m_actionLog = make_shared<ActionLog>(m_ccnx, m_rootDir, m_syncLog, sharedFolder,
@@ -65,12 +68,18 @@ Dispatcher::Dispatcher(const std::string &localUserName
   m_actionFetcher = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3);
   m_fileFetcher   = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3);
 
-  Ccnx::CcnxDiscovery::registerCallback (TaggedFunction (bind (&Dispatcher::Did_LocalPrefix_Updated, this, _1), "dispatcher"));
+  if (m_enablePrefixDiscovery)
+  {
+    Ccnx::CcnxDiscovery::registerCallback (TaggedFunction (bind (&Dispatcher::Did_LocalPrefix_Updated, this, _1), "dispatcher"));
+  }
 }
 
 Dispatcher::~Dispatcher()
 {
-  Ccnx::CcnxDiscovery::deregisterCallback (TaggedFunction (bind (&Dispatcher::Did_LocalPrefix_Updated, this, _1), "dispatcher"));
+  if (m_enablePrefixDiscovery)
+  {
+    Ccnx::CcnxDiscovery::deregisterCallback (TaggedFunction (bind (&Dispatcher::Did_LocalPrefix_Updated, this, _1), "dispatcher"));
+  }
 
   if (m_core != NULL)
   {
@@ -109,6 +118,7 @@ Dispatcher::Did_LocalFile_AddOrModify (const filesystem::path &relativeFilePath)
 void
 Dispatcher::Did_LocalFile_AddOrModify_Execute (filesystem::path relativeFilePath)
 {
+  _LOG_DEBUG(m_localUserName << " calls LocalFile_AddOrModify_Execute");
   filesystem::path absolutePath = m_rootDir / relativeFilePath;
   if (!filesystem::exists(absolutePath))
     {
