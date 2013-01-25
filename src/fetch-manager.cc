@@ -55,6 +55,12 @@ FetchManager::Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
          const SegmentCallback &segmentCallback, const FinishCallback &finishCallback,
          uint64_t minSeqNo, uint64_t maxSeqNo, int priority/*PRIORITY_NORMAL*/)
 {
+  // Assumption for the following code is minSeqNo <= maxSeqNo
+  if (minSeqNo > maxSeqNo)
+  {
+    return;
+  }
+
   // we may need to guarantee that LookupLocator will gives an answer and not throw exception...
   Name forwardingHint;
   forwardingHint = m_mapping (deviceName);
