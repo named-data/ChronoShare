@@ -59,9 +59,13 @@ ContentServer::~ContentServer()
 void
 ContentServer::registerPrefix(const Name &prefix)
 {
-  _LOG_DEBUG (">> register " << prefix);
-  m_ccnx->setInterestFilter (Name (prefix)(m_deviceName)("action")(m_sharedFolderName), bind(&ContentServer::serve_Action, this, prefix, _1));
-  m_ccnx->setInterestFilter (Name (prefix)(m_deviceName)("file"), bind(&ContentServer::serve_File,   this, prefix, _1));
+  Name actionPrefix = Name (prefix)(m_deviceName)("action")(m_sharedFolderName);
+  Name filePrefix = Name (prefix)(m_deviceName)("file");
+  m_ccnx->setInterestFilter (actionPrefix, bind(&ContentServer::serve_Action, this, prefix, _1));
+  m_ccnx->setInterestFilter (filePrefix, bind(&ContentServer::serve_File,   this, prefix, _1));
+
+  _LOG_DEBUG (">> content server: register " << actionPrefix);
+  _LOG_DEBUG (">> content server: register " << filePrefix);
 
   ScopedLock lock (m_mutex);
   m_prefixes.insert(prefix);
@@ -70,11 +74,14 @@ ContentServer::registerPrefix(const Name &prefix)
 void
 ContentServer::deregisterPrefix (const Name &prefix)
 {
-  _LOG_DEBUG ("<< deregister " << prefix);
+  Name actionPrefix = Name (prefix)(m_deviceName)("action")(m_sharedFolderName);
+  Name filePrefix = Name (prefix)(m_deviceName)("file");
 
-  m_ccnx->clearInterestFilter(Name (prefix)(m_deviceName)("action")(m_sharedFolderName));
-  m_ccnx->clearInterestFilter(Name (prefix)(m_deviceName)("file"));
+  m_ccnx->clearInterestFilter(actionPrefix);
+  m_ccnx->clearInterestFilter(filePrefix);
 
+  _LOG_DEBUG ("<< content server: deregister " << actionPrefix);
+  _LOG_DEBUG ("<< content server: deregister " << filePrefix);
   ScopedLock lock (m_mutex);
   m_prefixes.erase (prefix);
 }
@@ -82,6 +89,7 @@ ContentServer::deregisterPrefix (const Name &prefix)
 void
 ContentServer::serve_Action (Name forwardingHint, const Name &interest)
 {
+  _LOG_DEBUG (">> content server serving, forwardHing " << forwardingHint << ", interest " << interest);
   m_executor.execute (bind (&ContentServer::serve_Action_Execute, this, forwardingHint, interest));
   // need to unlock ccnx mutex... or at least don't lock it
 }
@@ -89,6 +97,7 @@ ContentServer::serve_Action (Name forwardingHint, const Name &interest)
 void
 ContentServer::serve_File (Name forwardingHint, const Name &interest)
 {
+  _LOG_DEBUG (">> content server serving, forwardHing " << forwardingHint << ", interest " << interest);
   m_executor.execute (bind (&ContentServer::serve_File_Execute, this, forwardingHint, interest));
   // need to unlock ccnx mutex... or at least don't lock it
 }

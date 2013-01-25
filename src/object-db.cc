@@ -142,7 +142,7 @@ ObjectDb::saveContentObject (const Ccnx::Name &deviceName, sqlite3_int64 segment
   sqlite3_bind_blob (stmt, 3, &data[0], data.size (), SQLITE_STATIC);
 
   sqlite3_step (stmt);
-  _LOG_DEBUG ("After saving object: " << sqlite3_errmsg (m_db));
+  //_LOG_DEBUG ("After saving object: " << sqlite3_errmsg (m_db));
   sqlite3_finalize (stmt);
 }
 

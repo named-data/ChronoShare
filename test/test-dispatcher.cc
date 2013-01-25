@@ -75,7 +75,7 @@ BOOST_AUTO_TEST_CASE(TestDispatcher)
   usleep(100);
   Dispatcher d2(user2, folder, dir2, ccnx2);
 
-  usleep(1000000);
+  usleep(14900000);
 
   _LOG_DEBUG ("checking obama vs romney");
   checkRoots(d1.SyncRoot(), d2.SyncRoot());
@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE(TestDispatcher)
 
   ofstream ofs;
   ofs.open(abf.string().c_str());
-  for (int i = 0; i < 1000; i ++)
+  for (int i = 0; i < 5000; i ++)
   {
     ofs << words;
   }
@@ -95,7 +95,7 @@ BOOST_AUTO_TEST_CASE(TestDispatcher)
 
   d1.Did_LocalFile_AddOrModify(filename);
 
-  sleep(2);
+  sleep(5);
 
   fs::path ef = dir2 / filename;
   BOOST_REQUIRE_MESSAGE(fs::exists(ef), user1 << " failed to notify " << user2 << " about " << filename.string());
