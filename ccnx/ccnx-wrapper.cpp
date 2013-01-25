@@ -28,6 +28,7 @@ extern "C" {
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/random.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/algorithm/string.hpp>
 #include <sstream>
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;
@@ -456,6 +457,7 @@ CcnxWrapper::getLocalPrefix ()
   ccn_disconnect (tmp_handle);
   ccn_destroy (&tmp_handle);
 
+  boost::algorithm::trim(retval);
   return Name(retval);
 }
 
