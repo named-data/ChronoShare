@@ -96,7 +96,10 @@ private:
 
   // callback to process remote sync state change
   void
-  Did_SyncLog_StateChange (const SyncStateMsgPtr &stateMsg);
+  Did_SyncLog_StateChange (SyncStateMsgPtr stateMsg);
+
+  void
+  Did_SyncLog_StateChange_Execute (SyncStateMsgPtr stateMsg);
 
   void
   Did_FetchManager_ActionFetch (const Ccnx::Name &deviceName, const Ccnx::Name &actionName, uint32_t seqno, Ccnx::PcoPtr actionPco);

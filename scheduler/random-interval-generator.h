@@ -27,6 +27,7 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/variate_generator.hpp>
+#include <boost/date_time/posix_time/posix_time_types.hpp>
 
 // generates intervals with uniform distribution
 class RandomIntervalGenerator : public IntervalGenerator
@@ -45,7 +46,8 @@ public:
   // direction shifts the random range; e.g. in the above example, UP would produce a range of
   // 10 ~ 12, DOWN of 8 ~ 10, and EVEN of 9 ~ 11
   RandomIntervalGenerator(double interval, double percent, Direction direction = EVEN)
-  : m_rng(time(NULL))
+  // : m_rng(time(NULL))
+    : m_rng (static_cast<int> (boost::posix_time::microsec_clock::local_time().time_of_day ().total_nanoseconds ()))
   , m_dist(0.0, fractional(percent))
   , m_random(m_rng, m_dist)
   , m_direction(direction)
@@ -54,7 +56,7 @@ public:
   { }
 
   virtual ~RandomIntervalGenerator(){}
-  
+
   virtual double
   nextInterval() _OVERRIDE
   {
@@ -70,7 +72,7 @@ public:
 
     return interval;
   }
-  
+
 private:
   inline double fractional(double x) { double dummy; return abs(modf(x, &dummy)); }
 

@@ -28,22 +28,44 @@ using namespace std;
 using namespace boost;
 
 Executor::Executor (int poolSize)
-  : m_needStop (false)
+  : m_needStop (true)
+  , m_poolSize (poolSize)
 {
-  for (int i = 0; i < poolSize; i++)
-  {
-    m_group.create_thread (bind(&Executor::run, this));
-  }
 }
 
 Executor::~Executor()
 {
   _LOG_DEBUG ("Enter destructor");
-  m_needStop = true;
-  m_group.interrupt_all ();
-  m_group.join_all ();
+  shutdown ();
   _LOG_DEBUG ("Exit destructor");
 }
+
+void
+Executor::start ()
+{
+  if (m_needStop)
+    {
+      m_needStop = false;
+      for (int i = 0; i < m_poolSize; i++)
+        {
+          m_group.create_thread (bind(&Executor::run, this));
+        }
+    }
+}
+
+void
+Executor::shutdown ()
+{
+  if (!m_needStop)
+    {
+      m_needStop = true;
+      _LOG_DEBUG ("Iterrupting all");
+      m_group.interrupt_all ();
+      _LOG_DEBUG ("Join all");
+      m_group.join_all ();
+    }
+}
+
 
 void
 Executor::execute(const Job &job)
@@ -83,10 +105,12 @@ Executor::run ()
   {
     Job job = waitForJob();
 
+    _LOG_DEBUG (">>> enter job");
     job (); // even if job is "null", nothing bad will happen
+    _LOG_DEBUG ("<<< exit job");
   }
 
-  _LOG_DEBUG ("Thread finished");
+  _LOG_DEBUG ("Executor thread finished");
 }
 
 Executor::Job
@@ -97,7 +121,9 @@ Executor::waitForJob()
   // wait until job queue is not empty
   while (m_queue.empty())
   {
+    _LOG_DEBUG ("Unlocking mutex for wait");
     m_cond.wait(lock);
+    _LOG_DEBUG ("Re-locking mutex after wait");
   }
 
   _LOG_DEBUG ("Got signal on condition");

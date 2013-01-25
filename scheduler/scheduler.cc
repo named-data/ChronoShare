@@ -22,9 +22,12 @@
 #include "scheduler.h"
 #include "one-time-task.h"
 #include "periodic-task.h"
+#include "logging.h"
 
 #include <utility>
 #include <boost/make_shared.hpp>
+
+INIT_LOGGER ("Scheduler");
 
 using namespace std;
 using namespace boost;
@@ -36,7 +39,7 @@ using namespace boost;
 
 void errorCallback(int err)
 {
-  cout << "Fatal error: " << err << endl;
+  _LOG_ERROR ("Fatal error: " << err);
 }
 
 Scheduler::Scheduler()
@@ -49,6 +52,7 @@ Scheduler::Scheduler()
 
 Scheduler::~Scheduler()
 {
+  shutdown ();
   event_base_free(m_base);
 }
 
@@ -59,14 +63,14 @@ Scheduler::eventLoop()
   {
     if (event_base_loop(m_base, EVLOOP_NO_EXIT_ON_EMPTY) < 0)
     {
-      cout << "scheduler loop break error" << endl;
+      _LOG_DEBUG ("scheduler loop break error");
     }
-    
+
     {
-      ReadLock lock(m_mutex);
+      ScopedLock lock(m_mutex);
       if (!m_running)
         {
-          cout << "scheduler loop break normal" << endl;
+          _LOG_DEBUG ("scheduler loop break normal");
           break;
         }
     }
@@ -76,7 +80,7 @@ Scheduler::eventLoop()
 void
 Scheduler::start()
 {
-  WriteLock lock(m_mutex);
+  ScopedLock lock(m_mutex);
   if (!m_running)
   {
     m_thread = boost::thread(&Scheduler::eventLoop, this);
@@ -87,13 +91,21 @@ Scheduler::start()
 void
 Scheduler::shutdown()
 {
+  bool breakAndWait = false;
   {
-    WriteLock lock(m_mutex);
-    m_running = false;
+    ScopedLock lock (m_mutex);
+    if (m_running)
+      {
+        m_running = false;
+        breakAndWait = true;
+      }
   }
-  
-  event_base_loopbreak(m_base);
-  m_thread.join();
+
+  if (breakAndWait)
+    {
+      event_base_loopbreak(m_base);
+      m_thread.join();
+    }
 }
 
 TaskPtr
@@ -128,13 +140,13 @@ Scheduler::addTask(TaskPtr newTask)
     int res = evtimer_add(newTask->ev(), newTask->tv());
     if (res < 0)
     {
-      cout << "evtimer_add failed for " << newTask->tag() << endl;
+      _LOG_ERROR ("evtimer_add failed for " << newTask->tag());
     }
     return true;
   }
   else
   {
-    cout << "fail to add task: " << newTask->tag() << endl;
+    _LOG_ERROR ("fail to add task: " << newTask->tag());
   }
 
   return false;
@@ -149,7 +161,7 @@ Scheduler::deleteTask(TaskPtr task)
 void
 Scheduler::rescheduleTask(const TaskPtr &task)
 {
-  ReadLock lock(m_mutex);
+  ScopedLock lock(m_mutex);
   TaskMapIt it = m_taskMap.find(task->tag());
   if (it != m_taskMap.end())
   {
@@ -158,7 +170,7 @@ Scheduler::rescheduleTask(const TaskPtr &task)
     int res = evtimer_add(task->ev(), task->tv());
     if (res < 0)
     {
-      cout << "evtimer_add failed for " << task->tag() << endl;
+      _LOG_ERROR ("evtimer_add failed for " << task->tag());
     }
   }
   else
@@ -170,7 +182,7 @@ Scheduler::rescheduleTask(const TaskPtr &task)
 void
 Scheduler::rescheduleTask(const Task::Tag &tag)
 {
-  ReadLock lock(m_mutex);
+  ScopedLock lock(m_mutex);
   TaskMapIt it = m_taskMap.find(tag);
   if (it != m_taskMap.end())
   {
@@ -187,7 +199,7 @@ Scheduler::rescheduleTask(const Task::Tag &tag)
 bool
 Scheduler::addToMap(const TaskPtr &task)
 {
-  WriteLock lock(m_mutex);
+  ScopedLock lock(m_mutex);
   if (m_taskMap.find(task->tag()) == m_taskMap.end())
   {
     m_taskMap.insert(make_pair(task->tag(), task));
@@ -199,7 +211,7 @@ Scheduler::addToMap(const TaskPtr &task)
 void
 Scheduler::deleteTask(const Task::Tag &tag)
 {
-  WriteLock lock(m_mutex);
+  ScopedLock lock(m_mutex);
   TaskMapIt it = m_taskMap.find(tag);
   if (it != m_taskMap.end())
   {
@@ -212,7 +224,7 @@ Scheduler::deleteTask(const Task::Tag &tag)
 void
 Scheduler::deleteTask(const Task::TaskMatcher &matcher)
 {
-  WriteLock lock(m_mutex);
+  ScopedLock lock(m_mutex);
   TaskMapIt it = m_taskMap.begin();
   while(it != m_taskMap.end())
   {
@@ -235,6 +247,6 @@ Scheduler::deleteTask(const Task::TaskMatcher &matcher)
 int
 Scheduler::size()
 {
-  ReadLock lock(m_mutex);
+  ScopedLock lock(m_mutex);
   return m_taskMap.size();
 }

@@ -73,7 +73,7 @@ def build (bld):
         features = ["cxx"],
         source = bld.path.ant_glob(['scheduler/**/*.cc']),
         use = 'BOOST BOOST_THREAD LIBEVENT LIBEVENT_PTHREADS LOG4CXX',
-        includes = "scheduler",
+        includes = "scheduler src",
         )
 
     libccnx = bld (

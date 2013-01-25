@@ -20,6 +20,7 @@
  */
 
 #include "ccnx-wrapper.h"
+#include "logging.h"
 #include "dispatcher.h"
 #include <boost/test/unit_test.hpp>
 #include <boost/make_shared.hpp>
@@ -31,6 +32,8 @@ using namespace Ccnx;
 using namespace std;
 using namespace boost;
 namespace fs = boost::filesystem;
+
+INIT_LOGGER ("Test.Dispatcher");
 
 BOOST_AUTO_TEST_SUITE(DispatcherTest)
 
@@ -50,35 +53,35 @@ void checkRoots(const HashPtr &root1, const HashPtr &root2)
 
 BOOST_AUTO_TEST_CASE(TestDispatcher)
 {
-  fs::path dir1("test-white-house");
-  fs::path dir2("test-black-house");
+  INIT_LOGGERS ();
 
-  string user1 = "/obama";
+  fs::path dir1("./TestDispatcher/test-white-house");
+  fs::path dir2("./TestDispatcher/test-black-house");
+
+  string user1 = "/obamaa";
   string user2 = "/romney";
 
   string folder = "who-is-president";
 
   CcnxWrapperPtr ccnx1 = make_shared<CcnxWrapper>();
-  usleep(1000);
+  usleep(100);
   CcnxWrapperPtr ccnx2 = make_shared<CcnxWrapper>();
-  usleep(1000);
+  usleep(100);
 
   cleanDir(dir1);
   cleanDir(dir2);
 
-  fs::create_directory(dir1);
-  fs::create_directory(dir2);
-
   Dispatcher d1(user1, folder, dir1, ccnx1, 2, false);
-  usleep(1000);
+  usleep(100);
   Dispatcher d2(user2, folder, dir2, ccnx2, 2, false);
 
-  sleep(1);
+  usleep(1000000);
 
+  _LOG_DEBUG ("checking obama vs romney");
   checkRoots(d1.SyncRoot(), d2.SyncRoot());
 
   fs::path filename("a_letter_to_romney.txt");
-  string words = "I'm the new socialist President. You are not.";
+  string words = "I'm the new socialist President. You are not!";
 
   fs::path abf = dir1 / filename;
 
@@ -98,8 +101,8 @@ BOOST_AUTO_TEST_CASE(TestDispatcher)
   HashPtr fileHash2 = Hash::FromFileContent(ef);
   BOOST_CHECK_EQUAL(*fileHash1, *fileHash2);
 
-  cleanDir(dir1);
-  cleanDir(dir2);
+  // cleanDir(dir1);
+  // cleanDir(dir2);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

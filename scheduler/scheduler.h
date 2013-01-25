@@ -68,7 +68,7 @@ public:
   static TaskPtr
   schedulePeriodicTask (SchedulerPtr scheduler, IntervalGeneratorPtr delayGenerator,
                         const Task::Callback &callback, const Task::Tag &tag);
-  
+
   // if task with the same tag exists, the task is not added and return false
   virtual bool
   addTask(TaskPtr task);
@@ -76,7 +76,7 @@ public:
   // delete task by task->tag, regardless of whether it's invoked or not
   virtual void
   deleteTask(TaskPtr task);
-  
+
   // delete task by tag, regardless of whether it's invoked or not
   // if no task is found, no effect
   virtual void
@@ -121,11 +121,11 @@ protected:
   typedef std::map<Task::Tag, TaskPtr> TaskMap;
   typedef std::map<Task::Tag, TaskPtr>::iterator TaskMapIt;
   typedef boost::shared_mutex Mutex;
-  typedef boost::unique_lock<Mutex> WriteLock;
-  typedef boost::shared_lock<Mutex> ReadLock;
+  typedef boost::unique_lock<Mutex> ScopedLock;
+
   TaskMap m_taskMap;
   Mutex m_mutex;
-  bool m_running;
+  volatile bool m_running;
   event_base *m_base;
   boost::thread m_thread;
 };

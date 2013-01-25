@@ -23,6 +23,9 @@
 #include <boost/make_shared.hpp>
 #include <boost/ref.hpp>
 #include <boost/throw_exception.hpp>
+#include "logging.h"
+
+INIT_LOGGER ("Fetch.Manager");
 
 using namespace boost;
 using namespace std;

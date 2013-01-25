@@ -72,10 +72,17 @@ Dispatcher::Dispatcher(const std::string &localUserName
   {
     Ccnx::CcnxDiscovery::registerCallback (TaggedFunction (bind (&Dispatcher::Did_LocalPrefix_Updated, this, _1), "dispatcher"));
   }
+
+  m_executor.start ();
 }
 
 Dispatcher::~Dispatcher()
 {
+  // _LOG_DEBUG ("Enter destructor of dispatcher");
+  m_executor.shutdown ();
+
+  // _LOG_DEBUG (">>");
+
   if (m_enablePrefixDiscovery)
   {
     Ccnx::CcnxDiscovery::deregisterCallback (TaggedFunction (bind (&Dispatcher::Did_LocalPrefix_Updated, this, _1), "dispatcher"));
@@ -198,14 +205,20 @@ Dispatcher::Did_LocalFile_Delete_Execute (filesystem::path relativeFilePath)
  */
 
 void
-Dispatcher::Did_SyncLog_StateChange (const SyncStateMsgPtr &stateMsg)
+Dispatcher::Did_SyncLog_StateChange (SyncStateMsgPtr stateMsg)
+{
+  m_executor.execute (bind (&Dispatcher::Did_SyncLog_StateChange_Execute, this, stateMsg));
+}
+
+void
+Dispatcher::Did_SyncLog_StateChange_Execute (SyncStateMsgPtr stateMsg)
 {
   int size = stateMsg->state_size();
   int index = 0;
   // iterate and fetch the actions
   while (index < size)
   {
-    SyncState state = stateMsg->state(index);
+    SyncState state = stateMsg->state (index);
     if (state.has_old_seq() && state.has_seq())
     {
       uint64_t oldSeq = state.old_seq();
@@ -221,6 +234,7 @@ Dispatcher::Did_SyncLog_StateChange (const SyncStateMsgPtr &stateMsg)
     }
   }
 }
+
 
 void
 Dispatcher::Did_FetchManager_ActionFetch (const Ccnx::Name &deviceName, const Ccnx::Name &actionName, uint32_t seqno, Ccnx::PcoPtr actionPco)

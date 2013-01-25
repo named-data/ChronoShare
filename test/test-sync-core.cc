@@ -10,7 +10,7 @@ using namespace Ccnx;
 using namespace boost;
 using namespace boost::filesystem;
 
-INIT_LOGGER("Test.Sync.Core");
+INIT_LOGGER("Test.SyncCore");
 
 BOOST_AUTO_TEST_SUITE(SyncCoreTests)
 
@@ -64,7 +64,8 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   SyncCore *core1 = new SyncCore(log1, user1, loc1, syncPrefix, bind(callback, _1), c1);
   usleep(10000);
   SyncCore *core2 = new SyncCore(log2, user2, loc2, syncPrefix, bind(callback, _1), c2);
-  usleep(1000000);
+
+  sleep(1);
   checkRoots(core1->root(), core2->root());
 
   // _LOG_TRACE ("\n\n\n\n\n\n----------\n");

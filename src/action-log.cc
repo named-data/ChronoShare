@@ -256,7 +256,7 @@ ActionLog::AddLocalActionUpdate (const std::string &filename,
   Bytes actionData = m_ccnx->createContentObject (actionName, item_msg.c_str (), item_msg.size ());
   CcnxCharbufPtr namePtr = actionName.toCcnxCharbuf ();
 
-  _LOG_DEBUG (" >>>>>>> " << namePtr->buf () << " " << namePtr->length ());
+  // _LOG_DEBUG (" >>>>>>> " << Name (namePtr->buf () << " " << namePtr->length ());
 
   sqlite3_bind_blob (stmt, 15, namePtr->buf (), namePtr->length (), SQLITE_TRANSIENT);
   sqlite3_bind_blob (stmt, 16, head (actionData), actionData.size (), SQLITE_TRANSIENT);

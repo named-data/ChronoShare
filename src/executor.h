@@ -55,6 +55,12 @@ public:
   int
   jobQueueSize();
 
+  void
+  start ();
+
+  void
+  shutdown ();
+
 private:
   void
   run();
@@ -75,5 +81,6 @@ private:
   ThreadGroup m_group;
 
   volatile bool m_needStop;
+  int m_poolSize;
 };
 #endif // EXECUTOR_H

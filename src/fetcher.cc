@@ -94,9 +94,7 @@ Fetcher::FillPipeline ()
       if (m_outOfOrderRecvSeqNo.find (m_minSendSeqNo+1) != m_outOfOrderRecvSeqNo.end ())
         continue;
 
-      Name x = Name(m_forwardingHint)(m_name)(m_minSendSeqNo+1);
-      int xsize = x.size();
-      //_LOG_DEBUG (" >>> i " << x.getPartialName(0, xsize - 2) << ", seq = " << (m_minSendSeqNo + 1 ));
+      _LOG_DEBUG (" >>> i " << Name (m_forwardingHint)(m_name) << ", seq = " << (m_minSendSeqNo + 1 ));
 
       // cout << ">>> " << m_minSendSeqNo+1 << endl;
       m_ccnx->sendInterest (Name (m_forwardingHint)(m_name)(m_minSendSeqNo+1),
@@ -111,6 +109,8 @@ Fetcher::FillPipeline ()
 void
 Fetcher::OnData (uint64_t seqno, const Ccnx::Name &name, PcoPtr data)
 {
+  _LOG_DEBUG (" <<< d " << name.getPartialName (0, name.size () - 1) << ", seq = " << seqno);
+
   if (m_forwardingHint == Name ())
   {
     // invoke callback

@@ -56,7 +56,7 @@ SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPr
 
 SyncCore::~SyncCore()
 {
-  m_scheduler->shutdown ();
+  // m_scheduler->shutdown ();
   // need to "deregister" closures
 }
 
@@ -86,9 +86,9 @@ SyncCore::localStateChanged()
   BytesPtr syncData = serializeMsg (*msg);
 
   m_ccnx->publishData(syncName, *syncData, FRESHNESS);
-  _LOG_DEBUG (m_log->GetLocalName () << " localStateChanged ");
-  _LOG_TRACE (m_log->GetLocalName () << " publishes: " << *oldHash);
-  _LOG_TRACE (msg);
+  _LOG_DEBUG ("[" << m_log->GetLocalName () << "] localStateChanged ");
+  _LOG_TRACE ("[" << m_log->GetLocalName () << "] publishes: " << *oldHash);
+  // _LOG_TRACE (msg);
 
   // no hurry in sending out new Sync Interest; if others send the new Sync Interest first, no problem, we know the new root hash already;
   // this is trying to avoid the situation that the order of SyncData and new Sync Interest gets reversed at receivers
@@ -119,6 +119,8 @@ SyncCore::handleInterest(const Name &name)
 void
 SyncCore::handleRecoverInterest(const Name &name)
 {
+  _LOG_DEBUG ("[" << m_log->GetLocalName () << "] <<<<< RECOVER Interest with name " << name);
+
   Bytes hashBytes = name.getComp(name.size() - 1);
   // this is the hash unkonwn to the sender of the interest
   Hash hash(head(hashBytes), hashBytes.size());
@@ -129,18 +131,20 @@ SyncCore::handleRecoverInterest(const Name &name)
 
     BytesPtr syncData = serializeMsg (*msg);
     m_ccnx->publishData(name, *syncData, FRESHNESS);
-    _LOG_TRACE (m_log->GetLocalName () << " publishes " << hash);
-    _LOG_TRACE (msg);
-      }
-      else
-      {
-    // we don't recognize this hash, can not help
+    _LOG_TRACE ("[" << m_log->GetLocalName () << "] publishes " << hash);
+    // _LOG_TRACE (msg);
   }
+  else
+    {
+      // we don't recognize this hash, can not help
+    }
 }
 
 void
 SyncCore::handleSyncInterest(const Name &name)
 {
+  _LOG_DEBUG ("[" << m_log->GetLocalName () << "] <<<<< SYNC Interest with name " << name);
+
   Bytes hashBytes = name.getComp(name.size() - 1);
   HashPtr hash(new Hash(head(hashBytes), hashBytes.size()));
   if (*hash == *m_rootHash)
@@ -194,6 +198,7 @@ SyncCore::handleRecoverInterestTimeout(const Name &name)
 void
 SyncCore::handleRecoverData(const Name &name, PcoPtr content)
 {
+  _LOG_DEBUG ("[" << m_log->GetLocalName () << "] <<<<< RECOVER DATA with name: " << name);
   //cout << "handle recover data" << end;
   handleStateData(*content->contentPtr ());
   sendSyncInterest();
@@ -202,6 +207,8 @@ SyncCore::handleRecoverData(const Name &name, PcoPtr content)
 void
 SyncCore::handleSyncData(const Name &name, PcoPtr content)
 {
+  _LOG_DEBUG ("[" << m_log->GetLocalName () << "] <<<<< SYNC DATA with name: " << name);
+
   // suppress recover in interest - data out of order case
   handleStateData(*content->contentPtr ());
 
@@ -262,7 +269,7 @@ SyncCore::handleStateData(const Bytes &content)
 
   if (diff->state_size() > 0)
   {
-    m_stateMsgCallback(diff);
+    m_stateMsgCallback (diff);
   }
 }
 
@@ -271,11 +278,11 @@ SyncCore::sendSyncInterest()
 {
   Name syncInterest = Name (m_syncPrefix)(m_rootHash->GetHash(), m_rootHash->GetHashBytes());
 
+  _LOG_DEBUG ("[" << m_log->GetLocalName () << "] >>> SYNC Interest for " << *m_rootHash);
+
   m_ccnx->sendInterest(syncInterest,
                          Closure (boost::bind(&SyncCore::handleSyncData, this, _1, _2),
                                   boost::bind(&SyncCore::handleSyncInterestTimeout, this, _1)));
-
-  _LOG_TRACE (m_log->GetLocalName () << " send SYNC interest: " << *m_rootHash);
 }
 
 void
@@ -291,11 +298,12 @@ SyncCore::recover(const HashPtr &hash)
     // append the unknown hash
     Name recoverInterest = Name (m_syncPrefix)(RECOVER)(bytes);
 
+    _LOG_DEBUG ("[" << m_log->GetLocalName () << "] >>> RECOVER Interests for " << *hash);
+
     m_ccnx->sendInterest(recoverInterest,
                          Closure (boost::bind(&SyncCore::handleRecoverData, this, _1, _2),
                                   boost::bind(&SyncCore::handleRecoverInterestTimeout, this, _1)));
 
-    _LOG_TRACE (m_log->GetLocalName () << " send RECOVER Interest: " << *hash);
   }
   else
   {

@@ -31,7 +31,7 @@
 class SyncCore
 {
 public:
-  typedef boost::function<void (const SyncStateMsgPtr & stateMsg) > StateMsgCallback;
+  typedef boost::function<void (SyncStateMsgPtr stateMsg) > StateMsgCallback;
 
   static const int FRESHNESS = 2; // seconds
   static const string RECOVER;
