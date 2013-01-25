@@ -59,7 +59,7 @@ Dispatcher::Dispatcher(const std::string &localUserName
 
   m_server = new ContentServer(m_ccnx, m_actionLog, rootDir, m_localUserName, m_sharedFolder);
   m_server->registerPrefix(Name ("/"));
-  m_server->registerPrefix(syncPrefix);
+  m_server->registerPrefix(Name(BROADCAST_DOMAIN));
 
   m_core = new SyncCore (m_syncLog, localUserName, Name ("/"), syncPrefix,
                          bind(&Dispatcher::Did_SyncLog_StateChange, this, _1), ccnx);
@@ -69,7 +69,9 @@ Dispatcher::Dispatcher(const std::string &localUserName
 
   if (m_enablePrefixDiscovery)
   {
-    Ccnx::CcnxDiscovery::registerCallback (TaggedFunction (bind (&Dispatcher::Did_LocalPrefix_Updated, this, _1), "dispatcher"));
+    _LOG_DEBUG("registering prefix discovery in Dispatcher");
+    string tag = "dispatcher" + m_localUserName.toString();
+    Ccnx::CcnxDiscovery::registerCallback (TaggedFunction (bind (&Dispatcher::Did_LocalPrefix_Updated, this, _1), tag));
   }
 
   m_executor.start ();
@@ -84,7 +86,9 @@ Dispatcher::~Dispatcher()
 
   if (m_enablePrefixDiscovery)
   {
-    Ccnx::CcnxDiscovery::deregisterCallback (TaggedFunction (bind (&Dispatcher::Did_LocalPrefix_Updated, this, _1), "dispatcher"));
+    _LOG_DEBUG("deregistering prefix discovery in Dispatcher");
+    string tag = "dispatcher" + m_localUserName.toString();
+    Ccnx::CcnxDiscovery::deregisterCallback (TaggedFunction (bind (&Dispatcher::Did_LocalPrefix_Updated, this, _1), tag));
   }
 
   if (m_core != NULL)
@@ -106,7 +110,7 @@ Dispatcher::Did_LocalPrefix_Updated (const Ccnx::Name &prefix)
   Name oldLocalPrefix = m_syncLog->LookupLocalLocator ();
   _LOG_DEBUG ("LocalPrefix changed from: " << oldLocalPrefix << " to: " << prefix);
 
-  m_server->deregisterPrefix(prefix);
+  m_server->registerPrefix(prefix);
   m_syncLog->UpdateLocalLocator (prefix);
   m_server->deregisterPrefix(oldLocalPrefix);
 }

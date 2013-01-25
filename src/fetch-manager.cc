@@ -31,6 +31,7 @@ using namespace boost;
 using namespace std;
 using namespace Ccnx;
 
+static const string BROADCAST_DOMAIN = "/ndn/broadcast/chronoshare";
 //The disposer object function
 struct fetcher_disposer { void operator() (Fetcher *delete_this) { delete delete_this; } };
 
@@ -112,7 +113,7 @@ FetchManager::ScheduleFetches ()
 void
 FetchManager::DidNoDataTimeout (Fetcher &fetcher)
 {
-  fetcher.SetForwardingHint (Ccnx::Name ("/ndn/broadcast"));
+  fetcher.SetForwardingHint (Ccnx::Name (BROADCAST_DOMAIN));
   {
     unique_lock<mutex> lock (m_parellelFetchMutex);
     m_currentParallelFetches --;
