@@ -21,21 +21,48 @@
 #include "chronosharegui.h"
 #include "logging.h"
 
-
-
 INIT_LOGGER ("Gui");
 
 ChronoShareGui::ChronoShareGui(QWidget *parent)
-  : QWidget(parent)
-  , m_watcher (0)
-  // , m_settingsFilePath(QDir::homePath() + "/.chronoshare")
+  : QDialog(parent)
 {
+
+  setWindowTitle("Preferences");
+
+  labelUsername = new QLabel("Username");
+  labelSharedFolder = new QLabel("Shared Folder Name");
+  labelSharedFolderPath = new QLabel("Shared Folder Path");
+  editUsername = new QLineEdit();
+  editSharedFolder = new QLineEdit();
+  editSharedFolderPath = new QLineEdit();
+  editSharedFolderPath->setReadOnly(true);
+  QPalette pal = editSharedFolderPath->palette();
+  pal.setColor(QPalette::Active, QPalette::Base, pal.color(QPalette::Disabled, QPalette::Base));
+  editSharedFolderPath->setPalette(pal);
+  button = new QPushButton("Submit");
+  label = new QLabel();
+
+  connect(button, SIGNAL(clicked()), this, SLOT(changeSettings()));
+
+  mainLayout = new QVBoxLayout; //vertically
+  mainLayout->addWidget(labelUsername);
+  mainLayout->addWidget(editUsername);
+  mainLayout->addWidget(labelSharedFolder);
+  mainLayout->addWidget(editSharedFolder);
+  mainLayout->addWidget(labelSharedFolderPath);
+  mainLayout->addWidget(editSharedFolderPath);
+  mainLayout->addWidget(button);
+  mainLayout->addWidget(label);
+  setLayout(mainLayout);
+
   // load settings
   if(!loadSettings())
     {
       // prompt user to choose folder
-      openMessageBox("First Time Setup", "Please select your shared folder location.");
+      openMessageBox("First Time Setup", "Please enter a username, shared folder name and choose the shared folder path on your local filesystem.");
+      viewSettings();
       openFileDialog();
+      viewSettings();
     }
 
   // create actions that result from clicking a menu option
@@ -54,15 +81,14 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
   //            const std::string &sharedFolder, const boost::filesystem::path &rootDir,
   //            Ccnx::CcnxWrapperPtr ccnx, SchedulerPtr scheduler, int poolSize = 2);
 
+
+  // Alex: this **must** be here, otherwise m_dirPath will be uninitialized
   m_watcher = new FsWatcher (m_dirPath);
 }
 
 ChronoShareGui::~ChronoShareGui()
 {
-  if (!m_watcher)
-    {
-      delete m_watcher;
-    }
+  delete m_watcher; // stop filewatching ASAP
 
   // cleanup
   delete m_trayIcon;
@@ -71,6 +97,14 @@ ChronoShareGui::~ChronoShareGui()
   delete m_viewSettings;
   delete m_changeFolder;
   delete m_quitProgram;
+
+  delete labelUsername;
+  delete labelSharedFolder;
+  delete editUsername;
+  delete editSharedFolder;
+  delete button;
+  delete label;
+  delete mainLayout;
 }
 
 void ChronoShareGui::openMessageBox(QString title, QString text)
@@ -168,6 +202,22 @@ void ChronoShareGui::openSharedFolder()
   QProcess::execute("/usr/bin/osascript", scriptArgs);
 }
 
+void ChronoShareGui::changeSettings()
+{
+  if(!editUsername->text().isEmpty())
+    m_username = editUsername->text();
+  else
+    editUsername->setText(m_username);
+
+  if(!editSharedFolder->text().isEmpty())
+    m_sharedFolderName = editSharedFolder->text();
+  else
+    editSharedFolder->setText(m_sharedFolderName);
+
+  saveSettings();
+  this->hide();
+}
+
 void ChronoShareGui::openFileDialog()
 {
   // prompt user for new directory
@@ -176,13 +226,16 @@ void ChronoShareGui::openFileDialog()
   QFileInfo qFileInfo (tempPath);
 
   if(qFileInfo.isDir())
-    m_dirPath = tempPath;
+    {
+      m_dirPath = tempPath;
+      editSharedFolderPath->setText(m_dirPath);
+    }
   else
-    openMessageBox ("Error", "Not a valid folder, Ignoring.");
+    {
+      openMessageBox ("Error", "Not a valid folder, Ignoring.");
+    }
 
   _LOG_DEBUG ("Selected path: " << m_dirPath.toStdString ());
-
-  openMessageBox("Current Folder", "Current Shared Folder:\n" + m_dirPath, "You may change the folder by selecting \"change folder\" from the icon in the system tray.");
 
   // save settings
   saveSettings();
@@ -199,13 +252,13 @@ void ChronoShareGui::trayIconClicked (QSystemTrayIcon::ActivationReason reason)
 
 void ChronoShareGui::viewSettings()
 {
-  // simple for now
-  openMessageBox("Chronoshare Settings", "CurrentFolder:\n" + m_dirPath);
+  //simple for now
+  this->show();
 }
 
 bool ChronoShareGui::loadSettings()
 {
-  bool successful = false;
+  bool successful = true;
 
   // Load Settings
   // QSettings settings(m_settingsFilePath, QSettings::NativeFormat);
@@ -213,18 +266,40 @@ bool ChronoShareGui::loadSettings()
 
   // _LOG_DEBUG (lexical_cast<string> (settings.allKeys()));
 
-  if(settings.contains("dirPath"))
+  if(settings.contains("username"))
     {
-      m_dirPath = settings.value("dirPath", QDir::homePath()).toString();
-      successful = true;
+      m_username = settings.value("username", "admin").toString();
     }
   else
     {
-      m_dirPath = QDir::homePath();
       successful = false;
     }
 
-  _LOG_DEBUG ("Found configured path: " << (successful? m_dirPath.toStdString () : std::string("no")));
+  editUsername->setText(m_username);
+
+  if(settings.contains("sharedfoldername"))
+    {
+      m_sharedFolderName = settings.value("sharedfoldername", "shared").toString();
+    }
+  else
+    {
+      successful = false;
+    }
+
+  editSharedFolder->setText(m_sharedFolderName);
+
+  if(settings.contains("dirPath"))
+    {
+      m_dirPath = settings.value("dirPath", QDir::homePath()).toString();
+    }
+  else
+    {
+      successful = false;
+    }
+
+  editSharedFolderPath->setText(m_dirPath);
+
+  _LOG_DEBUG ("Found configured path: " << (successful ? m_dirPath.toStdString () : std::string("no")));
 
   return successful;
 }
@@ -234,12 +309,16 @@ void ChronoShareGui::saveSettings()
   // Save Settings
   // QSettings settings(m_settingsFilePath, QSettings::NativeFormat);
   QSettings settings (QSettings::NativeFormat, QSettings::UserScope, "irl.cs.ucla.edu", "ChronoShare");
+
   settings.setValue("dirPath", m_dirPath);
+  settings.setValue("username", m_username);
+  settings.setValue("sharedfoldername", m_sharedFolderName);
 }
 
 void ChronoShareGui::closeEvent(QCloseEvent* event)
 {
   _LOG_DEBUG ("Close Event")
+    this->hide();
   event->ignore(); // don't let the event propagate to the base class
 }
 

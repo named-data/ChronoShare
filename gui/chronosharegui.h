@@ -21,6 +21,7 @@
 #ifndef CHRONOSHAREGUI_H
 #define CHRONOSHAREGUI_H
 
+#include <QtGui>
 #include <QWidget>
 #include <QSystemTrayIcon>
 #include <QMenu>
@@ -35,7 +36,7 @@
 
 #include "fs-watcher.h"
 
-class ChronoShareGui : public QWidget
+class ChronoShareGui : public QDialog
 {
   Q_OBJECT
 
@@ -58,6 +59,9 @@ private slots:
 
   // view chronoshare settings
   void viewSettings();
+
+  // change chronoshare settings
+  void changeSettings();
 
 private:
   // create actions that result from clicking a menu option
@@ -94,8 +98,21 @@ private:
   QAction* m_quitProgram; // quit program action
 
   QString m_dirPath; // shared directory
+  QString m_username; // username
+  QString m_sharedFolderName; // shared folder name
 
-  FsWatcher *m_watcher;
+  FsWatcher* m_watcher;
+
+  QLabel* labelUsername;
+  QPushButton* button;
+  QLabel* labelSharedFolder;
+  QLabel* labelSharedFolderPath;
+  QLineEdit* editUsername;
+  QLineEdit* editSharedFolder;
+  QLineEdit* editSharedFolderPath;
+  QLabel *label;
+  QVBoxLayout *mainLayout;
+
   // QString m_settingsFilePath; // settings file path
   // QString m_settings;
 };
