@@ -95,7 +95,7 @@ SyncCore::localStateChanged()
                                   bind(&SyncCore::sendSyncInterest, this),
                                   lexical_cast<string> (*m_rootHash));
 
-  sendSyncInterest();
+  //sendSyncInterest();
 }
 
 void
