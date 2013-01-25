@@ -254,8 +254,10 @@ Dispatcher::Did_FetchManager_ActionFetch (const Ccnx::Name &deviceName, const Cc
       if (m_objectDbMap.find (hash) == m_objectDbMap.end ())
         {
           _LOG_DEBUG ("create ObjectDb for " << hash);
-          m_objectDbMap [hash] = make_shared<ObjectDb> (m_rootDir, lexical_cast<string> (hash));
+          m_objectDbMap [hash] = make_shared<ObjectDb> (m_rootDir / ".chronoshare", lexical_cast<string> (hash));
         }
+
+      _LOG_DEBUG ("dafaq: " << (m_objectDbMap.find (hash) == m_objectDbMap.end ()));
 
       m_fileFetcher->Enqueue (deviceName, fileNameBase,
                               bind (&Dispatcher::Did_FetchManager_FileSegmentFetch, this, _1, _2, _3, _4),
@@ -325,6 +327,16 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
   const Bytes &hashBytes = fileBaseName.getCompFromBack (0);
   Hash hash (head (hashBytes), hashBytes.size ());
 
+  if (m_objectDbMap.find (hash) != m_objectDbMap.end())
+  {
+    // remove the db handle
+    m_objectDbMap.erase (hash); // to commit write
+  }
+  else
+  {
+    _LOG_ERROR ("no db available for this file: " << hash);
+  }
+
   FileItemsPtr filesToAssemble = m_actionLog->LookupFilesForHash (hash);
 
   for (FileItems::iterator file = filesToAssemble->begin ();
@@ -337,14 +349,4 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
       last_write_time (filePath, file->mtime ());
       permissions (filePath, static_cast<filesystem::perms> (file->mode ()));
     }
-
-  if (m_objectDbMap.find (hash) != m_objectDbMap.end())
-  {
-    // remove the db handle
-    m_objectDbMap.erase (hash);
-  }
-  else
-  {
-    _LOG_ERROR ("no db available for this file: " << hash);
-  }
 }

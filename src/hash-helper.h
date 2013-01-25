@@ -113,11 +113,16 @@ public:
 
     for (int i = 0; i < m_length; i++)
       {
+        if (m_buf [i] < otherHash.m_buf [i])
+          return true;
+
         if (m_buf [i] > otherHash.m_buf [i])
           return false;
+
+        // if equal, continue
       }
 
-    return true;
+    return false;
   }
 
   const void *

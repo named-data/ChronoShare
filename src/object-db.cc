@@ -50,6 +50,8 @@ ObjectDb::ObjectDb (const fs::path &folder, const std::string &hash)
   fs::path actualFolder = folder / "objects" / hash.substr (0, 2);
   fs::create_directories (actualFolder);
 
+  _LOG_DEBUG ("Open " << (actualFolder / hash.substr (2, hash.size () - 2)));
+
   int res = sqlite3_open((actualFolder / hash.substr (2, hash.size () - 2)).c_str (), &m_db);
   if (res != SQLITE_OK)
     {
@@ -65,9 +67,11 @@ ObjectDb::ObjectDb (const fs::path &folder, const std::string &hash)
   res = sqlite3_exec (m_db, INIT_DATABASE.c_str (), NULL, NULL, &errmsg);
   if (res != SQLITE_OK && errmsg != 0)
     {
-      // std::cerr << "DEBUG: " << errmsg << std::endl;
+      _LOG_DEBUG (errmsg);
       sqlite3_free (errmsg);
     }
+
+  // _LOG_DEBUG ("open db");
 
   willStartSave ();
 }
@@ -114,6 +118,7 @@ ObjectDb::~ObjectDb ()
 {
   didStopSave ();
 
+  // _LOG_DEBUG ("close db");
   int res = sqlite3_close (m_db);
   if (res != SQLITE_OK)
     {
@@ -137,6 +142,7 @@ ObjectDb::saveContentObject (const Ccnx::Name &deviceName, sqlite3_int64 segment
   sqlite3_bind_blob (stmt, 3, &data[0], data.size (), SQLITE_STATIC);
 
   sqlite3_step (stmt);
+  _LOG_DEBUG ("After saving object: " << sqlite3_errmsg (m_db));
   sqlite3_finalize (stmt);
 }
 
@@ -188,10 +194,12 @@ void
 ObjectDb::willStartSave ()
 {
   sqlite3_exec (m_db, "BEGIN TRANSACTION;", 0,0,0);
+  // _LOG_DEBUG ("Open transaction: " << sqlite3_errmsg (m_db));
 }
 
 void
 ObjectDb::didStopSave ()
 {
   sqlite3_exec (m_db, "END TRANSACTION;", 0,0,0);
+  // _LOG_DEBUG ("Close transaction: " << sqlite3_errmsg (m_db));
 }
