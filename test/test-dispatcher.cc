@@ -71,9 +71,9 @@ BOOST_AUTO_TEST_CASE(TestDispatcher)
   cleanDir(dir1);
   cleanDir(dir2);
 
-  Dispatcher d1(user1, folder, dir1, ccnx1, 2, false);
+  Dispatcher d1(user1, folder, dir1, ccnx1);
   usleep(100);
-  Dispatcher d2(user2, folder, dir2, ccnx2, 2, false);
+  Dispatcher d2(user2, folder, dir2, ccnx2);
 
   usleep(1000000);
 
@@ -87,7 +87,10 @@ BOOST_AUTO_TEST_CASE(TestDispatcher)
 
   ofstream ofs;
   ofs.open(abf.string().c_str());
-  ofs << words;
+  for (int i = 0; i < 1000; i ++)
+  {
+    ofs << words;
+  }
   ofs.close();
 
   d1.Did_LocalFile_AddOrModify(filename);

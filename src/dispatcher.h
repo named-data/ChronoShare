@@ -50,7 +50,6 @@ public:
              , const std::string &sharedFolder
              , const boost::filesystem::path &rootDir
              , Ccnx::CcnxWrapperPtr ccnx
-             , int poolSize = 2
              , bool enablePrefixDiscovery = true
              );
   ~Dispatcher();

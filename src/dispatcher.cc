@@ -38,13 +38,12 @@ Dispatcher::Dispatcher(const std::string &localUserName
                        , const std::string &sharedFolder
                        , const filesystem::path &rootDir
                        , Ccnx::CcnxWrapperPtr ccnx
-                       , int poolSize
                        , bool enablePrefixDiscovery
                        )
            : m_ccnx(ccnx)
            , m_core(NULL)
            , m_rootDir(rootDir)
-           , m_executor(1/*poolSize*/) // creates problems with file assembly. need to ensure somehow that FinishExectute is called after all Segment_Execute finished
+           , m_executor(1) // creates problems with file assembly. need to ensure somehow that FinishExectute is called after all Segment_Execute finished
            , m_objectManager(ccnx, rootDir)
            , m_localUserName(localUserName)
            , m_sharedFolder(sharedFolder)
