@@ -67,7 +67,7 @@ ObjectDb::ObjectDb (const fs::path &folder, const std::string &hash)
   res = sqlite3_exec (m_db, INIT_DATABASE.c_str (), NULL, NULL, &errmsg);
   if (res != SQLITE_OK && errmsg != 0)
     {
-      _LOG_DEBUG (errmsg);
+      _LOG_DEBUG ("Init error: " << errmsg);
       sqlite3_free (errmsg);
     }
 

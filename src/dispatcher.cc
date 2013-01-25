@@ -44,7 +44,7 @@ Dispatcher::Dispatcher(const std::string &localUserName
            : m_ccnx(ccnx)
            , m_core(NULL)
            , m_rootDir(rootDir)
-           , m_executor(poolSize)
+           , m_executor(1/*poolSize*/) // creates problems with file assembly. need to ensure somehow that FinishExectute is called after all Segment_Execute finished
            , m_objectManager(ccnx, rootDir)
            , m_localUserName(localUserName)
            , m_sharedFolder(sharedFolder)
@@ -257,8 +257,6 @@ Dispatcher::Did_FetchManager_ActionFetch (const Ccnx::Name &deviceName, const Cc
           m_objectDbMap [hash] = make_shared<ObjectDb> (m_rootDir / ".chronoshare", lexical_cast<string> (hash));
         }
 
-      _LOG_DEBUG ("dafaq: " << (m_objectDbMap.find (hash) == m_objectDbMap.end ()));
-
       m_fileFetcher->Enqueue (deviceName, fileNameBase,
                               bind (&Dispatcher::Did_FetchManager_FileSegmentFetch, this, _1, _2, _3, _4),
                               bind (&Dispatcher::Did_FetchManager_FileFetchComplete, this, _1, _2),
@@ -300,7 +298,7 @@ Dispatcher::Did_FetchManager_FileSegmentFetch_Execute (Ccnx::Name deviceName, Cc
 
   _LOG_DEBUG ("Received segment deviceName: " << deviceName << ", segmentBaseName: " << fileSegmentBaseName << ", segment: " << segment);
 
-  _LOG_DEBUG ("Looking up objectdb for " << hash);
+  // _LOG_DEBUG ("Looking up objectdb for " << hash);
 
   map<Hash, ObjectDbPtr>::iterator db = m_objectDbMap.find (hash);
   if (db != m_objectDbMap.end())
@@ -311,6 +309,9 @@ Dispatcher::Did_FetchManager_FileSegmentFetch_Execute (Ccnx::Name deviceName, Cc
   {
     _LOG_ERROR ("no db available for this content object: " << fileSegmentBaseName << ", size: " << fileSegmentPco->buf ().size());
   }
+
+  // ObjectDb objectDb (m_rootDir / ".chronoshare", lexical_cast<string> (hash));
+  // objectDb.saveContentObject(deviceName, segment, fileSegmentPco->buf ());
 }
 
 void
