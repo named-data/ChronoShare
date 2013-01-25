@@ -216,7 +216,7 @@ Dispatcher::Did_SyncLog_StateChange_Execute (SyncStateMsgPtr stateMsg)
   int size = stateMsg->state_size();
   int index = 0;
   // iterate and fetch the actions
-  while (index < size)
+  for (; index < size; index++)
   {
     SyncState state = stateMsg->state (index);
     if (state.has_old_seq() && state.has_seq())
