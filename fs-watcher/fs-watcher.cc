@@ -48,10 +48,12 @@ FsWatcher::FsWatcher (QString dirPath, QObject* parent)
   connect (m_watcher, SIGNAL (fileChanged (QString)),      this, SLOT (DidFileChanged (QString)));
 
   m_executor.execute (bind (&FsWatcher::ScanDirectory_Notify_Execute, this, m_dirPath));
+  m_executor.start ();
 }
 
 FsWatcher::~FsWatcher()
 {
+  m_executor.shutdown ();
   delete m_watcher;
 }
 
