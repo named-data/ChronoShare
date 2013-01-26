@@ -82,6 +82,14 @@ ObjectManager::localFileToObjects (const fs::path &file, const Ccnx::Name &devic
 
       segment ++;
     }
+  if (segment == 0) // handle empty files
+    {
+      Name name = Name (deviceName)("file")(fileHash->GetHash (), fileHash->GetHashBytes ())(0);
+      Bytes data = m_ccnx->createContentObject (name, 0, 0);
+      fileDb.saveContentObject (deviceName, 0, data);
+
+      segment ++;
+    }
 
   return make_tuple (fileHash, segment);
 }
