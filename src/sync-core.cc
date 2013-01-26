@@ -35,6 +35,9 @@ const string SyncCore::RECOVER = "RECOVER";
 const double SyncCore::WAIT = 0.05;
 const double SyncCore::RANDOM_PERCENT = 0.5;
 
+const std::string SYNC_INTEREST_TAG = "send-sync-interest";
+const std::string SYNC_INTEREST_TAG2 = "send-sync-interest2";
+
 using namespace boost;
 using namespace Ccnx;
 
@@ -55,10 +58,11 @@ SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPr
   m_log->UpdateLocalLocator (localPrefix);
 
   m_scheduler->start();
-  string tag = userName.toString() + "send-sync-interest";
+
   double interval = (m_syncInterestInterval > 0 && m_syncInterestInterval < 30.0) ? m_syncInterestInterval : 4.0;
-  m_sendSyncInterestTask = make_shared<PeriodicTask>(bind(&SyncCore::sendSyncInterest, this), tag, m_scheduler, make_shared<SimpleIntervalGenerator>(interval));
-  sendSyncInterest();
+  m_sendSyncInterestTask = make_shared<PeriodicTask>(bind(&SyncCore::sendSyncInterest, this), SYNC_INTEREST_TAG, m_scheduler, make_shared<SimpleIntervalGenerator>(interval));
+  // sendSyncInterest();
+  Scheduler::scheduleOneTimeTask (m_scheduler, 0.1, bind(&SyncCore::sendSyncInterest, this), SYNC_INTEREST_TAG2);
 }
 
 SyncCore::~SyncCore()
@@ -97,11 +101,12 @@ SyncCore::localStateChanged()
   _LOG_TRACE ("[" << m_log->GetLocalName () << "] publishes: " << oldHash->shortHash ());
   // _LOG_TRACE (msg);
 
+  m_scheduler->deleteTask (SYNC_INTEREST_TAG2);
   // no hurry in sending out new Sync Interest; if others send the new Sync Interest first, no problem, we know the new root hash already;
   // this is trying to avoid the situation that the order of SyncData and new Sync Interest gets reversed at receivers
   Scheduler::scheduleOneTimeTask (m_scheduler, 0.05,
                                   bind(&SyncCore::sendSyncInterest, this),
-                                  lexical_cast<string> (*m_rootHash));
+                                  SYNC_INTEREST_TAG2);
 
   //sendSyncInterest();
 }
@@ -214,7 +219,12 @@ SyncCore::handleRecoverData(const Name &name, PcoPtr content)
     {
       _LOG_ERROR ("Got recovery DATA with empty content");
     }
-  sendSyncInterest();
+
+  // sendSyncInterest();
+  m_scheduler->deleteTask (SYNC_INTEREST_TAG2);
+  Scheduler::scheduleOneTimeTask (m_scheduler, 0,
+                                  bind(&SyncCore::sendSyncInterest, this),
+                                  SYNC_INTEREST_TAG2);
 }
 
 void
@@ -233,7 +243,12 @@ SyncCore::handleSyncData(const Name &name, PcoPtr content)
     }
 
   // resume outstanding sync interest
-  sendSyncInterest();
+  // sendSyncInterest();
+
+  m_scheduler->deleteTask (SYNC_INTEREST_TAG2);
+  Scheduler::scheduleOneTimeTask (m_scheduler, 0,
+                                  bind(&SyncCore::sendSyncInterest, this),
+                                  SYNC_INTEREST_TAG2);
 }
 
 void
@@ -316,7 +331,7 @@ SyncCore::sendSyncInterest()
 }
 
 void
-SyncCore::recover(const HashPtr &hash)
+SyncCore::recover(HashPtr hash)
 {
   if (!(*hash == *m_rootHash) && m_log->LookupSyncLog(*hash) <= 0)
   {

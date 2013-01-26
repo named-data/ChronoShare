@@ -86,7 +86,7 @@ private:
   deregister(const Ccnx::Name &name);
 
   void
-  recover(const HashPtr &hash);
+  recover(HashPtr hash);
 
 private:
   void
