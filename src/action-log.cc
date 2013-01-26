@@ -323,7 +323,7 @@ ActionLog::AddLocalActionDelete (const std::string &filename)
 
 
   ActionItemPtr item = make_shared<ActionItem> ();
-  item->set_action (ActionItem::UPDATE);
+  item->set_action (ActionItem::DELETE);
   item->set_filename (filename);
   item->set_version (version);
   item->set_timestamp (action_time);
