@@ -34,6 +34,18 @@ using namespace boost;
 
 #define EVLOOP_NO_EXIT_ON_EMPTY 0x04
 
+static void
+dummyCallback(evutil_socket_t fd, short what, void *arg)
+{
+  // 1 year later, that was a long run for the app
+  // let's wait for another year
+  timeval tv;
+  tv.tv_sec = 365 * 24 * 3600;
+  tv.tv_usec = 0;
+  event *ev = *(event **)arg;
+  int res = evtimer_add(ev, &tv);
+}
+
 // IntervalGeneratorPtr
 // IntervalGenerator:: Null;
 
@@ -48,11 +60,26 @@ Scheduler::Scheduler()
   event_set_fatal_callback(errorCallback);
   evthread_use_pthreads();
   m_base = event_base_new();
+
+  // This is a hack to prevent event_base_loop from exiting;
+  // the flag EVLOOP_NO_EXIT_ON_EMPTY is somehow ignored, at least on Mac OS X
+  // it's going to be scheduled to 10 years later
+  timeval tv;
+  tv.tv_sec = 365 * 24 * 3600;
+  tv.tv_usec = 0;
+  m_ev = evtimer_new(m_base, dummyCallback, &m_ev);
+  int res = evtimer_add(m_ev, &tv);
+  if (res < 0)
+  {
+    _LOG_ERROR("heck");
+  }
 }
 
 Scheduler::~Scheduler()
 {
   shutdown ();
+  evtimer_del(m_ev);
+  event_free(m_ev);
   event_base_free(m_base);
 }
 
@@ -65,6 +92,10 @@ Scheduler::eventLoop()
     {
       _LOG_DEBUG ("scheduler loop break error");
     }
+    else
+    {
+      _LOG_DEBUG ("scheduler loop break normal");
+    }
 
     {
       ScopedLock lock(m_mutex);
@@ -74,6 +105,10 @@ Scheduler::eventLoop()
           break;
         }
     }
+
+    // just to prevent craziness in CPU usage which supposedly should not happen
+    // after adding the dummy event
+    usleep(1000);
   }
 }
 
