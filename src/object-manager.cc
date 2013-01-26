@@ -114,12 +114,15 @@ ObjectManager::objectsToLocalFile (/*in*/const Ccnx::Name &deviceName, /*in*/con
 
   sqlite3_int64 segment = 0;
   BytesPtr bytes = fileDb.fetchSegment (deviceName, 0);
-  while (bytes != BytesPtr())
+  while (bytes)
     {
       ParsedContentObject obj (*bytes);
       BytesPtr data = obj.contentPtr ();
 
-      off.write (reinterpret_cast<const char*> (head(*data)), data->size());
+      if (data)
+        {
+          off.write (reinterpret_cast<const char*> (head(*data)), data->size());
+        }
 
       segment ++;
       bytes = fileDb.fetchSegment (deviceName, segment);
