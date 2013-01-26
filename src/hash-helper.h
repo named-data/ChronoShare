@@ -137,6 +137,9 @@ public:
     return m_length;
   }
 
+  std::string
+  shortHash () const;
+
 private:
   unsigned char *m_buf;
   unsigned int m_length;

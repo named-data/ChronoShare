@@ -24,11 +24,12 @@
 #include <boost/assert.hpp>
 #include <boost/throw_exception.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/lexical_cast.hpp>
 #include <openssl/evp.h>
 #include <fstream>
 
-typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str; 
-typedef boost::error_info<struct tag_errmsg, int> errmsg_info_int; 
+typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;
+typedef boost::error_info<struct tag_errmsg, int> errmsg_info_int;
 
 #include <boost/archive/iterators/transform_width.hpp>
 #include <boost/iterator/transform_iterator.hpp>
@@ -80,7 +81,7 @@ struct hex_to_4_bit
       value = lookup_table [(unsigned)ch];
     if (value == -1)
       BOOST_THROW_EXCEPTION (Error::HashConversion () << errmsg_info_int ((int)ch));
-    
+
     return value;
   }
 };
@@ -103,6 +104,13 @@ operator << (std::ostream &os, const Hash &hash)
   return os;
 }
 
+std::string
+Hash::shortHash () const
+{
+  return lexical_cast<string> (*this).substr (0, 10);
+}
+
+
 unsigned char Hash::_origin = 0;
 HashPtr Hash::Origin(new Hash(&Hash::_origin, sizeof(unsigned char)));
 
@@ -110,7 +118,7 @@ HashPtr
 Hash::FromString (const std::string &hashInTextEncoding)
 {
   HashPtr retval = make_shared<Hash> (reinterpret_cast<void*> (0), 0);
-  
+
   if (hashInTextEncoding.size () == 0)
     {
       return retval;
@@ -123,7 +131,7 @@ Hash::FromString (const std::string &hashInTextEncoding)
     }
 
   retval->m_buf = new unsigned char [EVP_MAX_MD_SIZE];
-  
+
   unsigned char *end = copy (string_to_binary (hashInTextEncoding.begin ()),
                             string_to_binary (hashInTextEncoding.end ()),
                             retval->m_buf);
@@ -154,7 +162,7 @@ Hash::FromFileContent (const fs::path &filename)
 
   EVP_DigestFinal_ex (hash_context,
                       retval->m_buf, &retval->m_length);
-  
+
   EVP_MD_CTX_destroy (hash_context);
 
   return retval;

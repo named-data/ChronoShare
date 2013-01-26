@@ -87,7 +87,7 @@ SyncCore::localStateChanged()
 
   m_ccnx->publishData(syncName, *syncData, FRESHNESS);
   _LOG_DEBUG ("[" << m_log->GetLocalName () << "] localStateChanged ");
-  _LOG_TRACE ("[" << m_log->GetLocalName () << "] publishes: " << *oldHash);
+  _LOG_TRACE ("[" << m_log->GetLocalName () << "] publishes: " << oldHash->shortHash ());
   // _LOG_TRACE (msg);
 
   // no hurry in sending out new Sync Interest; if others send the new Sync Interest first, no problem, we know the new root hash already;
@@ -131,7 +131,7 @@ SyncCore::handleRecoverInterest(const Name &name)
 
     BytesPtr syncData = serializeMsg (*msg);
     m_ccnx->publishData(name, *syncData, FRESHNESS);
-    _LOG_TRACE ("[" << m_log->GetLocalName () << "] publishes " << hash);
+    _LOG_TRACE ("[" << m_log->GetLocalName () << "] publishes " << hash.shortHash ());
     // _LOG_TRACE (msg);
   }
   else
@@ -150,7 +150,7 @@ SyncCore::handleSyncInterest(const Name &name)
   if (*hash == *m_rootHash)
   {
     // we have the same hash; nothing needs to be done
-    _LOG_TRACE ("same as root hash: " << *hash);
+    _LOG_TRACE ("same as root hash: " << hash->shortHash ());
     return;
   }
   else if (m_log->LookupSyncLog(*hash) > 0)
@@ -161,14 +161,14 @@ SyncCore::handleSyncInterest(const Name &name)
 
     BytesPtr syncData = serializeMsg (*msg);
     m_ccnx->publishData(name, *syncData, FRESHNESS);
-    _LOG_TRACE (m_log->GetLocalName () << " publishes: " << *hash);
+    _LOG_TRACE (m_log->GetLocalName () << " publishes: " << hash->shortHash ());
     _LOG_TRACE (msg);
   }
   else
   {
     // we don't recognize the hash, send recover Interest if still don't know the hash after a randomized wait period
     double wait = m_recoverWaitGenerator->nextInterval();
-    _LOG_TRACE (m_log->GetLocalName () << ", rootHash: " << *m_rootHash << ", hash: " << *hash);
+    _LOG_TRACE (m_log->GetLocalName () << ", rootHash: " << *m_rootHash << ", hash: " << hash->shortHash ());
     _LOG_TRACE ("recover task scheduled after wait: " << wait);
 
     Scheduler::scheduleOneTimeTask (m_scheduler,
@@ -278,7 +278,7 @@ SyncCore::sendSyncInterest()
 {
   Name syncInterest = Name (m_syncPrefix)(m_rootHash->GetHash(), m_rootHash->GetHashBytes());
 
-  _LOG_DEBUG ("[" << m_log->GetLocalName () << "] >>> SYNC Interest for " << *m_rootHash);
+  _LOG_DEBUG ("[" << m_log->GetLocalName () << "] >>> SYNC Interest for " << m_rootHash->shortHash () << ": " << syncInterest);
 
   m_ccnx->sendInterest(syncInterest,
                          Closure (boost::bind(&SyncCore::handleSyncData, this, _1, _2),
@@ -290,7 +290,7 @@ SyncCore::recover(const HashPtr &hash)
 {
   if (!(*hash == *m_rootHash) && m_log->LookupSyncLog(*hash) <= 0)
   {
-    _LOG_TRACE (m_log->GetLocalName () << ", Recover for: " << *hash);
+    _LOG_TRACE (m_log->GetLocalName () << ", Recover for: " << hash->shortHash ());
     // unfortunately we still don't recognize this hash
     Bytes bytes;
     readRaw(bytes, (const unsigned char *)hash->GetHash(), hash->GetHashBytes());
@@ -298,7 +298,7 @@ SyncCore::recover(const HashPtr &hash)
     // append the unknown hash
     Name recoverInterest = Name (m_syncPrefix)(RECOVER)(bytes);
 
-    _LOG_DEBUG ("[" << m_log->GetLocalName () << "] >>> RECOVER Interests for " << *hash);
+    _LOG_DEBUG ("[" << m_log->GetLocalName () << "] >>> RECOVER Interests for " << hash->shortHash ());
 
     m_ccnx->sendInterest(recoverInterest,
                          Closure (boost::bind(&SyncCore::handleRecoverData, this, _1, _2),

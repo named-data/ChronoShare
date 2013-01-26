@@ -54,9 +54,12 @@ CcnxDiscovery::CcnxDiscovery()
               , m_localPrefix("/")
 {
   m_scheduler->start();
-  IntervalGeneratorPtr generator = boost::make_shared<SimpleIntervalGenerator>(INTERVAL);
-  TaskPtr task = boost::make_shared<PeriodicTask>(boost::bind(&CcnxDiscovery::poll, this), "Local-Prefix-Check", m_scheduler, generator);
-  m_scheduler->addTask(task);
+
+  Scheduler::scheduleOneTimeTask (m_scheduler, 0,
+                                  boost::bind(&CcnxDiscovery::poll, this), "Initial-Local-Prefix-Check");
+  Scheduler::schedulePeriodicTask (m_scheduler,
+                                   boost::make_shared<SimpleIntervalGenerator>(INTERVAL),
+                                   boost::bind(&CcnxDiscovery::poll, this), "Local-Prefix-Check");
 }
 
 CcnxDiscovery::~CcnxDiscovery()
