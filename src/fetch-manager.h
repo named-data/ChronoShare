@@ -79,7 +79,6 @@ private:
 private:
   Ccnx::CcnxWrapperPtr m_ccnx;
   Mapping m_mapping;
-  SchedulerPtr m_scheduler;
 
   uint32_t m_maxParallelFetches;
   uint32_t m_currentParallelFetches;
@@ -97,12 +96,6 @@ Ccnx::CcnxWrapperPtr
 FetchManager::GetCcnx ()
 {
   return m_ccnx;
-}
-
-SchedulerPtr
-FetchManager::GetScheduler ()
-{
-  return m_scheduler;
 }
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;
