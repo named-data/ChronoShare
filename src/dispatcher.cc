@@ -33,7 +33,7 @@ using namespace boost;
 INIT_LOGGER ("Dispatcher");
 
 static const string BROADCAST_DOMAIN = "/ndn/broadcast/chronoshare";
-const static double DEFAULT_SYNC_INTEREST_INTERVAL = 2.0;
+const static double DEFAULT_SYNC_INTEREST_INTERVAL = 10.0;
 
 Dispatcher::Dispatcher(const std::string &localUserName
                        , const std::string &sharedFolder
