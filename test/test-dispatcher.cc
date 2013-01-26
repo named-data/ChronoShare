@@ -71,9 +71,9 @@ BOOST_AUTO_TEST_CASE(TestDispatcher)
   cleanDir(dir1);
   cleanDir(dir2);
 
-  Dispatcher d1(user1, folder, dir1, ccnx1);
+  Dispatcher d1(user1, folder, dir1, ccnx1, false);
   usleep(100);
-  Dispatcher d2(user2, folder, dir2, ccnx2);
+  Dispatcher d2(user2, folder, dir2, ccnx2, false);
 
   usleep(14900000);
 

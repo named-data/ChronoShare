@@ -46,6 +46,9 @@ public:
 
 private:
   void
+  serve (Ccnx::Name forwardingHint, const Ccnx::Name &interest);
+
+  void
   serve_Action (Ccnx::Name forwardingHint, const Ccnx::Name &interest);
 
   void

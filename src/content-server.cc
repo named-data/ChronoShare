@@ -59,13 +59,9 @@ ContentServer::~ContentServer()
 void
 ContentServer::registerPrefix(const Name &prefix)
 {
-  Name actionPrefix = Name (prefix)(m_deviceName)("action")(m_sharedFolderName);
-  Name filePrefix = Name (prefix)(m_deviceName)("file");
-  m_ccnx->setInterestFilter (actionPrefix, bind(&ContentServer::serve_Action, this, prefix, _1));
-  m_ccnx->setInterestFilter (filePrefix, bind(&ContentServer::serve_File,   this, prefix, _1));
+  m_ccnx->setInterestFilter (prefix, bind(&ContentServer::serve, this, prefix, _1));
 
-  _LOG_DEBUG (">> content server: register " << actionPrefix);
-  _LOG_DEBUG (">> content server: register " << filePrefix);
+  _LOG_DEBUG (">> content server: register " << prefix);
 
   ScopedLock lock (m_mutex);
   m_prefixes.insert(prefix);
@@ -74,16 +70,33 @@ ContentServer::registerPrefix(const Name &prefix)
 void
 ContentServer::deregisterPrefix (const Name &prefix)
 {
-  Name actionPrefix = Name (prefix)(m_deviceName)("action")(m_sharedFolderName);
-  Name filePrefix = Name (prefix)(m_deviceName)("file");
 
-  m_ccnx->clearInterestFilter(actionPrefix);
-  m_ccnx->clearInterestFilter(filePrefix);
+  m_ccnx->clearInterestFilter(prefix);
 
-  _LOG_DEBUG ("<< content server: deregister " << actionPrefix);
-  _LOG_DEBUG ("<< content server: deregister " << filePrefix);
+  _LOG_DEBUG ("<< content server: deregister " << prefix);
   ScopedLock lock (m_mutex);
   m_prefixes.erase (prefix);
+}
+
+void
+ContentServer::serve(Name forwardingHint, const Name &interest)
+{
+  // /forwardingHint/device-name/action/shared-folder/action-seq
+  // /forwardingHint/device-name/file/file-hash/segment
+
+  Name name = interest.getPartialName(forwardingHint.size());
+  if (name.size() > 3)
+  {
+    string type = name.getCompAsString(name.size() - 3);
+    if (type == "action")
+    {
+      serve_Action (forwardingHint, interest);
+    }
+    else if (type == "file")
+    {
+      serve_File (forwardingHint, interest);
+    }
+  }
 }
 
 void
