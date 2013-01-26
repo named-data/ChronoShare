@@ -51,8 +51,7 @@ ContentServer::~ContentServer()
   ScopedLock lock (m_mutex);
   for (PrefixIt it = m_prefixes.begin(); it != m_prefixes.end(); ++it)
   {
-    m_ccnx->clearInterestFilter (Name (*it)(m_deviceName)("action")(m_sharedFolderName));
-    m_ccnx->clearInterestFilter (Name (*it)(m_deviceName)("file"));
+    m_ccnx->clearInterestFilter (*it);
   }
 }
 
