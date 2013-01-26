@@ -8,3 +8,4 @@ Makefile
 moc_*
 ui_*
 *.app
+*.DS_Store
