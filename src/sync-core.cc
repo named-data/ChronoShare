@@ -23,7 +23,8 @@
 #include "sync-state-helper.h"
 #include "logging.h"
 #include "random-interval-generator.h"
-#include "one-time-task.h"
+#include "simple-interval-generator.h"
+#include "periodic-task.h"
 
 #include <boost/lexical_cast.hpp>
 #include <boost/make_shared.hpp>
@@ -56,7 +57,7 @@ SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPr
   m_scheduler->start();
   string tag = userName.toString() + "send-sync-interest";
   double interval = (m_syncInterestInterval > 0 && m_syncInterestInterval < 30.0) ? m_syncInterestInterval : 4.0;
-  m_sendSyncInterestTask = make_shared<OneTimeTask>(bind(&SyncCore::sendSyncInterest, this), tag, m_scheduler, interval);
+  m_sendSyncInterestTask = make_shared<PeriodicTask>(bind(&SyncCore::sendSyncInterest, this), tag, m_scheduler, make_shared<SimpleIntervalGenerator>(interval));
   sendSyncInterest();
 }
 
