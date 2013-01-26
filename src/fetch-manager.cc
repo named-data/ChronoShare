@@ -42,16 +42,11 @@ FetchManager::FetchManager (CcnxWrapperPtr ccnx, const Mapping &mapping, uint32_
   , m_currentParallelFetches (0)
 
 {
-  m_scheduler = make_shared<Scheduler> ();
-  m_scheduler->start ();
 }
 
 FetchManager::~FetchManager ()
 {
   m_fetchList.clear_and_dispose (fetcher_disposer ());
-
-  m_scheduler->shutdown ();
-  m_scheduler.reset ();
 }
 
 void
