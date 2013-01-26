@@ -206,7 +206,14 @@ SyncCore::handleRecoverData(const Name &name, PcoPtr content)
 {
   _LOG_DEBUG ("[" << m_log->GetLocalName () << "] <<<<< RECOVER DATA with name: " << name);
   //cout << "handle recover data" << end;
-  handleStateData(*content->contentPtr ());
+  if (content && content->contentPtr () && content->contentPtr ()->size () > 0)
+    {
+      handleStateData(*content->contentPtr ());
+    }
+  else
+    {
+      _LOG_ERROR ("Got recovery DATA with empty content");
+    }
   sendSyncInterest();
 }
 
@@ -216,7 +223,14 @@ SyncCore::handleSyncData(const Name &name, PcoPtr content)
   _LOG_DEBUG ("[" << m_log->GetLocalName () << "] <<<<< SYNC DATA with name: " << name);
 
   // suppress recover in interest - data out of order case
-  handleStateData(*content->contentPtr ());
+  if (content && content->contentPtr () && content->contentPtr ()->size () > 0)
+    {
+      handleStateData(*content->contentPtr ());
+    }
+  else
+    {
+      _LOG_ERROR ("Got sync DATA with empty content");
+    }
 
   // resume outstanding sync interest
   sendSyncInterest();
