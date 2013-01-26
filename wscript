@@ -11,7 +11,7 @@ def options(opt):
     opt.add_option('--yes',action='store_true',default=False) # for autoconf/automake/make compatibility
     opt.add_option('--log4cxx', action='store_true',default=False,dest='log4cxx',help='''Compile with log4cxx logging support''')
 
-    opt.load('compiler_cxx boost ccnx protoc ice_cxx qt4')
+    opt.load('compiler_cxx boost ccnx protoc qt4')
 
 def configure(conf):
     conf.load("compiler_cxx")
@@ -39,7 +39,6 @@ def configure(conf):
     conf.load ('ccnx')
 
     conf.load('protoc')
-    conf.load('ice_cxx')
 
     conf.load('qt4')
 
@@ -81,7 +80,7 @@ def build (bld):
         features=['cxx'],
         source = bld.path.ant_glob(['ccnx/**/*.cc', 'ccnx/**/*.cpp']),
         use = 'BOOST BOOST_THREAD SSL CCNX LOG4CXX scheduler',
-        includes = "ccnx scheduler",
+        includes = "ccnx src scheduler",
         )
 
     chornoshare = bld (
@@ -129,5 +128,5 @@ def build (bld):
 	defines = "WAF",
 	source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.cc', 'gui/*.qrc']),
 	includes = "ccnx scheduler src gui src . ",
-	use = "QTCORE QTGUI LOG4CXX fs-watcher ccnx database chronoshare"
+	use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE QTGUI LOG4CXX fs-watcher ccnx database chronoshare"
 	)

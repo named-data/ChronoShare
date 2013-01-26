@@ -31,6 +31,10 @@ extern "C" {
 #include <boost/algorithm/string.hpp>
 #include <sstream>
 
+#include "logging.h"
+
+INIT_LOGGER ("Ccnx.Wrapper");
+
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;
 typedef boost::error_info<struct tag_errmsg, int> errmsg_info_int;
 
@@ -104,9 +108,13 @@ CcnxWrapper::ccnLoop ()
 
           if (!m_running) break;
 
-          if (res < 0)
-            BOOST_THROW_EXCEPTION (CcnxOperationException()
-                                 << errmsg_info_str("ccn_run returned error"));
+          if (res < 0) {
+            _LOG_ERROR ("ccn_run returned negative status: " << res);
+            usleep (100000);
+            continue;
+            // BOOST_THROW_EXCEPTION (CcnxOperationException()
+            //                     << errmsg_info_str("ccn_run returned error"));
+          }
 
 
           pollfd pfds[1];
