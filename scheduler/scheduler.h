@@ -31,7 +31,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include <boost/exception/all.hpp>
-#include <boost/thread/shared_mutex.hpp>
+#include <boost/thread/recursive_mutex.hpp>
 #include <boost/thread/thread.hpp>
 #include <math.h>
 #include <map>
@@ -120,7 +120,7 @@ protected:
 protected:
   typedef std::map<Task::Tag, TaskPtr> TaskMap;
   typedef std::map<Task::Tag, TaskPtr>::iterator TaskMapIt;
-  typedef boost::shared_mutex Mutex;
+  typedef boost::recursive_mutex Mutex;
   typedef boost::unique_lock<Mutex> ScopedLock;
 
   TaskMap m_taskMap;
