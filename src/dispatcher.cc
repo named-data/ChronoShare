@@ -172,12 +172,11 @@ void
 Dispatcher::Did_LocalFile_Delete_Execute (filesystem::path relativeFilePath)
 {
   filesystem::path absolutePath = m_rootDir / relativeFilePath;
-  if (!filesystem::exists(absolutePath))
+  if (filesystem::exists(absolutePath))
     {
       //BOOST_THROW_EXCEPTION (Error::Dispatcher() << error_info_str("Delete notification but file exists: " + absolutePath.string() ));
-      _LOG_DEBUG("Update non exist file: " << absolutePath.string());
+      _LOG_DEBUG("DELETE command, but file still exists: " << absolutePath.string());
       return;
-
     }
 
   FileItemPtr currentFile = m_actionLog->LookupFile (relativeFilePath.generic_string ());
