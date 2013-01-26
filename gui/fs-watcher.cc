@@ -45,6 +45,7 @@ FsWatcher::FsWatcher (QString dirPath,
 {
   _LOG_DEBUG ("Monitor dir: " << m_dirPath.toStdString ());
   // add main directory to monitor
+
   m_watcher->addPath (m_dirPath);
 
   // register signals (callback functions)
@@ -64,7 +65,7 @@ FsWatcher::~FsWatcher()
 void
 FsWatcher::DidDirectoryChanged (QString dirPath)
 {
-  _LOG_DEBUG ("Triggered DirPath: " << dirPath.toStdString ());
+  // _LOG_DEBUG ("Triggered DirPath: " << dirPath.toStdString ());
 
   m_executor.execute (bind (&FsWatcher::ScanDirectory_Notify_Execute, this, dirPath));
 }
@@ -72,7 +73,25 @@ FsWatcher::DidDirectoryChanged (QString dirPath)
 void
 FsWatcher::DidFileChanged (QString filePath)
 {
-  _LOG_DEBUG ("Triggered FilePath: " << filePath.toStdString ());
+  if (!filePath.startsWith (m_dirPath))
+    {
+      _LOG_ERROR ("Got notification about a file not from the monitored directory");
+      return;
+    }
+  filesystem::path absPathTriggeredFile (filePath.toStdString ());
+  filePath.remove (0, m_dirPath.size ());
+
+  filesystem::path triggeredFile (filePath.toStdString ());
+  if (filesystem::exists (filesystem::path (absPathTriggeredFile)))
+    {
+      _LOG_DEBUG ("Triggered UPDATE of file:  " << triggeredFile.relative_path ().generic_string ());
+      m_onChange (triggeredFile.relative_path ());
+    }
+  else
+    {
+      _LOG_DEBUG ("Triggered DELETE of file: " << triggeredFile.relative_path ().generic_string ());
+      m_onDelete (triggeredFile.relative_path ());
+    }
 }
 
 
@@ -95,10 +114,11 @@ void FsWatcher::DidDirectoryChanged_Execute (QString dirPath)
 void
 FsWatcher::ScanDirectory_Notify_Execute (QString dirPath)
 {
-  QRegExp exclude ("^(\\.|\\.\\.|\\.chronoshare)$");
+  // exclude working only on last component, not the full path; iterating through all directories, even excluded from monitoring
+  QRegExp exclude ("^(\\.|\\.\\.|\\.chronoshare|.*~|.*\\.swp)$");
 
   QDirIterator dirIterator (dirPath,
-                            QDir::Dirs | QDir::Files | QDir::Hidden | QDir::NoSymLinks | QDir::NoDotAndDotDot,
+                            QDir::Dirs | QDir::Files | /*QDir::Hidden |*/ QDir::NoSymLinks | QDir::NoDotAndDotDot,
                             QDirIterator::Subdirectories); // directory iterator (recursive)
 
   // iterate through directory recursively
@@ -113,7 +133,7 @@ FsWatcher::ScanDirectory_Notify_Execute (QString dirPath)
 
       if (!exclude.exactMatch (name))
         {
-          // _LOG_DEBUG ("Not excluded file/dir: " << fileInfo.absoluteFilePath ().toStdString ());
+          _LOG_DEBUG ("Not excluded file/dir: " << fileInfo.absoluteFilePath ().toStdString ());
           QString absFilePath = fileInfo.absoluteFilePath ();
 
           // _LOG_DEBUG ("Attempt to add path to watcher: " << absFilePath.toStdString ());
