@@ -38,6 +38,12 @@ static void
 dummyCallback(evutil_socket_t fd, short what, void *arg)
 {
   // 1 year later, that was a long run for the app
+  // let's wait for another year
+  timeval tv;
+  tv.tv_sec = 365 * 24 * 3600;
+  tv.tv_usec = 0;
+  event *ev = *(event **)arg;
+  int res = evtimer_add(ev, &tv);
 }
 
 // IntervalGeneratorPtr
@@ -61,7 +67,7 @@ Scheduler::Scheduler()
   timeval tv;
   tv.tv_sec = 365 * 24 * 3600;
   tv.tv_usec = 0;
-  m_ev = evtimer_new(m_base, dummyCallback, 0);
+  m_ev = evtimer_new(m_base, dummyCallback, &m_ev);
   int res = evtimer_add(m_ev, &tv);
   if (res < 0)
   {
