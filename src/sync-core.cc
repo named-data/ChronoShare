@@ -23,8 +23,10 @@
 #include "sync-state-helper.h"
 #include "logging.h"
 #include "random-interval-generator.h"
+#include "one-time-task.h"
 
 #include <boost/lexical_cast.hpp>
+#include <boost/make_shared.hpp>
 
 INIT_LOGGER ("Sync.Core");
 
@@ -51,6 +53,8 @@ SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPr
   m_log->UpdateLocalLocator (localPrefix);
 
   m_scheduler->start();
+  string tag = userName.toString() + "send-sync-interest";
+  m_sendSyncInterestTask = make_shared<OneTimeTask>(bind(&SyncCore::sendSyncInterest, this), tag, m_scheduler, 4.0);
   sendSyncInterest();
 }
 
@@ -180,8 +184,7 @@ SyncCore::handleSyncInterest(const Name &name)
 Closure::TimeoutCallbackReturnValue
 SyncCore::handleSyncInterestTimeout(const Name &name)
 {
-  // sendInterestInterest with the current root hash;
-  sendSyncInterest();
+  // sync interest will be resent by scheduler
   return Closure::RESULT_OK;
 }
 
@@ -283,6 +286,12 @@ SyncCore::sendSyncInterest()
   m_ccnx->sendInterest(syncInterest,
                          Closure (boost::bind(&SyncCore::handleSyncData, this, _1, _2),
                                   boost::bind(&SyncCore::handleSyncInterestTimeout, this, _1)));
+
+  // if there is a pending syncSyncInterest task, reschedule it to be 4 seconds from now
+  // if no such task exists, it will be added
+  _LOG_DEBUG("[" << m_log->GetLocalName () << "] >>> Attempt to schedule sendSyncInterest ");
+  m_scheduler->rescheduleTask(m_sendSyncInterestTask);
+  _LOG_DEBUG("[" << m_log->GetLocalName () << "] >>> Scheduled sendSyncInterest ");
 }
 
 void

@@ -25,6 +25,7 @@
 #include "sync-log.h"
 #include "ccnx-wrapper.h"
 #include "scheduler.h"
+#include "task.h"
 
 #include <boost/function.hpp>
 
@@ -110,6 +111,8 @@ private:
   HashPtr m_rootHash;
 
   IntervalGeneratorPtr m_recoverWaitGenerator;
+
+  TaskPtr m_sendSyncInterestTask;
 };
 
 #endif // SYNC_CORE_H
