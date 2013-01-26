@@ -127,6 +127,7 @@ protected:
   Mutex m_mutex;
   volatile bool m_running;
   event_base *m_base;
+  event *m_ev;
   boost::thread m_thread;
 };
 
