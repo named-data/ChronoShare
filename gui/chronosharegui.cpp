@@ -20,6 +20,12 @@
 
 #include "chronosharegui.h"
 #include "logging.h"
+#include "ccnx-wrapper.h"
+
+#include <boost/make_shared.hpp>
+
+using namespace boost;
+using namespace Ccnx;
 
 INIT_LOGGER ("Gui");
 
@@ -81,14 +87,19 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
   //            const std::string &sharedFolder, const boost::filesystem::path &rootDir,
   //            Ccnx::CcnxWrapperPtr ccnx, SchedulerPtr scheduler, int poolSize = 2);
 
+  m_dispatcher = new Dispatcher (m_username.toStdString (), m_sharedFolderName.toStdString (),
+                                 m_dirPath.toStdString (), make_shared<CcnxWrapper> ());
 
   // Alex: this **must** be here, otherwise m_dirPath will be uninitialized
-  m_watcher = new FsWatcher (m_dirPath);
+  m_watcher = new FsWatcher (m_dirPath,
+                             bind (&Dispatcher::Did_LocalFile_AddOrModify, m_dispatcher, _1),
+                             bind (&Dispatcher::Did_LocalFile_Delete,      m_dispatcher, _1));
 }
 
 ChronoShareGui::~ChronoShareGui()
 {
   delete m_watcher; // stop filewatching ASAP
+  delete m_dispatcher; // stop dispatcher ASAP, but after watcher (to prevent triggering callbacks on deleted object)
 
   // cleanup
   delete m_trayIcon;

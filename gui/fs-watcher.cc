@@ -33,11 +33,15 @@ using namespace boost;
 
 INIT_LOGGER ("FsWatcher");
 
-FsWatcher::FsWatcher (QString dirPath, QObject* parent)
+FsWatcher::FsWatcher (QString dirPath,
+                      LocalFile_Change_Callback onChange, LocalFile_Change_Callback onDelete,
+                      QObject* parent)
   : QObject(parent)
   , m_watcher (new QFileSystemWatcher())
   , m_executor (1)
   , m_dirPath (dirPath)
+  , m_onChange (onChange)
+  , m_onDelete (onDelete)
 {
   _LOG_DEBUG ("Monitor dir: " << m_dirPath.toStdString ());
   // add main directory to monitor

@@ -102,15 +102,6 @@ def build (bld):
           includes = "ccnx scheduler src",
           )
 
-    qt = bld (
-        target = "fs-watcher",
-        features = "qt4 cxx",
-        defines = "WAF",
-          source = bld.path.ant_glob(['fs-watcher/*.cc']),
-        includes = "fs-watcher . src ",
-        use = "QTCORE QTGUI LOG4CXX"
-        )
-
     app_plist = '''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist SYSTEM "file://localhost/System/Library/DTDs/PropertyList.dtd">
 <plist version="0.9">
@@ -136,7 +127,7 @@ def build (bld):
         mac_plist = app_plist % "ChronoShare",
 	features = "qt4 cxx cxxprogram",
 	defines = "WAF",
-	source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.qrc']),
-	includes = "src gui fs-watcher src . ",
+	source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.cc', 'gui/*.qrc']),
+	includes = "ccnx scheduler src gui src . ",
 	use = "QTCORE QTGUI LOG4CXX fs-watcher ccnx database chronoshare"
 	)

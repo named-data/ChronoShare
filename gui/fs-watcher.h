@@ -24,8 +24,7 @@
 
 #include <vector>
 #include <QFileSystemWatcher>
-
-#include "structs.h"
+#include <boost/filesystem.hpp>
 
 #include "executor.h"
 
@@ -34,8 +33,12 @@ class FsWatcher : public QObject
   Q_OBJECT
 
 public:
+  typedef boost::function<void (const boost::filesystem::path &)> LocalFile_Change_Callback;
+
   // constructor
-  FsWatcher (QString dirPath, QObject* parent = 0);
+  FsWatcher (QString dirPath,
+             LocalFile_Change_Callback onChange, LocalFile_Change_Callback onDelete,
+             QObject* parent = 0);
 
   // destructor
   ~FsWatcher ();
@@ -76,6 +79,9 @@ private:
   Executor m_executor;
 
   QString m_dirPath; // monitored path
+
+  LocalFile_Change_Callback m_onChange;
+  LocalFile_Change_Callback m_onDelete;
 };
 
 #endif // FILESYSTEMWATCHER_H

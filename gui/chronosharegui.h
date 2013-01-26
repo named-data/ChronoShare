@@ -35,6 +35,7 @@
 #include <QApplication>
 
 #include "fs-watcher.h"
+#include "dispatcher.h"
 
 class ChronoShareGui : public QDialog
 {
@@ -101,7 +102,8 @@ private:
   QString m_username; // username
   QString m_sharedFolderName; // shared folder name
 
-  FsWatcher* m_watcher;
+  FsWatcher  *m_watcher;
+  Dispatcher *m_dispatcher;
 
   QLabel* labelUsername;
   QPushButton* button;

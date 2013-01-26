@@ -67,7 +67,7 @@ ObjectDb::ObjectDb (const fs::path &folder, const std::string &hash)
   res = sqlite3_exec (m_db, INIT_DATABASE.c_str (), NULL, NULL, &errmsg);
   if (res != SQLITE_OK && errmsg != 0)
     {
-      _LOG_DEBUG ("Init error: " << errmsg);
+      // _LOG_TRACE ("Init \"error\": " << errmsg);
       sqlite3_free (errmsg);
     }
 
@@ -98,7 +98,7 @@ ObjectDb::DoesExist (const boost::filesystem::path &folder, const Ccnx::Name &de
           int countAll = sqlite3_column_int (stmt, 0);
           int countNonNull = sqlite3_column_int (stmt, 1);
 
-          _LOG_DEBUG ("Total segments: " << countAll << ", non-empty segments: " << countNonNull);
+          _LOG_TRACE ("Total segments: " << countAll << ", non-empty segments: " << countNonNull);
 
           if (countAll > 0 && countAll==countNonNull)
             {
