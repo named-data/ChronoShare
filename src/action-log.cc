@@ -645,6 +645,8 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
 
       sqlite3_step (stmt);
       sqlite3_finalize (stmt);
+
+      the->m_onFileRemoved (filename);
     }
 
   sqlite3_result_null (context);
