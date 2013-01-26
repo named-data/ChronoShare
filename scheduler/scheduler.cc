@@ -105,6 +105,10 @@ Scheduler::eventLoop()
           break;
         }
     }
+
+    // just to prevent craziness in CPU usage which supposedly should not happen
+    // after adding the dummy event
+    usleep(1000);
   }
 }
 
