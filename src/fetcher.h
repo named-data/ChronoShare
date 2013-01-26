@@ -25,7 +25,7 @@
 #include "ccnx-wrapper.h"
 #include "ccnx-name.h"
 
-#include "scheduler.h"
+#include "executor.h"
 #include <boost/intrusive/list.hpp>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 
@@ -57,6 +57,13 @@ public:
 
   void
   SetForwardingHint (const Ccnx::Name &forwardingHint);
+
+  const Ccnx::Name &
+  GetForwardingHint () const { return m_forwardingHint; }
+
+  const Ccnx::Name &
+  GetName () const { return m_name; }
+
 
 private:
   void
@@ -99,7 +106,7 @@ private:
   uint32_t m_activePipeline;
 
   boost::posix_time::ptime m_lastPositiveActivity;
-
+  Executor m_executor;
 };
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;

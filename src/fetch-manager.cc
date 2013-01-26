@@ -25,7 +25,7 @@
 #include <boost/throw_exception.hpp>
 #include "logging.h"
 
-INIT_LOGGER ("Fetch.Manager");
+INIT_LOGGER ("FetchManager");
 
 using namespace boost;
 using namespace std;
@@ -100,6 +100,8 @@ FetchManager::ScheduleFetches ()
       if (item->IsActive ())
         continue;
 
+      _LOG_DEBUG ("Start fetching of " << item->GetName ());
+
       m_currentParallelFetches ++;
       item->RestartPipeline ();
     }
@@ -108,6 +110,8 @@ FetchManager::ScheduleFetches ()
 void
 FetchManager::DidNoDataTimeout (Fetcher &fetcher)
 {
+  _LOG_DEBUG ("No data timeout for " << fetcher.GetName () << " with forwarding hint: " << fetcher.GetForwardingHint ());
+
   fetcher.SetForwardingHint (Ccnx::Name (BROADCAST_DOMAIN));
   {
     unique_lock<mutex> lock (m_parellelFetchMutex);

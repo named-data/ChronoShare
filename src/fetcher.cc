@@ -62,11 +62,15 @@ Fetcher::Fetcher (Ccnx::CcnxWrapperPtr ccnx,
 
   , m_pipeline (6) // initial "congestion window"
   , m_activePipeline (0)
+
+  , m_executor (1)
 {
+  m_executor.start ();
 }
 
 Fetcher::~Fetcher ()
 {
+  m_executor.shutdown ();
 }
 
 void
@@ -77,7 +81,7 @@ Fetcher::RestartPipeline ()
   // cout << "Restart: " << m_minSendSeqNo << endl;
   m_lastPositiveActivity = date_time::second_clock<boost::posix_time::ptime>::universal_time();
 
-  FillPipeline ();
+  m_executor.execute (bind (&Fetcher::FillPipeline, this));
 }
 
 void
@@ -101,6 +105,7 @@ Fetcher::FillPipeline ()
                             Closure (bind(&Fetcher::OnData, this, m_minSendSeqNo+1, _1, _2),
                                      bind(&Fetcher::OnTimeout, this, m_minSendSeqNo+1, _1)),
                             Selectors().interestLifetime (1)); // Alex: this lifetime should be changed to RTO
+      _LOG_DEBUG (" >>> i ok");
 
       m_activePipeline ++;
     }
@@ -170,13 +175,15 @@ Fetcher::OnData (uint64_t seqno, const Ccnx::Name &name, PcoPtr data)
     }
   else
     {
-      FillPipeline ();
+      m_executor.execute (bind (&Fetcher::FillPipeline, this));
     }
 }
 
 Closure::TimeoutCallbackReturnValue
 Fetcher::OnTimeout (uint64_t seqno, const Ccnx::Name &name)
 {
+  _LOG_DEBUG (" <<< :( timeout " << name.getPartialName (0, name.size () - 1) << ", seq = " << seqno);
+  
   // cout << "Fetcher::OnTimeout: " << name << endl;
   // cout << "Last: " << m_lastPositiveActivity << ", config: " << m_maximumNoActivityPeriod
   //      << ", now: " << date_time::second_clock<boost::posix_time::ptime>::universal_time()
@@ -188,6 +195,7 @@ Fetcher::OnTimeout (uint64_t seqno, const Ccnx::Name &name)
       m_activePipeline --;
       if (m_activePipeline == 0)
         {
+          _LOG_DEBUG ("Telling that fetch failed");
           m_active = false;
           m_onFetchFailed (*this);
           // this is not valid anymore, but we still should be able finish work
@@ -195,5 +203,8 @@ Fetcher::OnTimeout (uint64_t seqno, const Ccnx::Name &name)
       return Closure::RESULT_OK;
     }
   else
-    return Closure::RESULT_REEXPRESS;
+    {
+      _LOG_DEBUG ("Asking to reexpress");
+      return Closure::RESULT_REEXPRESS;
+    }
 }
