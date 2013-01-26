@@ -38,13 +38,14 @@ using namespace boost;
 using namespace Ccnx;
 
 SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPrefix, const Name &syncPrefix,
-                   const StateMsgCallback &callback, CcnxWrapperPtr ccnx)
+                   const StateMsgCallback &callback, CcnxWrapperPtr ccnx, double syncInterestInterval/*= -1.0*/)
   : m_ccnx (ccnx)
   , m_log(syncLog)
   , m_scheduler(new Scheduler ())
   , m_stateMsgCallback(callback)
   , m_syncPrefix(syncPrefix)
   , m_recoverWaitGenerator(new RandomIntervalGenerator(WAIT, RANDOM_PERCENT, RandomIntervalGenerator::UP))
+  , m_syncInterestInterval(syncInterestInterval)
 {
   m_rootHash = m_log->RememberStateInStateLog();
 
@@ -54,7 +55,8 @@ SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPr
 
   m_scheduler->start();
   string tag = userName.toString() + "send-sync-interest";
-  m_sendSyncInterestTask = make_shared<OneTimeTask>(bind(&SyncCore::sendSyncInterest, this), tag, m_scheduler, 4.0);
+  double interval = (m_syncInterestInterval > 0 && m_syncInterestInterval < 30.0) ? m_syncInterestInterval : 4.0;
+  m_sendSyncInterestTask = make_shared<OneTimeTask>(bind(&SyncCore::sendSyncInterest, this), tag, m_scheduler, interval);
   sendSyncInterest();
 }
 
@@ -283,15 +285,19 @@ SyncCore::sendSyncInterest()
 
   _LOG_DEBUG ("[" << m_log->GetLocalName () << "] >>> SYNC Interest for " << m_rootHash->shortHash () << ": " << syncInterest);
 
+  Selectors selectors;
+  if (m_syncInterestInterval > 0 && m_syncInterestInterval < 30.0)
+  {
+    selectors.interestLifetime(m_syncInterestInterval);
+  }
   m_ccnx->sendInterest(syncInterest,
                          Closure (boost::bind(&SyncCore::handleSyncData, this, _1, _2),
-                                  boost::bind(&SyncCore::handleSyncInterestTimeout, this, _1)));
+                                  boost::bind(&SyncCore::handleSyncInterestTimeout, this, _1)),
+                          selectors);
 
-  // if there is a pending syncSyncInterest task, reschedule it to be 4 seconds from now
+  // if there is a pending syncSyncInterest task, reschedule it to be m_syncInterestInterval seconds from now
   // if no such task exists, it will be added
-  _LOG_DEBUG("[" << m_log->GetLocalName () << "] >>> Attempt to schedule sendSyncInterest ");
   m_scheduler->rescheduleTask(m_sendSyncInterestTask);
-  _LOG_DEBUG("[" << m_log->GetLocalName () << "] >>> Scheduled sendSyncInterest ");
 }
 
 void

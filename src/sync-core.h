@@ -45,7 +45,8 @@ public:
            , const Ccnx::Name &localPrefix      // routable name used by the local user
            , const Ccnx::Name &syncPrefix       // the prefix for the sync collection
            , const StateMsgCallback &callback   // callback when state change is detected
-           , Ccnx::CcnxWrapperPtr ccnx);
+           , Ccnx::CcnxWrapperPtr ccnx
+           , double syncInterestInterval = -1.0);
   ~SyncCore();
 
   void
@@ -113,6 +114,8 @@ private:
   IntervalGeneratorPtr m_recoverWaitGenerator;
 
   TaskPtr m_sendSyncInterestTask;
+
+  double m_syncInterestInterval;
 };
 
 #endif // SYNC_CORE_H

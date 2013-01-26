@@ -33,6 +33,7 @@ using namespace boost;
 INIT_LOGGER ("Dispatcher");
 
 static const string BROADCAST_DOMAIN = "/ndn/broadcast/chronoshare";
+const static double DEFAULT_SYNC_INTEREST_INTERVAL = 20.0;
 
 Dispatcher::Dispatcher(const std::string &localUserName
                        , const std::string &sharedFolder
@@ -62,7 +63,7 @@ Dispatcher::Dispatcher(const std::string &localUserName
   m_server->registerPrefix(Name(BROADCAST_DOMAIN));
 
   m_core = new SyncCore (m_syncLog, localUserName, Name ("/"), syncPrefix,
-                         bind(&Dispatcher::Did_SyncLog_StateChange, this, _1), ccnx);
+                         bind(&Dispatcher::Did_SyncLog_StateChange, this, _1), ccnx, DEFAULT_SYNC_INTEREST_INTERVAL);
 
   m_actionFetcher = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3);
   m_fileFetcher   = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3);
