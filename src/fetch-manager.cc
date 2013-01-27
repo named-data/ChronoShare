@@ -96,6 +96,7 @@ FetchManager::Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
       break;
     }
 
+  _LOG_DEBUG ("Reschedule fetcher task");
   m_scheduler->rescheduleTaskAt (m_scheduleFetchesTask, 0);
   // ScheduleFetches (); // will start a fetch if m_currentParallelFetches is less than max, otherwise does nothing
 }
@@ -112,10 +113,16 @@ FetchManager::ScheduleFetches ()
        item++)
     {
       if (item->IsActive ())
-        continue;
+        {
+          _LOG_DEBUG ("Item is active");
+          continue;
+        }
 
       if (currentTime < item->GetNextScheduledRetry ())
-        continue;
+        {
+          _LOG_DEBUG ("Item is delayed");
+          continue;
+        }
 
       _LOG_DEBUG ("Start fetching of " << item->GetName ());
 

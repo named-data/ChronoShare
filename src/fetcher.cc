@@ -63,7 +63,7 @@ Fetcher::Fetcher (Ccnx::CcnxWrapperPtr ccnx,
   , m_pipeline (6) // initial "congestion window"
   , m_activePipeline (0)
   , m_retryPause (0)
-  , m_nextScheduledRetry () // zero time
+  , m_nextScheduledRetry (date_time::second_clock<boost::posix_time::ptime>::universal_time ())
 {
 }
 
