@@ -167,11 +167,14 @@ Scheduler::schedulePeriodicTask (SchedulerPtr scheduler, IntervalGeneratorPtr de
 }
 
 bool
-Scheduler::addTask(TaskPtr newTask)
+Scheduler::addTask(TaskPtr newTask, bool reset/* = true*/)
 {
   if (addToMap(newTask))
   {
-    newTask->reset();
+    if (reset)
+      {
+        newTask->reset();
+      }
     int res = evtimer_add(newTask->ev(), newTask->tv());
     if (res < 0)
     {
@@ -194,7 +197,7 @@ Scheduler::deleteTask(TaskPtr task)
 }
 
 void
-Scheduler::rescheduleTask(const TaskPtr &task)
+Scheduler::rescheduleTask(TaskPtr task)
 {
   ScopedLock lock(m_mutex);
   TaskMapIt it = m_taskMap.find(task->tag());
@@ -231,8 +234,56 @@ Scheduler::rescheduleTask(const Task::Tag &tag)
   }
 }
 
+void
+Scheduler::rescheduleTaskAt (const Task::Tag &tag, double time)
+{
+  ScopedLock lock(m_mutex);
+  TaskMapIt it = m_taskMap.find (tag);
+  if (it != m_taskMap.end())
+  {
+    TaskPtr task = it->second;
+    task->reset();
+    task->setTv (time);
+
+    int res = evtimer_add(task->ev(), task->tv());
+    if (res < 0)
+    {
+      _LOG_ERROR ("evtimer_add failed for " << task->tag());
+    }
+  }
+  else
+    {
+      _LOG_ERROR ("Task for tag " << tag << " not found");
+    }
+}
+
+void
+Scheduler::rescheduleTaskAt (TaskPtr task, double time)
+{
+  ScopedLock lock(m_mutex);
+  TaskMapIt it = m_taskMap.find(task->tag());
+  if (it != m_taskMap.end())
+  {
+    TaskPtr task = it->second;
+    task->reset();
+    task->setTv (time);
+
+    int res = evtimer_add(task->ev(), task->tv());
+    if (res < 0)
+    {
+      _LOG_ERROR ("evtimer_add failed for " << task->tag());
+    }
+  }
+  else
+  {
+    task->setTv (time); // force different time
+    addTask (task, false);
+  }
+}
+
+
 bool
-Scheduler::addToMap(const TaskPtr &task)
+Scheduler::addToMap(TaskPtr task)
 {
   ScopedLock lock(m_mutex);
   if (m_taskMap.find(task->tag()) == m_taskMap.end())

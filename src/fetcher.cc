@@ -62,15 +62,13 @@ Fetcher::Fetcher (Ccnx::CcnxWrapperPtr ccnx,
 
   , m_pipeline (6) // initial "congestion window"
   , m_activePipeline (0)
-
-  , m_executor (1)
+  , m_retryPause (0)
+  , m_nextScheduledRetry () // zero time
 {
-  m_executor.start ();
 }
 
 Fetcher::~Fetcher ()
 {
-  m_executor.shutdown ();
 }
 
 void
@@ -81,7 +79,10 @@ Fetcher::RestartPipeline ()
   // cout << "Restart: " << m_minSendSeqNo << endl;
   m_lastPositiveActivity = date_time::second_clock<boost::posix_time::ptime>::universal_time();
 
-  m_executor.execute (bind (&Fetcher::FillPipeline, this));
+  // Scheduler::scheduleOneTimeTask ();
+  // m_scheduler
+  // m_executor.execute (bind (&Fetcher::FillPipeline, this));
+  FillPipeline ();
 }
 
 void
@@ -175,7 +176,8 @@ Fetcher::OnData (uint64_t seqno, const Ccnx::Name &name, PcoPtr data)
     }
   else
     {
-      m_executor.execute (bind (&Fetcher::FillPipeline, this));
+      FillPipeline ();
+      // m_executor.execute (bind (&Fetcher::FillPipeline, this));
     }
 }
 
@@ -183,7 +185,7 @@ Closure::TimeoutCallbackReturnValue
 Fetcher::OnTimeout (uint64_t seqno, const Ccnx::Name &name)
 {
   _LOG_DEBUG (" <<< :( timeout " << name.getPartialName (0, name.size () - 1) << ", seq = " << seqno);
-  
+
   // cout << "Fetcher::OnTimeout: " << name << endl;
   // cout << "Last: " << m_lastPositiveActivity << ", config: " << m_maximumNoActivityPeriod
   //      << ", now: " << date_time::second_clock<boost::posix_time::ptime>::universal_time()

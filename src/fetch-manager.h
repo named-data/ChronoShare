@@ -58,10 +58,6 @@ public:
   GetCcnx ();
 
 private:
-
-  inline SchedulerPtr
-  GetScheduler ();
-
   // Fetch Events
   void
   DidDataSegmentFetched (Fetcher &fetcher, uint64_t seqno, const Ccnx::Name &basename,
@@ -90,6 +86,8 @@ private:
   typedef boost::intrusive::list<Fetcher, MemberOption> FetchList;
 
   FetchList m_fetchList;
+  SchedulerPtr m_scheduler;
+  TaskPtr m_scheduleFetchesTask;
 };
 
 Ccnx::CcnxWrapperPtr

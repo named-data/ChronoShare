@@ -64,6 +64,20 @@ public:
   const Ccnx::Name &
   GetName () const { return m_name; }
 
+  const Ccnx::Name &
+  GetDeviceName () const { return m_deviceName; }
+
+  double
+  GetRetryPause () const { return m_retryPause; }
+
+  void
+  SetRetryPause (double pause) { m_retryPause = pause; }
+
+  boost::posix_time::ptime
+  GetNextScheduledRetry () const { return m_nextScheduledRetry; }
+
+  void
+  SetNextScheduledRetry (boost::posix_time::ptime nextScheduledRetry) { m_nextScheduledRetry = nextScheduledRetry; }
 
 private:
   void
@@ -106,7 +120,9 @@ private:
   uint32_t m_activePipeline;
 
   boost::posix_time::ptime m_lastPositiveActivity;
-  Executor m_executor;
+
+  double m_retryPause; // pause to stop trying to fetch (for fetch-manager)
+  boost::posix_time::ptime m_nextScheduledRetry;
 };
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;

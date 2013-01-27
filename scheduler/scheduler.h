@@ -71,7 +71,7 @@ public:
 
   // if task with the same tag exists, the task is not added and return false
   virtual bool
-  addTask(TaskPtr task);
+  addTask(TaskPtr task, bool reset = true);
 
   // delete task by task->tag, regardless of whether it's invoked or not
   virtual void
@@ -101,7 +101,13 @@ public:
   // rescheduleTask(A) is called at second 4, A will be reschedule to run
   // at second 9
   virtual void
-  rescheduleTask(const TaskPtr &task);
+  rescheduleTask(TaskPtr task);
+
+  virtual void
+  rescheduleTaskAt (const Task::Tag &tag, double time);
+
+  virtual void
+  rescheduleTaskAt (TaskPtr task, double time);
 
   void
   eventLoop();
@@ -115,7 +121,7 @@ public:
 
 protected:
   bool
-  addToMap(const TaskPtr &task);
+  addToMap(TaskPtr task);
 
 protected:
   typedef std::map<Task::Tag, TaskPtr> TaskMap;

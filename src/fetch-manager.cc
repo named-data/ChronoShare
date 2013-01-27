@@ -23,6 +23,8 @@
 #include <boost/make_shared.hpp>
 #include <boost/ref.hpp>
 #include <boost/throw_exception.hpp>
+
+#include "simple-interval-generator.h"
 #include "logging.h"
 
 INIT_LOGGER ("FetchManager");
@@ -31,21 +33,30 @@ using namespace boost;
 using namespace std;
 using namespace Ccnx;
 
-static const string BROADCAST_DOMAIN = "/ndn/broadcast/chronoshare";
+static const Name BROADCAST_DOMAIN = Name ("/ndn/broadcast/chronoshare");
 //The disposer object function
 struct fetcher_disposer { void operator() (Fetcher *delete_this) { delete delete_this; } };
+
+static const string SCHEDULE_FETCHES_TAG = "ScheduleFetches";
 
 FetchManager::FetchManager (CcnxWrapperPtr ccnx, const Mapping &mapping, uint32_t parallelFetches/* = 3*/)
   : m_ccnx (ccnx)
   , m_mapping (mapping)
   , m_maxParallelFetches (parallelFetches)
   , m_currentParallelFetches (0)
-
+  , m_scheduler (new Scheduler)
 {
+  m_scheduler->start ();
+
+  m_scheduleFetchesTask = Scheduler::schedulePeriodicTask (m_scheduler,
+                                                           make_shared<SimpleIntervalGenerator> (1),
+                                                           bind (&FetchManager::ScheduleFetches, this), SCHEDULE_FETCHES_TAG);
 }
 
 FetchManager::~FetchManager ()
 {
+  m_scheduler->shutdown ();
+
   m_fetchList.clear_and_dispose (fetcher_disposer ());
 }
 
@@ -85,7 +96,8 @@ FetchManager::Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
       break;
     }
 
-  ScheduleFetches (); // will start a fetch if m_currentParallelFetches is less than max, otherwise does nothing
+  m_scheduler->rescheduleTaskAt (m_scheduleFetchesTask, 0);
+  // ScheduleFetches (); // will start a fetch if m_currentParallelFetches is less than max, otherwise does nothing
 }
 
 void
@@ -93,11 +105,16 @@ FetchManager::ScheduleFetches ()
 {
   unique_lock<mutex> lock (m_parellelFetchMutex);
 
+  boost::posix_time::ptime currentTime = date_time::second_clock<boost::posix_time::ptime>::universal_time ();
+
   for (FetchList::iterator item = m_fetchList.begin ();
        m_currentParallelFetches < m_maxParallelFetches && item != m_fetchList.end ();
        item++)
     {
       if (item->IsActive ())
+        continue;
+
+      if (currentTime < item->GetNextScheduledRetry ())
         continue;
 
       _LOG_DEBUG ("Start fetching of " << item->GetName ());
@@ -112,14 +129,38 @@ FetchManager::DidNoDataTimeout (Fetcher &fetcher)
 {
   _LOG_DEBUG ("No data timeout for " << fetcher.GetName () << " with forwarding hint: " << fetcher.GetForwardingHint ());
 
-  fetcher.SetForwardingHint (Ccnx::Name (BROADCAST_DOMAIN));
   {
     unique_lock<mutex> lock (m_parellelFetchMutex);
     m_currentParallelFetches --;
     // no need to do anything with the m_fetchList
   }
 
-  ScheduleFetches ();
+  if (fetcher.GetForwardingHint () == BROADCAST_DOMAIN)
+    {
+      // try again directly (hopefully with different forwarding hint
+
+      /// @todo Handle potential exception
+      Name forwardingHint;
+      forwardingHint = m_mapping (fetcher.GetDeviceName ());
+      fetcher.SetForwardingHint (forwardingHint);
+    }
+  else
+    {
+      fetcher.SetForwardingHint (BROADCAST_DOMAIN);
+    }
+
+  double delay = fetcher.GetRetryPause ();
+  if (delay < 1) // first time
+    {
+      delay = 1;
+    }
+  else
+    {
+      delay = std::min (2*delay, 300.0); // 5 minutes max
+    }
+
+  fetcher.SetRetryPause (delay);
+  fetcher.SetNextScheduledRetry (date_time::second_clock<boost::posix_time::ptime>::universal_time () + posix_time::seconds (delay));
 }
 
 void
