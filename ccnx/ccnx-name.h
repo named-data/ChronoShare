@@ -74,7 +74,7 @@ public:
   Name(const std::vector<Bytes> &comps);
   Name(const Name &other);
   Name(const unsigned char *data, const ccn_indexbuf *comps);
-  Name (const unsigned char *buf, const size_t length);
+  Name (const void *buf, const size_t length);
   Name (const CcnxCharbuf &buf);
   Name (const ccn_charbuf *buf);
   virtual ~Name() {}

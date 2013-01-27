@@ -135,10 +135,19 @@ def build (bld):
         target = "csd",
 	features = "qt4 cxx cxxprogram",
 	defines = "WAF",
-	source = bld.path.ant_glob(['cmd/*.cpp', 'cmd/*.cc', 'gui/fs-watcher.cc']),
+	source = "cmd/csd.cc gui/fs-watcher.cc",
 	includes = "ccnx scheduler src gui src . ",
 	use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE QTGUI LOG4CXX fs-watcher ccnx database chronoshare"
 	)
+
+    dump_db = bld (
+        target = "dump-db",
+        features = "cxx cxxprogram",
+	source = "cmd/dump-db.cc",
+	includes = "ccnx scheduler src gui src . ",
+	use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE LOG4CXX fs-watcher ccnx database chronoshare"
+        )
+
 
 
 

@@ -116,10 +116,10 @@ Name::Name(const unsigned char *data, const ccn_indexbuf *comps)
   }
 }
 
-Name::Name (const unsigned char *buf, const size_t length)
+Name::Name (const void *buf, const size_t length)
 {
   ccn_indexbuf *idx = ccn_indexbuf_create();
-  const ccn_charbuf namebuf = { length, length, const_cast<unsigned char *> (buf) };
+  const ccn_charbuf namebuf = { length, length, const_cast<unsigned char *> (reinterpret_cast<const unsigned char *> (buf)) };
   ccn_name_split (&namebuf, idx);
 
   const unsigned char *compPtr = NULL;
