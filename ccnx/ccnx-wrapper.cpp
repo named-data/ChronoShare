@@ -205,15 +205,24 @@ CcnxWrapper::createContentObject(const Name  &name, const void *buf, size_t len,
 int
 CcnxWrapper::putToCcnd (const Bytes &contentObject)
 {
+  _LOG_TRACE (">> putToCcnd");
   UniqueRecLock lock(m_mutex);
   if (!m_running || !m_connected)
-    return -1;
+    {
+      _LOG_TRACE ("<< not running or connected");
+      return -1;
+    }
 
 
   if (ccn_put(m_handle, head(contentObject), contentObject.size()) < 0)
   {
+    _LOG_ERROR ("ccn_put failed");
     // BOOST_THROW_EXCEPTION(CcnxOperationException() << errmsg_info_str("ccnput failed"));
   }
+  else
+    {
+      _LOG_DEBUG ("<< putToCcnd");
+    }
 
   return 0;
 }
@@ -238,24 +247,29 @@ incomingInterest(ccn_closure *selfp,
                  ccn_upcall_info *info)
 {
   CcnxWrapper::InterestCallback *f = static_cast<CcnxWrapper::InterestCallback*> (selfp->data);
+  _LOG_TRACE (">> incomingInterest upcall");
 
   switch (kind)
     {
     case CCN_UPCALL_FINAL: // effective in unit tests
       delete f;
       delete selfp;
+      _LOG_TRACE ("<< incomingInterest with CCN_UPCALL_FINAL");
       return CCN_UPCALL_RESULT_OK;
 
     case CCN_UPCALL_INTEREST:
       break;
 
     default:
+      _LOG_TRACE ("<< incomingInterest with CCN_UPCALL_RESULT_OK");
       return CCN_UPCALL_RESULT_OK;
     }
 
   Name interest(info->interest_ccnb, info->interest_comps);
 
   (*f) (interest);
+
+  _LOG_TRACE ("<< incomingInterest");
   return CCN_UPCALL_RESULT_OK;
 }
 
@@ -265,6 +279,7 @@ incomingData(ccn_closure *selfp,
              ccn_upcall_info *info)
 {
   Closure *cp = static_cast<Closure *> (selfp->data);
+  _LOG_TRACE (">> incomingData upcall");
 
   switch (kind)
     {
@@ -272,6 +287,7 @@ incomingData(ccn_closure *selfp,
       delete cp;
       cp = NULL;
       delete selfp;
+      _LOG_TRACE ("<< incomingData with CCN_UPCALL_FINAL");
       return CCN_UPCALL_RESULT_OK;
 
     case CCN_UPCALL_CONTENT:
@@ -280,6 +296,7 @@ incomingData(ccn_closure *selfp,
     case CCN_UPCALL_INTEREST_TIMED_OUT: {
       if (cp != NULL)
       {
+        _LOG_TRACE ("<< incomingData timeout");
         Name interest(info->interest_ccnb, info->interest_comps);
         Closure::TimeoutCallbackReturnValue rv = cp->runTimeoutCallback(interest);
         switch(rv)
@@ -289,6 +306,10 @@ incomingData(ccn_closure *selfp,
           default : break;
         }
       }
+      else
+        {
+          _LOG_TRACE ("<< incomingData timeout, but callback is not set...");
+        }
       return CCN_UPCALL_RESULT_OK;
     }
 
@@ -314,15 +335,21 @@ incomingData(ccn_closure *selfp,
 
   cp->runDataCallback (pco->name (), pco);
 
+  _LOG_TRACE (">> incomingData");
+
   return CCN_UPCALL_RESULT_OK;
 }
 
 int CcnxWrapper::sendInterest (const Name &interest, const Closure &closure, const Selectors &selectors)
 {
+  _LOG_TRACE (">> sendInterest");
   {
     UniqueRecLock lock(m_mutex);
     if (!m_running || !m_connected)
-      return -1;
+      {
+        _LOG_ERROR ("<< sendInterest: not running or connected");
+        return -1;
+      }
   }
 
   CcnxCharbufPtr namePtr = interest.toCcnxCharbuf();
@@ -344,17 +371,20 @@ int CcnxWrapper::sendInterest (const Name &interest, const Closure &closure, con
   UniqueRecLock lock(m_mutex);
   if (ccn_express_interest (m_handle, pname, dataClosure, templ) < 0)
   {
+    _LOG_ERROR ("<< sendInterest: ccn_express_interest FAILED!!!");
   }
+
+  _LOG_TRACE ("<< sendInterest");
 
   return 0;
 }
 
 int CcnxWrapper::setInterestFilter (const Name &prefix, const InterestCallback &interestCallback)
 {
-  {
-    UniqueRecLock lock(m_mutex);
-    if (!m_running || !m_connected)
-      return -1;
+  _LOG_TRACE (">> setInterestFilter");
+  UniqueRecLock lock(m_mutex);
+  if (!m_running || !m_connected)
+    return -1;
   }
 
   CcnxCharbufPtr ptr = prefix.toCcnxCharbuf();
@@ -368,9 +398,12 @@ int CcnxWrapper::setInterestFilter (const Name &prefix, const InterestCallback &
   int ret = ccn_set_interest_filter (m_handle, pname, interestClosure);
   if (ret < 0)
   {
+    _LOG_ERROR ("<< setInterestFilter: ccn_set_interest_filter FAILED");
   }
 
   m_registeredInterests.insert(pair<Name, InterestCallback>(prefix, interestCallback));
+  
+  _LOG_TRACE ("<< setInterestFilter");
 
   return ret;
 }
@@ -378,6 +411,7 @@ int CcnxWrapper::setInterestFilter (const Name &prefix, const InterestCallback &
 void
 CcnxWrapper::clearInterestFilter (const Name &prefix)
 {
+  _LOG_TRACE (">> clearInterestFilter");
   UniqueRecLock lock(m_mutex);
   if (!m_running || !m_connected)
     return;
@@ -391,6 +425,8 @@ CcnxWrapper::clearInterestFilter (const Name &prefix)
   }
 
   m_registeredInterests.erase(prefix);
+
+  _LOG_TRACE ("<< clearInterestFilter");
 }
 
 Name
