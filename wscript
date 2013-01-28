@@ -67,11 +67,19 @@ def configure(conf):
     conf.write_config_header('src/config.h')
 
 def build (bld):
+    executor = bld.objects (
+        target = "executor",
+        features = ["cxx"],
+        source = bld.path.ant_glob(['executor/**/*.cc']),
+        use = 'BOOST BOOST_THREAD LIBEVENT LIBEVENT_PTHREADS LOG4CXX',
+        includes = "executor src",
+        )
+
     scheduler = bld.objects (
         target = "scheduler",
         features = ["cxx"],
         source = bld.path.ant_glob(['scheduler/**/*.cc']),
-        use = 'BOOST BOOST_THREAD LIBEVENT LIBEVENT_PTHREADS LOG4CXX',
+        use = 'BOOST BOOST_THREAD LIBEVENT LIBEVENT_PTHREADS LOG4CXX executor',
         includes = "scheduler executor src",
         )
 
@@ -79,7 +87,7 @@ def build (bld):
         target="ccnx",
         features=['cxx'],
         source = bld.path.ant_glob(['ccnx/**/*.cc', 'ccnx/**/*.cpp']),
-        use = 'BOOST BOOST_THREAD SSL CCNX LOG4CXX scheduler',
+        use = 'BOOST BOOST_THREAD SSL CCNX LOG4CXX scheduler executor',
         includes = "ccnx src scheduler executor",
         )
 
@@ -127,7 +135,7 @@ def build (bld):
 	features = "qt4 cxx cxxprogram",
 	defines = "WAF",
 	source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.cc', 'gui/*.qrc']),
-	includes = "ccnx scheduler src gui src . ",
+	includes = "ccnx scheduler executor gui src . ",
 	use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE QTGUI LOG4CXX fs-watcher ccnx database chronoshare"
 	)
 
@@ -136,7 +144,7 @@ def build (bld):
 	features = "qt4 cxx cxxprogram",
 	defines = "WAF",
 	source = "cmd/csd.cc gui/fs-watcher.cc",
-	includes = "ccnx scheduler src gui src . ",
+	includes = "ccnx scheduler executor gui src . ",
 	use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE QTGUI LOG4CXX fs-watcher ccnx database chronoshare"
 	)
 
@@ -144,7 +152,7 @@ def build (bld):
         target = "dump-db",
         features = "cxx cxxprogram",
 	source = "cmd/dump-db.cc",
-	includes = "ccnx scheduler src gui src . ",
+	includes = "ccnx scheduler executor gui src . ",
 	use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE LOG4CXX fs-watcher ccnx database chronoshare"
         )
 
