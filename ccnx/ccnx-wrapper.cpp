@@ -61,7 +61,7 @@ CcnxWrapper::connectCcnd()
   //}
 
   m_handle = ccn_create ();
-  UniqueRecLock lock(m_mutex);
+  //UniqueRecLock lock(m_mutex);
   if (ccn_connect(m_handle, NULL) < 0)
   {
     BOOST_THROW_EXCEPTION (CcnxOperationException() << errmsg_info_str("connection to ccnd failed"));
@@ -319,9 +319,11 @@ incomingData(ccn_closure *selfp,
 
 int CcnxWrapper::sendInterest (const Name &interest, const Closure &closure, const Selectors &selectors)
 {
-  UniqueRecLock lock(m_mutex);
-  if (!m_running || !m_connected)
-    return -1;
+  {
+    UniqueRecLock lock(m_mutex);
+    if (!m_running || !m_connected)
+      return -1;
+  }
 
   CcnxCharbufPtr namePtr = interest.toCcnxCharbuf();
   ccn_charbuf *pname = namePtr->getBuf();
@@ -339,6 +341,7 @@ int CcnxWrapper::sendInterest (const Name &interest, const Closure &closure, con
     templ = selectorsPtr->getBuf();
   }
 
+  UniqueRecLock lock(m_mutex);
   if (ccn_express_interest (m_handle, pname, dataClosure, templ) < 0)
   {
   }
@@ -348,9 +351,11 @@ int CcnxWrapper::sendInterest (const Name &interest, const Closure &closure, con
 
 int CcnxWrapper::setInterestFilter (const Name &prefix, const InterestCallback &interestCallback)
 {
-  UniqueRecLock lock(m_mutex);
-  if (!m_running || !m_connected)
-    return -1;
+  {
+    UniqueRecLock lock(m_mutex);
+    if (!m_running || !m_connected)
+      return -1;
+  }
 
   CcnxCharbufPtr ptr = prefix.toCcnxCharbuf();
   ccn_charbuf *pname = ptr->getBuf();
@@ -358,6 +363,8 @@ int CcnxWrapper::setInterestFilter (const Name &prefix, const InterestCallback &
 
   interestClosure->data = new InterestCallback (interestCallback); // should be removed when closure is removed
   interestClosure->p = &incomingInterest;
+
+  UniqueRecLock lock(m_mutex);
   int ret = ccn_set_interest_filter (m_handle, pname, interestClosure);
   if (ret < 0)
   {
