@@ -34,7 +34,7 @@ Closure::~Closure ()
 }
 
 Closure::TimeoutCallbackReturnValue
-Closure::runTimeoutCallback(const Name &interest)
+Closure::runTimeoutCallback(Name interest)
 {
   if (m_timeoutCallback.empty ())
     {
@@ -46,7 +46,7 @@ Closure::runTimeoutCallback(const Name &interest)
 
 
 void
-Closure::runDataCallback(const Name &name, PcoPtr content)
+Closure::runDataCallback(Name name, PcoPtr content)
 {
   if (!m_dataCallback.empty ())
     {
@@ -54,10 +54,47 @@ Closure::runDataCallback(const Name &name, PcoPtr content)
     }
 }
 
-Closure *
-Closure::dup () const
+ExecutorClosure::ExecutorClosure(const Closure &closure, ExecutorPtr executor)
+                : Closure(closure)
+                , m_executor(executor)
 {
-  return new Closure (*this);
+}
+
+ExecutorClosure::~ExecutorClosure()
+{
+}
+
+void
+ExecutorClosure::runDataCallback(Name name, PcoPtr content)
+{
+  m_executor->execute(boost::bind(&ExecutorClosure::execute, this, name, content));
+}
+
+void
+ExecutorClosure::execute(Name name, PcoPtr content)
+{
+  Closure::runDataCallback(name, content);
+}
+
+ExecutorInterestClosure::ExecutorInterestClosure(const InterestCallback &callback, ExecutorPtr executor)
+                        : m_callback(callback)
+                        , m_executor(executor)
+{
+}
+
+void
+ExecutorInterestClosure::runInterestCallback(Name interest)
+{
+  m_executor->execute(boost::bind(&ExecutorInterestClosure::execute, this, interest));
+}
+
+void
+ExecutorInterestClosure::execute(Name interest)
+{
+  if (!m_callback.empty())
+  {
+    m_callback(interest);
+  }
 }
 
 } // Ccnx

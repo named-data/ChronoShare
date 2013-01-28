@@ -31,6 +31,7 @@
 #include "ccnx-selectors.h"
 #include "ccnx-closure.h"
 #include "ccnx-pco.h"
+#include "executor.h"
 
 namespace Ccnx {
 
@@ -97,6 +98,7 @@ protected:
   bool m_running;
   bool m_connected;
   std::map<Name, InterestCallback> m_registeredInterests;
+  ExecutorPtr m_executor;
 };
 
 typedef boost::shared_ptr<CcnxWrapper> CcnxWrapperPtr;

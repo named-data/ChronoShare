@@ -24,6 +24,7 @@
 
 #include "ccnx-common.h"
 #include "ccnx-name.h"
+#include "executor.h"
 
 namespace Ccnx {
 
@@ -33,7 +34,7 @@ typedef boost::shared_ptr<ParsedContentObject> PcoPtr;
 class Closure
 {
 public:
-  typedef boost::function<void (const Name &, PcoPtr pco)> DataCallback;
+  typedef boost::function<void (Name, PcoPtr pco)> DataCallback;
 
   typedef enum
   {
@@ -41,23 +42,55 @@ public:
     RESULT_REEXPRESS
   } TimeoutCallbackReturnValue;
 
-  typedef boost::function<TimeoutCallbackReturnValue (const Name &)> TimeoutCallback;
+  typedef boost::function<TimeoutCallbackReturnValue (Name )> TimeoutCallback;
 
   Closure(const DataCallback &dataCallback, const TimeoutCallback &timeoutCallback = TimeoutCallback());
   virtual ~Closure();
 
   virtual void
-  runDataCallback(const Name &name, Ccnx::PcoPtr pco);
+  runDataCallback(Name name, Ccnx::PcoPtr pco);
 
   virtual TimeoutCallbackReturnValue
-  runTimeoutCallback(const Name &interest);
-
-  virtual Closure *
-  dup() const;
+  runTimeoutCallback(Name interest);
 
 protected:
   TimeoutCallback m_timeoutCallback;
   DataCallback m_dataCallback;
+};
+
+class ExecutorClosure : public Closure
+{
+public:
+  ExecutorClosure(const Closure &closure, ExecutorPtr executor);
+  virtual ~ExecutorClosure();
+
+  virtual void
+  runDataCallback(Name name, PcoPtr pco);
+
+private:
+  void
+  execute(Name nae, PcoPtr content);
+
+private:
+  ExecutorPtr m_executor;
+};
+
+class ExecutorInterestClosure
+{
+public:
+  typedef boost::function<void (Name)> InterestCallback;
+  ExecutorInterestClosure(const InterestCallback &callback, ExecutorPtr executor);
+  ~ExecutorInterestClosure() {}
+
+  void
+  runInterestCallback(Name interest);
+
+  void
+  execute(Name interest);
+
+private:
+  InterestCallback m_callback;
+  ExecutorPtr m_executor;
 };
 
 } // Ccnx

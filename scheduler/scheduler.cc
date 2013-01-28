@@ -56,6 +56,7 @@ void errorCallback(int err)
 
 Scheduler::Scheduler()
   : m_running(false)
+  , m_executor(1)
 {
   event_set_fatal_callback(errorCallback);
   evthread_use_pthreads();
@@ -113,12 +114,19 @@ Scheduler::eventLoop()
 }
 
 void
+Scheduler::execute(Executor::Job job)
+{
+  m_executor.execute(job);
+}
+
+void
 Scheduler::start()
 {
   ScopedLock lock(m_mutex);
   if (!m_running)
   {
     m_thread = boost::thread(&Scheduler::eventLoop, this);
+    m_executor.start();
     m_running = true;
   }
 }
@@ -139,6 +147,7 @@ Scheduler::shutdown()
   if (breakAndWait)
     {
       event_base_loopbreak(m_base);
+      m_executor.shutdown();
       m_thread.join();
     }
 }

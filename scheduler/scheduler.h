@@ -39,6 +39,7 @@
 
 #include "task.h"
 #include "interval-generator.h"
+#include "executor.h"
 
 class Scheduler;
 typedef boost::shared_ptr<Scheduler> SchedulerPtr;
@@ -110,6 +111,9 @@ public:
   rescheduleTaskAt (TaskPtr task, double time);
 
   void
+  execute(Executor::Job);
+
+  void
   eventLoop();
 
   event_base *
@@ -135,6 +139,7 @@ protected:
   event_base *m_base;
   event *m_ev;
   boost::thread m_thread;
+  Executor m_executor;
 };
 
 struct SchedulerException : virtual boost::exception, virtual std::exception { };

@@ -86,6 +86,9 @@ public:
   void
   setTv(double delay);
 
+  void
+  execute();
+
 protected:
   Callback m_callback;
   Tag m_tag;

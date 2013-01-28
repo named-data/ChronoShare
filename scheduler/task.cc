@@ -26,7 +26,7 @@ static void
 eventCallback(evutil_socket_t fd, short what, void *arg)
 {
   Task *task = static_cast<Task *>(arg);
-  task->run();
+  task->execute();
   task = NULL;
 }
 
@@ -67,4 +67,10 @@ Task::setTv(double delay)
 
   m_tv->tv_sec = static_cast<int>(intPart);
   m_tv->tv_usec = static_cast<int>((fraction * 1000000));
+}
+
+void
+Task::execute()
+{
+  m_scheduler->execute(boost::bind(&Task::run, this));
 }

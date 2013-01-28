@@ -72,7 +72,7 @@ def build (bld):
         features = ["cxx"],
         source = bld.path.ant_glob(['scheduler/**/*.cc']),
         use = 'BOOST BOOST_THREAD LIBEVENT LIBEVENT_PTHREADS LOG4CXX',
-        includes = "scheduler src",
+        includes = "scheduler executor src",
         )
 
     libccnx = bld (
@@ -80,7 +80,7 @@ def build (bld):
         features=['cxx'],
         source = bld.path.ant_glob(['ccnx/**/*.cc', 'ccnx/**/*.cpp']),
         use = 'BOOST BOOST_THREAD SSL CCNX LOG4CXX scheduler',
-        includes = "ccnx src scheduler",
+        includes = "ccnx src scheduler executor",
         )
 
     chornoshare = bld (
@@ -88,7 +88,7 @@ def build (bld):
         features=['cxx'],
         source = bld.path.ant_glob(['src/**/*.cc', 'src/**/*.cpp', 'src/**/*.proto']),
         use = "BOOST BOOST_FILESYSTEM SQLITE3 LOG4CXX scheduler ccnx",
-        includes = "ccnx scheduler src",
+        includes = "ccnx scheduler src executor",
         )
 
     # Unit tests
@@ -98,7 +98,7 @@ def build (bld):
           source = bld.path.ant_glob(['test/*.cc']),
           features=['cxx', 'cxxprogram'],
           use = 'BOOST_TEST BOOST_FILESYSTEM LOG4CXX ccnx database chronoshare',
-          includes = "ccnx scheduler src",
+          includes = "ccnx scheduler src executor",
           )
 
     app_plist = '''<?xml version="1.0" encoding="UTF-8"?>

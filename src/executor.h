@@ -23,6 +23,7 @@
 #define EXECUTOR_H
 
 #include <boost/function.hpp>
+#include <boost/shared_ptr.hpp>
 #include <boost/thread/condition_variable.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/locks.hpp>
@@ -83,4 +84,6 @@ private:
   volatile bool m_needStop;
   int m_poolSize;
 };
+
+typedef boost::shared_ptr<Executor> ExecutorPtr;
 #endif // EXECUTOR_H
