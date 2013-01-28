@@ -28,6 +28,12 @@
 
 #include <log4cxx/logger.h>
 
+#define MEMBER_LOGGER                           \
+  static log4cxx::LoggerPtr staticModuleLogger;
+
+#define INIT_MEMBER_LOGGER(className,name)          \
+  log4cxx::LoggerPtr className::staticModuleLogger =  log4cxx::Logger::getLogger (name);
+
 #define INIT_LOGGER(name) \
   static log4cxx::LoggerPtr staticModuleLogger = log4cxx::Logger::getLogger (name);
 
@@ -65,6 +71,9 @@ INIT_LOGGERS ();
 #define _LOG_ERROR(x)
 #define _LOG_ERROR_COND(cond,x)
 #define _LOG_DEBUG_COND(cond,x)
+
+#define MEMBER_LOGGER
+#define INIT_MEMBER_LOGGER(className,name)
 
 #ifdef _DEBUG
 

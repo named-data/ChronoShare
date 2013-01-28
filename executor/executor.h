@@ -30,6 +30,8 @@
 #include <boost/thread/thread.hpp>
 #include <deque>
 
+#include "logging.h"
+
 /* A very simple executor to execute submitted tasks immediately or
  * in the future (depending on whether there is idle thread)
  * A fixed number of threads are created for executing tasks;
@@ -83,6 +85,8 @@ private:
 
   volatile bool m_needStop;
   int m_poolSize;
+
+  MEMBER_LOGGER
 };
 
 typedef boost::shared_ptr<Executor> ExecutorPtr;

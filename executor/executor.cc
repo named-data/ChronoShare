@@ -22,7 +22,7 @@
 #include "executor.h"
 #include "logging.h"
 
-INIT_LOGGER ("Executor");
+INIT_MEMBER_LOGGER(Executor,"Executor")
 
 using namespace std;
 using namespace boost;

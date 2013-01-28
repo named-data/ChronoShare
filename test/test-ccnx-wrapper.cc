@@ -1,3 +1,24 @@
+/* -*- Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil -*- */
+/*
+ * Copyright (c) 2012 University of California, Los Angeles
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Author: Zhenkai Zhu <zhenkai@cs.ucla.edu>
+ *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
+ */
+
 #include "ccnx-wrapper.h"
 #include "ccnx-closure.h"
 #include "ccnx-name.h"
@@ -7,7 +28,7 @@
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/test/unit_test.hpp>
-
+#include <boost/make_shared.hpp>
 
 using namespace Ccnx;
 using namespace std;
@@ -15,8 +36,8 @@ using namespace boost;
 
 BOOST_AUTO_TEST_SUITE(CcnxWrapperTests)
 
-CcnxWrapperPtr c1(new CcnxWrapper());
-CcnxWrapperPtr c2(new CcnxWrapper());
+CcnxWrapperPtr c1;
+CcnxWrapperPtr c2;
 int g_timeout_counter = 0;
 int g_dataCallback_counter = 0;
 
@@ -48,6 +69,9 @@ Closure::TimeoutCallbackReturnValue timeout(const Name &name)
 
 BOOST_AUTO_TEST_CASE (CcnxWrapperTest)
 {
+  c1 = make_shared<CcnxWrapper> ();
+  c2 = make_shared<CcnxWrapper> ();
+
   Name prefix1("/c1");
   Name prefix2("/c2");
 
