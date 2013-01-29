@@ -49,7 +49,7 @@ FetchManager::FetchManager (CcnxWrapperPtr ccnx, const Mapping &mapping, uint32_
   m_scheduler->start ();
 
   m_scheduleFetchesTask = Scheduler::schedulePeriodicTask (m_scheduler,
-                                                           make_shared<SimpleIntervalGenerator> (1),
+                                                           make_shared<SimpleIntervalGenerator> (300), // no need to check to often. if needed, will be rescheduled
                                                            bind (&FetchManager::ScheduleFetches, this), SCHEDULE_FETCHES_TAG);
 }
 
@@ -107,6 +107,7 @@ FetchManager::ScheduleFetches ()
   unique_lock<mutex> lock (m_parellelFetchMutex);
 
   boost::posix_time::ptime currentTime = date_time::second_clock<boost::posix_time::ptime>::universal_time ();
+  boost::posix_time::ptime nextSheduleCheck = currentTime + posix_time::seconds (300); // no reason to have anything, but just in case
 
   for (FetchList::iterator item = m_fetchList.begin ();
        m_currentParallelFetches < m_maxParallelFetches && item != m_fetchList.end ();
@@ -120,6 +121,9 @@ FetchManager::ScheduleFetches ()
 
       if (currentTime < item->GetNextScheduledRetry ())
         {
+          if (item->GetNextScheduledRetry () < nextSheduleCheck)
+            nextSheduleCheck = item->GetNextScheduledRetry ();
+
           _LOG_DEBUG ("Item is delayed");
           continue;
         }
@@ -129,6 +133,8 @@ FetchManager::ScheduleFetches ()
       m_currentParallelFetches ++;
       item->RestartPipeline ();
     }
+
+  m_scheduler->rescheduleTaskAt (m_scheduleFetchesTask, (nextSheduleCheck - currentTime).seconds ());
 }
 
 void
@@ -168,6 +174,8 @@ FetchManager::DidNoDataTimeout (Fetcher &fetcher)
 
   fetcher.SetRetryPause (delay);
   fetcher.SetNextScheduledRetry (date_time::second_clock<boost::posix_time::ptime>::universal_time () + posix_time::seconds (delay));
+
+  m_scheduler->rescheduleTaskAt (m_scheduleFetchesTask, 0);
 }
 
 void
@@ -179,4 +187,5 @@ FetchManager::DidFetchComplete (Fetcher &fetcher)
     m_fetchList.erase_and_dispose (FetchList::s_iterator_to (fetcher), fetcher_disposer ());
   }
 
+  m_scheduler->rescheduleTaskAt (m_scheduleFetchesTask, 0);
 }

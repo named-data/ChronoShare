@@ -157,12 +157,19 @@ Dispatcher::Did_LocalFile_AddOrModify_Execute (filesystem::path relativeFilePath
   HashPtr hash;
   tie (hash, seg_num) = m_objectManager.localFileToObjects (absolutePath, m_localUserName);
 
-  m_actionLog->AddLocalActionUpdate (relativeFilePath.generic_string(),
-                                     *hash,
-                                     last_write_time (absolutePath), status (absolutePath).permissions (), seg_num);
+  try
+    {
+      m_actionLog->AddLocalActionUpdate (relativeFilePath.generic_string(),
+                                         *hash,
+                                         last_write_time (absolutePath), status (absolutePath).permissions (), seg_num);
 
-  // notify SyncCore to propagate the change
-  m_core->localStateChanged();
+      // notify SyncCore to propagate the change
+      m_core->localStateChanged();
+    }
+  catch (filesystem::filesystem_error &error)
+    {
+      _LOG_ERROR ("File operations failed on [" << relativeFilePath << "] (ignoring)");
+    }
 }
 
 void
@@ -178,7 +185,7 @@ Dispatcher::Did_LocalFile_Delete_Execute (filesystem::path relativeFilePath)
   if (filesystem::exists(absolutePath))
     {
       //BOOST_THROW_EXCEPTION (Error::Dispatcher() << error_info_str("Delete notification but file exists: " + absolutePath.string() ));
-      _LOG_DEBUG("DELETE command, but file still exists: " << absolutePath.string());
+      _LOG_ERROR("DELETE command, but file still exists: " << absolutePath.string());
       return;
     }
 

@@ -26,7 +26,7 @@
 #include <QFileSystemWatcher>
 #include <boost/filesystem.hpp>
 
-#include "executor.h"
+#include "scheduler.h"
 
 class FsWatcher : public QObject
 {
@@ -57,9 +57,6 @@ private slots:
 
 private:
   // handle callback from the watcher
-  void
-  DidDirectoryChanged_Execute (QString dirPath);
-
   // scan directory and notify callback about any file changes
   void
   ScanDirectory_Notify_Execute (QString dirPath);
@@ -76,7 +73,7 @@ private:
 
 private:
   QFileSystemWatcher* m_watcher; // filesystem watcher
-  Executor m_executor;
+  SchedulerPtr m_scheduler;
 
   QString m_dirPath; // monitored path
 
