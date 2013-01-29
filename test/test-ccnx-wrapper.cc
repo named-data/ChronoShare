@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)
   string n1 = "/random/01";
   c1->sendInterest(Name(n1), closure, selectors);
   sleep(2);
-  c2->publishData(Name(n1), (const unsigned char *)n1.c_str(), n1.size(), 4);
+  c2->publishData(Name(n1), (const unsigned char *)n1.c_str(), n1.size(), 1);
   usleep(100000);
   BOOST_CHECK_EQUAL(g_timeout_counter, 1);
   BOOST_CHECK_EQUAL(g_dataCallback_counter, 0);
@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)
   selectors.interestLifetime(2);
   c1->sendInterest(Name(n2), closure, selectors);
   sleep(1);
-  c2->publishData(Name(n2), (const unsigned char *)n2.c_str(), n2.size(), 4);
+  c2->publishData(Name(n2), (const unsigned char *)n2.c_str(), n2.size(), 1);
   usleep(100000);
   BOOST_CHECK_EQUAL(g_timeout_counter, 1);
   BOOST_CHECK_EQUAL(g_dataCallback_counter, 1);
