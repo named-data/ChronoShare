@@ -183,7 +183,7 @@ Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
 
   if (m_maxInOrderRecvSeqNo == m_maxSeqNo)
     {
-      _LOG_TRACE ("Fetch finished");
+      _LOG_TRACE ("Fetch finished: " << m_name);
       m_active = false;
       // invoke callback
       if (!m_finishCallback.empty ())
@@ -195,7 +195,7 @@ Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
       // tell FetchManager that we have finish our job
       // m_onFetchComplete (*this);
       // using executor, so we won't be deleted if there is scheduled FillPipeline call
-      m_executor->execute (bind (m_onFetchComplete, *this));
+      m_executor->execute (bind (m_onFetchComplete, ref(*this)));
     }
   else
     {
@@ -230,7 +230,7 @@ Fetcher::OnTimeout_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::Closure closu
           _LOG_DEBUG ("Active pipeline size should be zero: " << m_inActivePipeline.size ());
 
           m_active = false;
-          m_onFetchFailed (*this);
+          m_onFetchFailed (ref (*this));
           // this is not valid anymore, but we still should be able finish work
         }
     }

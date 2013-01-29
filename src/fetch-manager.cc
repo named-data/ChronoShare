@@ -79,29 +79,34 @@ FetchManager::Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
   Name forwardingHint;
   forwardingHint = m_mapping (deviceName);
 
-  Fetcher &fetcher = *(new Fetcher (m_ccnx,
-                                    m_executor,
-                                    segmentCallback,
-                                    finishCallback,
-                                    bind (&FetchManager::DidFetchComplete, this, _1),
-                                    bind (&FetchManager::DidNoDataTimeout, this, _1),
-                                    deviceName, baseName, minSeqNo, maxSeqNo,
-                                    boost::posix_time::seconds (30),
-                                    forwardingHint));
+  unique_lock<mutex> lock (m_parellelFetchMutex);
+
+  _LOG_TRACE ("++++ Create fetcher: " << baseName);
+  Fetcher *fetcher = new Fetcher (m_ccnx,
+                                  m_executor,
+                                  segmentCallback,
+                                  finishCallback,
+                                  bind (&FetchManager::DidFetchComplete, this, _1),
+                                  bind (&FetchManager::DidNoDataTimeout, this, _1),
+                                  deviceName, baseName, minSeqNo, maxSeqNo,
+                                  boost::posix_time::seconds (30),
+                                  forwardingHint);
 
   switch (priority)
     {
     case PRIORITY_HIGH:
-      m_fetchList.push_front (fetcher);
+      _LOG_TRACE ("++++ Push front fetcher: " << fetcher->GetName ());
+      m_fetchList.push_front (*fetcher);
       break;
 
     case PRIORITY_NORMAL:
     default:
-      m_fetchList.push_back (fetcher);
+      _LOG_TRACE ("++++ Push back fetcher: " << fetcher->GetName ());
+      m_fetchList.push_back (*fetcher);
       break;
     }
 
-  _LOG_DEBUG ("Reschedule fetcher task");
+  _LOG_DEBUG ("++++ Reschedule fetcher task");
   m_scheduler->rescheduleTaskAt (m_scheduleFetchesTask, 0);
   // ScheduleFetches (); // will start a fetch if m_currentParallelFetches is less than max, otherwise does nothing
 }
@@ -136,6 +141,7 @@ FetchManager::ScheduleFetches ()
       _LOG_DEBUG ("Start fetching of " << item->GetName ());
 
       m_currentParallelFetches ++;
+      _LOG_TRACE ("++++ RESTART PIPELINE: " << item->GetName ());
       item->RestartPipeline ();
     }
 
@@ -189,6 +195,7 @@ FetchManager::DidFetchComplete (Fetcher &fetcher)
   {
     unique_lock<mutex> lock (m_parellelFetchMutex);
     m_currentParallelFetches --;
+    _LOG_TRACE ("+++++ removing fetcher: " << fetcher.GetName ());
     m_fetchList.erase_and_dispose (FetchList::s_iterator_to (fetcher), fetcher_disposer ());
   }
 
