@@ -121,8 +121,6 @@ BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)
   g_timeout_counter = 0;
 
 
-  c1.reset ();
-  c2.reset ();
 }
 
 void
@@ -148,6 +146,12 @@ BOOST_AUTO_TEST_CASE (TestTimeout)
   usleep(1000);
   BOOST_CHECK_EQUAL(g_dataCallback_counter, 1);
   BOOST_CHECK_EQUAL(g_timeout_counter, 3);
+}
+
+BOOST_AUTO_TEST_CASE(Cleanup)
+{
+  c1.reset ();
+  c2.reset ();
 }
 // BOOST_AUTO_TEST_CASE (CcnxWrapperSigningTest)
 // {
