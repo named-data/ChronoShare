@@ -121,6 +121,30 @@ BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)
   g_timeout_counter = 0;
 }
 
+void
+reexpress(const Name &name, const Closure &closure, Selectors selectors)
+{
+  g_timeout_counter ++;
+  c1->sendInterest(name, closure, selectors);
+}
+
+BOOST_AUTO_TEST_CASE (TestTimeout)
+{
+  g_dataCallback_counter = 0;
+  g_timeout_counter = 0;
+  Closure closure (bind(dataCallback, _1, _2), bind(reexpress, _1, _2, _3));
+
+  Selectors selectors;
+  selectors.interestLifetime(1);
+
+  string n1 = "/random/04";
+  c1->sendInterest(Name(n1), closure, selectors);
+  usleep(3500000);
+  c2->publishData(Name(n1), (const unsigned char *)n1.c_str(), n1.size(), 1);
+  usleep(1000);
+  BOOST_CHECK_EQUAL(g_dataCallback_counter, 1);
+  BOOST_CHECK_EQUAL(g_timeout_counter, 3);
+}
 // BOOST_AUTO_TEST_CASE (CcnxWrapperSigningTest)
 // {
 //   Bytes data;
