@@ -193,7 +193,9 @@ Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
         }
 
       // tell FetchManager that we have finish our job
-      m_onFetchComplete (*this);
+      // m_onFetchComplete (*this);
+      // using executor, so we won't be deleted if there is scheduled FillPipeline call
+      m_executor->execute (bind (m_onFetchComplete, *this));
     }
   else
     {
