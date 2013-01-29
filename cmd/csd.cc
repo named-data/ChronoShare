@@ -18,6 +18,8 @@
  * Author: Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
+#include <QtCore>
+
 #include "dispatcher.h"
 #include "fs-watcher.h"
 #include "logging.h"
@@ -32,6 +34,8 @@ using namespace Ccnx;
 int main(int argc, char *argv[])
 {
   INIT_LOGGERS ();
+
+  QCoreApplication app(argc, argv);
 
   if (argc != 4)
     {
@@ -51,10 +55,6 @@ int main(int argc, char *argv[])
                      bind (&Dispatcher::Did_LocalFile_AddOrModify, &dispatcher, _1),
                      bind (&Dispatcher::Did_LocalFile_Delete,      &dispatcher, _1));
 
-  while (true)
-    {
-      sleep (1);
-    }
 
-  return 0;
+  return app.exec ();
 }
