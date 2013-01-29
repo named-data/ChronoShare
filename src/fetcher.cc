@@ -99,6 +99,11 @@ Fetcher::FillPipeline ()
       if (m_outOfOrderRecvSeqNo.find (m_minSendSeqNo+1) != m_outOfOrderRecvSeqNo.end ())
         continue;
 
+      if (m_inActivePipeline.find (m_minSendSeqNo+1) != m_inActivePipeline.end ())
+        continue;
+
+      m_inActivePipeline.insert (m_minSendSeqNo+1);
+
       _LOG_DEBUG (" >>> i " << Name (m_forwardingHint)(m_name) << ", seq = " << (m_minSendSeqNo + 1 ));
 
       // cout << ">>> " << m_minSendSeqNo+1 << endl;
@@ -148,13 +153,20 @@ Fetcher::OnData (uint64_t seqno, const Ccnx::Name &name, PcoPtr data)
 
   ////////////////////////////////////////////////////////////////////////////
   m_outOfOrderRecvSeqNo.insert (seqno);
+  m_inActivePipeline.erase (seqno);
+  _LOG_DEBUG ("Total segments received: " << m_outOfOrderRecvSeqNo.size ());
   set<int64_t>::iterator inOrderSeqNo = m_outOfOrderRecvSeqNo.begin ();
   for (; inOrderSeqNo != m_outOfOrderRecvSeqNo.end ();
        inOrderSeqNo++)
     {
+      _LOG_TRACE ("Checking " << *inOrderSeqNo << " and " << m_maxInOrderRecvSeqNo+1);
       if (*inOrderSeqNo == m_maxInOrderRecvSeqNo+1)
         {
           m_maxInOrderRecvSeqNo = *inOrderSeqNo;
+        }
+      else if (*inOrderSeqNo < m_maxInOrderRecvSeqNo+1) // not possible anymore, but just in case
+        {
+          continue;
         }
       else
         break;
@@ -162,12 +174,16 @@ Fetcher::OnData (uint64_t seqno, const Ccnx::Name &name, PcoPtr data)
   m_outOfOrderRecvSeqNo.erase (m_outOfOrderRecvSeqNo.begin (), inOrderSeqNo);
   ////////////////////////////////////////////////////////////////////////////
 
+  _LOG_TRACE ("Max in order received: " << m_maxInOrderRecvSeqNo << ", max seqNo to request: " << m_maxSeqNo);
+
   if (m_maxInOrderRecvSeqNo == m_maxSeqNo)
     {
+      _LOG_TRACE ("Fetch finished");
       m_active = false;
       // invoke callback
       if (!m_finishCallback.empty ())
         {
+          _LOG_TRACE ("Notifying callback");
           m_finishCallback(m_deviceName, m_name);
         }
 
@@ -194,10 +210,13 @@ Fetcher::OnTimeout (uint64_t seqno, const Ccnx::Name &name)
   if (m_lastPositiveActivity <
       (date_time::second_clock<boost::posix_time::ptime>::universal_time() - m_maximumNoActivityPeriod))
     {
+      m_inActivePipeline.erase (seqno);
       m_activePipeline --;
       if (m_activePipeline == 0)
         {
           _LOG_DEBUG ("Telling that fetch failed");
+          _LOG_DEBUG ("Active pipeline size should be zero: " << m_inActivePipeline.size ());
+
           m_active = false;
           m_onFetchFailed (*this);
           // this is not valid anymore, but we still should be able finish work
@@ -206,7 +225,7 @@ Fetcher::OnTimeout (uint64_t seqno, const Ccnx::Name &name)
     }
   else
     {
-      _LOG_DEBUG ("Asking to reexpress");
+      _LOG_DEBUG ("Asking to reexpress seqno: " << seqno);
       return Closure::RESULT_REEXPRESS;
     }
 }

@@ -112,6 +112,7 @@ private:
   int64_t m_minSendSeqNo;
   int64_t m_maxInOrderRecvSeqNo;
   std::set<int64_t> m_outOfOrderRecvSeqNo;
+  std::set<int64_t> m_inActivePipeline;
 
   int64_t m_minSeqNo;
   int64_t m_maxSeqNo;
