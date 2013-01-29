@@ -268,16 +268,25 @@ Dispatcher::Did_FetchManager_ActionFetch (const Ccnx::Name &deviceName, const Cc
 
       Name fileNameBase = Name (deviceName)("file")(hash.GetHash (), hash.GetHashBytes ());
 
-      if (m_objectDbMap.find (hash) == m_objectDbMap.end ())
+      string hashStr = lexical_cast<string> (hash);
+      if (ObjectDb::DoesExist (m_rootDir / ".chronoshare",  deviceName, hashStr))
         {
-          _LOG_DEBUG ("create ObjectDb for " << hash);
-          m_objectDbMap [hash] = make_shared<ObjectDb> (m_rootDir / ".chronoshare", lexical_cast<string> (hash));
+          _LOG_DEBUG ("File already exists in the database. No need to refetch, just directly applying the action");
+          Did_FetchManager_FileFetchComplete (deviceName, fileNameBase);
         }
+      else
+        {
+          if (m_objectDbMap.find (hash) == m_objectDbMap.end ())
+            {
+              _LOG_DEBUG ("create ObjectDb for " << hash);
+              m_objectDbMap [hash] = make_shared<ObjectDb> (m_rootDir / ".chronoshare", hashStr);
+            }
 
-      m_fileFetcher->Enqueue (deviceName, fileNameBase,
-                              bind (&Dispatcher::Did_FetchManager_FileSegmentFetch, this, _1, _2, _3, _4),
-                              bind (&Dispatcher::Did_FetchManager_FileFetchComplete, this, _1, _2),
-                              0, action->seg_num () - 1, FetchManager::PRIORITY_NORMAL);
+          m_fileFetcher->Enqueue (deviceName, fileNameBase,
+                                  bind (&Dispatcher::Did_FetchManager_FileSegmentFetch, this, _1, _2, _3, _4),
+                                  bind (&Dispatcher::Did_FetchManager_FileFetchComplete, this, _1, _2),
+                                  0, action->seg_num () - 1, FetchManager::PRIORITY_NORMAL);
+        }
     }
 }
 
