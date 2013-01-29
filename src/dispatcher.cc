@@ -371,6 +371,16 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
        file++)
     {
       boost::filesystem::path filePath = m_rootDir / file->filename ();
+
+      if (filesystem::exists (filePath) &&
+          filesystem::last_write_time (filePath) == file->mtime () &&
+          filesystem::status (filePath).permissions () == static_cast<filesystem::perms> (file->mode ()) &&
+          *Hash::FromFileContent (filePath) == hash)
+        {
+          _LOG_DEBUG ("Asking to assemble a file, but file already exists on a filesystem");
+          continue;
+        }
+
       m_objectManager.objectsToLocalFile (deviceName, hash, filePath);
 
       last_write_time (filePath, file->mtime ());
