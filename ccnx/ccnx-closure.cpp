@@ -73,10 +73,7 @@ ExecutorClosure::runDataCallback(Name name, PcoPtr content)
 void
 ExecutorClosure::execute(Name name, PcoPtr content)
 {
-  if (!m_dataCallback.empty ())
-    {
-      m_dataCallback (name, content);
-    }
+  Closure::runDataCallback(name, content);
 }
 
 ExecutorInterestClosure::ExecutorInterestClosure(const InterestCallback &callback, ExecutorPtr executor)
