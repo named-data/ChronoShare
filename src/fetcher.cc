@@ -36,6 +36,7 @@ using namespace std;
 using namespace Ccnx;
 
 Fetcher::Fetcher (Ccnx::CcnxWrapperPtr ccnx,
+                  ExecutorPtr executor,
                   const SegmentCallback &segmentCallback,
                   const FinishCallback &finishCallback,
                   OnFetchCompleteCallback onFetchComplete, OnFetchFailedCallback onFetchFailed,
@@ -64,14 +65,12 @@ Fetcher::Fetcher (Ccnx::CcnxWrapperPtr ccnx,
   , m_activePipeline (0)
   , m_retryPause (0)
   , m_nextScheduledRetry (date_time::second_clock<boost::posix_time::ptime>::universal_time ())
-  , m_executor (1) // must be 1
+  , m_executor (executor) // must be 1
 {
-  m_executor.start ();
 }
 
 Fetcher::~Fetcher ()
 {
-  m_executor.shutdown ();
 }
 
 void
@@ -82,7 +81,7 @@ Fetcher::RestartPipeline ()
   // cout << "Restart: " << m_minSendSeqNo << endl;
   m_lastPositiveActivity = date_time::second_clock<boost::posix_time::ptime>::universal_time();
 
-  m_executor.execute (bind (&Fetcher::FillPipeline, this));
+  m_executor->execute (bind (&Fetcher::FillPipeline, this));
 }
 
 void
@@ -120,7 +119,7 @@ Fetcher::FillPipeline ()
 void
 Fetcher::OnData (uint64_t seqno, const Ccnx::Name &name, PcoPtr data)
 {
-  m_executor.execute (bind (&Fetcher::OnData_Execute, this, seqno, name, data));
+  m_executor->execute (bind (&Fetcher::OnData_Execute, this, seqno, name, data));
 }
 
 void
@@ -198,14 +197,14 @@ Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
     }
   else
     {
-      m_executor.execute (bind (&Fetcher::FillPipeline, this));
+      m_executor->execute (bind (&Fetcher::FillPipeline, this));
     }
 }
 
 void
 Fetcher::OnTimeout (uint64_t seqno, const Ccnx::Name &name, const Closure &closure, Selectors selectors)
 {
-  m_executor.execute (bind (&Fetcher::OnTimeout_Execute, this, seqno, name, closure, selectors));
+  m_executor->execute (bind (&Fetcher::OnTimeout_Execute, this, seqno, name, closure, selectors));
 }
 
 void

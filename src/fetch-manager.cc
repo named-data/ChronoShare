@@ -45,8 +45,10 @@ FetchManager::FetchManager (CcnxWrapperPtr ccnx, const Mapping &mapping, uint32_
   , m_maxParallelFetches (parallelFetches)
   , m_currentParallelFetches (0)
   , m_scheduler (new Scheduler)
+  , m_executor (new Executor(1))
 {
   m_scheduler->start ();
+  m_executor->start();
 
   m_scheduleFetchesTask = Scheduler::schedulePeriodicTask (m_scheduler,
                                                            make_shared<SimpleIntervalGenerator> (300), // no need to check to often. if needed, will be rescheduled
@@ -56,6 +58,8 @@ FetchManager::FetchManager (CcnxWrapperPtr ccnx, const Mapping &mapping, uint32_
 FetchManager::~FetchManager ()
 {
   m_scheduler->shutdown ();
+
+  m_executor->shutdown();
 
   m_fetchList.clear_and_dispose (fetcher_disposer ());
 }
@@ -76,6 +80,7 @@ FetchManager::Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
   forwardingHint = m_mapping (deviceName);
 
   Fetcher &fetcher = *(new Fetcher (m_ccnx,
+                                    m_executor,
                                     segmentCallback,
                                     finishCallback,
                                     bind (&FetchManager::DidFetchComplete, this, _1),

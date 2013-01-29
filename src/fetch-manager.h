@@ -29,6 +29,7 @@
 #include <list>
 #include <stdint.h>
 #include "scheduler.h"
+#include "executor.h"
 #include "ccnx-wrapper.h"
 
 #include "fetcher.h"
@@ -87,6 +88,7 @@ private:
 
   FetchList m_fetchList;
   SchedulerPtr m_scheduler;
+  ExecutorPtr m_executor;
   TaskPtr m_scheduleFetchesTask;
 };
 

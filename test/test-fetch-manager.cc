@@ -110,8 +110,10 @@ BOOST_AUTO_TEST_CASE (TestFetcher)
   ccnx->publishData (Name (baseName)(oneMore), reinterpret_cast<const unsigned char*> (&oneMore), sizeof(int), 30);
 
   FetcherTestData data;
+  ExecutorPtr executor = make_shared<Executor>(1);
 
   Fetcher fetcher (ccnx,
+                   executor,
                    bind (&FetcherTestData::onData, &data, _1, _2, _3, _4),
                    bind (&FetcherTestData::finish, &data, _1, _2),
                    bind (&FetcherTestData::onComplete, &data, _1),

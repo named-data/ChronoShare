@@ -40,6 +40,7 @@ public:
   typedef boost::function<void (Fetcher &)> OnFetchFailedCallback;
 
   Fetcher (Ccnx::CcnxWrapperPtr ccnx,
+           ExecutorPtr executor,
            const SegmentCallback &segmentCallback, // callback passed by caller of FetchManager
            const FinishCallback &finishCallback, // callback passed by caller of FetchManager
            OnFetchCompleteCallback onFetchComplete, OnFetchFailedCallback onFetchFailed, // callbacks provided by FetchManager
@@ -131,7 +132,7 @@ private:
   double m_retryPause; // pause to stop trying to fetch (for fetch-manager)
   boost::posix_time::ptime m_nextScheduledRetry;
 
-  Executor m_executor; // to serialize FillPipeline events
+  ExecutorPtr m_executor; // to serialize FillPipeline events
 };
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;
