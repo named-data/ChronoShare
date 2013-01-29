@@ -245,18 +245,31 @@ CcnxWrapper::publishData (const Name &name, const Bytes &content, int freshness)
 }
 
 
+static void
+deleterInInterestTuple (tuple<CcnxWrapper::InterestCallback *, ExecutorPtr> *tuple)
+{
+  delete tuple->get<0> ();
+  delete tuple;
+}
+
 static ccn_upcall_res
 incomingInterest(ccn_closure *selfp,
                  ccn_upcall_kind kind,
                  ccn_upcall_info *info)
 {
-  ExecutorInterestClosure *closure = static_cast<ExecutorInterestClosure*> (selfp->data);
+  CcnxWrapper::InterestCallback *f;
+  ExecutorPtr executor;
+  tuple<CcnxWrapper::InterestCallback *, ExecutorPtr> *realData = reinterpret_cast< tuple<CcnxWrapper::InterestCallback *, ExecutorPtr>* > (selfp->data);
+  tie (f, executor) = *realData;
+
   _LOG_TRACE (">> incomingInterest upcall");
 
   switch (kind)
     {
     case CCN_UPCALL_FINAL: // effective in unit tests
-      delete closure;
+      // delete closure;
+      executor->execute (bind (deleterInInterestTuple, realData));
+
       delete selfp;
       _LOG_TRACE ("<< incomingInterest with CCN_UPCALL_FINAL");
       return CCN_UPCALL_RESULT_OK;
@@ -271,11 +284,20 @@ incomingInterest(ccn_closure *selfp,
 
   Name interest(info->interest_ccnb, info->interest_comps);
 
+  executor->execute (bind (*f, interest));
   // this will be run in executor
-  closure->runInterestCallback(interest);
+  // (*f) (interest);
+  // closure->runInterestCallback(interest);
 
   _LOG_TRACE ("<< incomingInterest");
   return CCN_UPCALL_RESULT_OK;
+}
+
+static void
+deleterInDataTuple (tuple<Closure *, ExecutorPtr> *tuple)
+{
+  delete tuple->get<0> ();
+  delete tuple;
 }
 
 static ccn_upcall_res
@@ -283,13 +305,19 @@ incomingData(ccn_closure *selfp,
              ccn_upcall_kind kind,
              ccn_upcall_info *info)
 {
-  Closure *cp = static_cast<Closure *> (selfp->data);
+  // Closure *cp = static_cast<Closure *> (selfp->data);
+  Closure *cp;
+  ExecutorPtr executor;
+  tuple<Closure *, ExecutorPtr> *realData = reinterpret_cast< tuple<Closure*, ExecutorPtr>* > (selfp->data);
+  tie (cp, executor) = *realData;
+
   _LOG_TRACE (">> incomingData upcall");
 
   switch (kind)
     {
     case CCN_UPCALL_FINAL:  // effecitve in unit tests
-      delete cp;
+      executor->execute (bind (deleterInDataTuple, realData));
+
       cp = NULL;
       delete selfp;
       _LOG_TRACE ("<< incomingData with CCN_UPCALL_FINAL");
@@ -340,7 +368,8 @@ incomingData(ccn_closure *selfp,
   // readRaw(content, pcontent, len);
 
   // this will be run in executor
-  cp->runDataCallback (pco->name (), pco);
+  executor->execute (bind (&Closure::runDataCallback, cp, pco->name (), pco));
+  // cp->runDataCallback (pco->name (), pco);
 
   _LOG_TRACE (">> incomingData");
 
@@ -363,8 +392,9 @@ int CcnxWrapper::sendInterest (const Name &interest, const Closure &closure, con
   ccn_charbuf *pname = namePtr->getBuf();
   ccn_closure *dataClosure = new ccn_closure;
 
-  Closure *myClosure = new ExecutorClosure(closure, m_executor);
-  dataClosure->data = (void *)myClosure;
+  // Closure *myClosure = new ExecutorClosure(closure, m_executor);
+  Closure *myClosure = closure.dup ();
+  dataClosure->data = new tuple<Closure*, ExecutorPtr> (myClosure, m_executor);
 
   dataClosure->p = &incomingData;
 
@@ -399,7 +429,9 @@ int CcnxWrapper::setInterestFilter (const Name &prefix, const InterestCallback &
   ccn_charbuf *pname = ptr->getBuf();
   ccn_closure *interestClosure = new ccn_closure;
 
-  interestClosure->data = new ExecutorInterestClosure(interestCallback, m_executor);
+  // interestClosure->data = new ExecutorInterestClosure(interestCallback, m_executor);
+
+  interestClosure->data = new tuple<CcnxWrapper::InterestCallback *, ExecutorPtr> (new InterestCallback (interestCallback), m_executor); // should be removed when closure is removed
   interestClosure->p = &incomingInterest;
 
   int ret = ccn_set_interest_filter (m_handle, pname, interestClosure);
@@ -409,7 +441,7 @@ int CcnxWrapper::setInterestFilter (const Name &prefix, const InterestCallback &
   }
 
   m_registeredInterests.insert(pair<Name, InterestCallback>(prefix, interestCallback));
-  
+
   _LOG_TRACE ("<< setInterestFilter");
 
   return ret;

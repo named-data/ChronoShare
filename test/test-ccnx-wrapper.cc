@@ -34,7 +34,7 @@ using namespace Ccnx;
 using namespace std;
 using namespace boost;
 
-BOOST_AUTO_TEST_SUITE(CcnxWrapperTests)
+BOOST_AUTO_TEST_SUITE(TestCcnxWrapper)
 
 CcnxWrapperPtr c1;
 CcnxWrapperPtr c2;
@@ -67,7 +67,7 @@ Closure::TimeoutCallbackReturnValue timeout(const Name &name)
   return Closure::RESULT_OK;
 }
 
-BOOST_AUTO_TEST_CASE (CcnxWrapperTest)
+BOOST_AUTO_TEST_CASE (BlaCcnxWrapperTest)
 {
   c1 = make_shared<CcnxWrapper> ();
   c2 = make_shared<CcnxWrapper> ();
@@ -121,30 +121,30 @@ BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)
   g_timeout_counter = 0;
 }
 
-BOOST_AUTO_TEST_CASE (CcnxWrapperSigningTest)
-{
-  Bytes data;
-  data.resize(1024);
-  for (int i = 0; i < 1024; i++)
-  {
-    data[i] = 'm';
-  }
+// BOOST_AUTO_TEST_CASE (CcnxWrapperSigningTest)
+// {
+//   Bytes data;
+//   data.resize(1024);
+//   for (int i = 0; i < 1024; i++)
+//   {
+//     data[i] = 'm';
+//   }
 
-  Name name("/signingtest");
+//   Name name("/signingtest");
 
-  posix_time::ptime start = posix_time::second_clock::local_time();
-  for (uint64_t i = 0; i < 10000; i++)
-  {
-    Name n = name;
-    n.appendComp(i);
-    c1->publishData(n, data, 10);
-  }
-  posix_time::ptime end = posix_time::second_clock::local_time();
+//   posix_time::ptime start = posix_time::second_clock::local_time();
+//   for (uint64_t i = 0; i < 10000; i++)
+//   {
+//     Name n = name;
+//     n.appendComp(i);
+//     c1->publishData(n, data, 10);
+//   }
+//   posix_time::ptime end = posix_time::second_clock::local_time();
 
-  posix_time::time_duration duration = end - start;
+//   posix_time::time_duration duration = end - start;
 
-  cout << "Publishing 10000 1K size content objects costs " <<duration.total_milliseconds() << " milliseconds" << endl;
-  cout << "Average time to publish one content object is " << (double) duration.total_milliseconds() / 10000.0 << " milliseconds" << endl;
-}
+//   cout << "Publishing 10000 1K size content objects costs " <<duration.total_milliseconds() << " milliseconds" << endl;
+//   cout << "Average time to publish one content object is " << (double) duration.total_milliseconds() / 10000.0 << " milliseconds" << endl;
+// }
 
 BOOST_AUTO_TEST_SUITE_END()

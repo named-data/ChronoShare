@@ -35,7 +35,7 @@ namespace fs = boost::filesystem;
 
 INIT_LOGGER ("Test.Dispatcher");
 
-BOOST_AUTO_TEST_SUITE(DispatcherTest)
+BOOST_AUTO_TEST_SUITE(TestDispatcher)
 
 
 void cleanDir(fs::path dir)
@@ -51,7 +51,7 @@ void checkRoots(const HashPtr &root1, const HashPtr &root2)
   BOOST_CHECK_EQUAL(*root1, *root2);
 }
 
-BOOST_AUTO_TEST_CASE(TestDispatcher)
+BOOST_AUTO_TEST_CASE(DispatcherTest)
 {
   INIT_LOGGERS ();
 

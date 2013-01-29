@@ -54,47 +54,61 @@ Closure::runDataCallback(Name name, PcoPtr content)
     }
 }
 
-ExecutorClosure::ExecutorClosure(const Closure &closure, ExecutorPtr executor)
-                : Closure(closure)
-                , m_executor(executor)
-{
-}
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-ExecutorClosure::~ExecutorClosure()
-{
-}
+// ExecutorClosure::ExecutorClosure(const Closure &closure, ExecutorPtr executor)
+//   : Closure(closure.m_dataCallback, closure.m_timeoutCallback)
+//   , m_executor(executor)
+// {
+// }
 
-void
-ExecutorClosure::runDataCallback(Name name, PcoPtr content)
-{
-  m_executor->execute(boost::bind(&ExecutorClosure::execute, this, name, content));
-}
+// ExecutorClosure::~ExecutorClosure()
+// {
+// }
 
-void
-ExecutorClosure::execute(Name name, PcoPtr content)
-{
-  Closure::runDataCallback(name, content);
-}
+// void
+// ExecutorClosure::runDataCallback(Name name, PcoPtr content)
+// {
+//   m_executor->execute(boost::bind(&Closure::runDataCallback, this, name, content));
+// }
 
-ExecutorInterestClosure::ExecutorInterestClosure(const InterestCallback &callback, ExecutorPtr executor)
-                        : m_callback(callback)
-                        , m_executor(executor)
-{
-}
+// // void
+// // ExecutorClosure::execute(Name name, PcoPtr content)
+// // {
+// //   Closure::runDataCallback(name, content);
+// // }
 
-void
-ExecutorInterestClosure::runInterestCallback(Name interest)
-{
-  m_executor->execute(boost::bind(&ExecutorInterestClosure::execute, this, interest));
-}
 
-void
-ExecutorInterestClosure::execute(Name interest)
-{
-  if (!m_callback.empty())
-  {
-    m_callback(interest);
-  }
-}
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+// ExecutorInterestClosure::ExecutorInterestClosure(const InterestCallback &callback, ExecutorPtr executor)
+//   : m_callback(callback)
+//   , m_executor(executor)
+// {
+// }
+
+// void
+// ExecutorInterestClosure::runInterestCallback(Name interest)
+// {
+//   m_executor->execute(boost::bind(&ExecutorInterestClosure::execute, this, interest));
+// }
+
+// void
+// ExecutorInterestClosure::execute(Name interest)
+// {
+//   if (!m_callback.empty())
+//   {
+//     m_callback(interest);
+//   }
+// }
 
 } // Ccnx

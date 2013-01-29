@@ -53,45 +53,48 @@ public:
   virtual TimeoutCallbackReturnValue
   runTimeoutCallback(Name interest);
 
-protected:
+  virtual Closure *
+  dup () const { return new Closure (*this); }
+
+public:
   TimeoutCallback m_timeoutCallback;
   DataCallback m_dataCallback;
 };
 
-class ExecutorClosure : public Closure
-{
-public:
-  ExecutorClosure(const Closure &closure, ExecutorPtr executor);
-  virtual ~ExecutorClosure();
+// class ExecutorClosure : public Closure
+// {
+// public:
+//   ExecutorClosure(const Closure &closure, ExecutorPtr executor);
+//   virtual ~ExecutorClosure();
 
-  virtual void
-  runDataCallback(Name name, PcoPtr pco);
+//   virtual void
+//   runDataCallback(Name name, PcoPtr pco);
 
-private:
-  void
-  execute(Name nae, PcoPtr content);
+// // private:
+// //   void
+// //   execute(Name nae, PcoPtr content);
 
-private:
-  ExecutorPtr m_executor;
-};
+// private:
+//   ExecutorPtr m_executor;
+// };
 
-class ExecutorInterestClosure
-{
-public:
-  typedef boost::function<void (Name)> InterestCallback;
-  ExecutorInterestClosure(const InterestCallback &callback, ExecutorPtr executor);
-  ~ExecutorInterestClosure() {}
+// class ExecutorInterestClosure
+// {
+// public:
+//   typedef boost::function<void (Name)> InterestCallback;
+//   ExecutorInterestClosure(const InterestCallback &callback, ExecutorPtr executor);
+//   virtual ~ExecutorInterestClosure() {}
 
-  void
-  runInterestCallback(Name interest);
+//   void
+//   runInterestCallback(Name interest);
 
-  void
-  execute(Name interest);
+//   void
+//   execute(Name interest);
 
-private:
-  InterestCallback m_callback;
-  ExecutorPtr m_executor;
-};
+// private:
+//   InterestCallback m_callback;
+//   ExecutorPtr m_executor;
+// };
 
 } // Ccnx
 
