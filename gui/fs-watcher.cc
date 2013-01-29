@@ -38,7 +38,7 @@ FsWatcher::FsWatcher (QString dirPath,
                       QObject* parent)
   : QObject(parent)
   , m_watcher (new QFileSystemWatcher())
-  , m_executor (1)
+  , m_scheduler (new Scheduler ())
   , m_dirPath (dirPath)
   , m_onChange (onChange)
   , m_onDelete (onDelete)
@@ -52,22 +52,27 @@ FsWatcher::FsWatcher (QString dirPath,
   connect (m_watcher, SIGNAL (directoryChanged (QString)), this, SLOT (DidDirectoryChanged (QString)));
   connect (m_watcher, SIGNAL (fileChanged (QString)),      this, SLOT (DidFileChanged (QString)));
 
-  m_executor.execute (bind (&FsWatcher::ScanDirectory_Notify_Execute, this, m_dirPath));
-  m_executor.start ();
+  m_scheduler->start ();
+
+  Scheduler::scheduleOneTimeTask (m_scheduler, 0.1,
+                                  bind (&FsWatcher::ScanDirectory_Notify_Execute, this, m_dirPath),
+                                  m_dirPath.toStdString ()); // only one task will be scheduled per directory
 }
 
 FsWatcher::~FsWatcher()
 {
-  m_executor.shutdown ();
-  delete m_watcher;
+  m_scheduler->shutdown ();
 }
 
 void
 FsWatcher::DidDirectoryChanged (QString dirPath)
 {
-  // _LOG_DEBUG ("Triggered DirPath: " << dirPath.toStdString ());
+  _LOG_DEBUG ("Triggered DirPath: " << dirPath.toStdString ());
 
-  m_executor.execute (bind (&FsWatcher::ScanDirectory_Notify_Execute, this, dirPath));
+  // m_executor.execute (bind (&FsWatcher::ScanDirectory_Notify_Execute, this, dirPath));
+  Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
+                                  bind (&FsWatcher::ScanDirectory_Notify_Execute, this, dirPath),
+                                  dirPath.toStdString ()); // only one task will be scheduled per directory
 }
 
 void
@@ -85,30 +90,21 @@ FsWatcher::DidFileChanged (QString filePath)
   if (filesystem::exists (filesystem::path (absPathTriggeredFile)))
     {
       _LOG_DEBUG ("Triggered UPDATE of file:  " << triggeredFile.relative_path ().generic_string ());
-      m_onChange (triggeredFile.relative_path ());
+      // m_onChange (triggeredFile.relative_path ());
+
+      Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
+                                      bind (m_onChange, triggeredFile.relative_path ()),
+                                      triggeredFile.relative_path ().string());
     }
   else
     {
       _LOG_DEBUG ("Triggered DELETE of file: " << triggeredFile.relative_path ().generic_string ());
-      m_onDelete (triggeredFile.relative_path ());
+      // m_onDelete (triggeredFile.relative_path ());
+
+      Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
+                                      bind (m_onDelete, triggeredFile.relative_path ()),
+                                      triggeredFile.relative_path ().string());
     }
-}
-
-
-void FsWatcher::DidDirectoryChanged_Execute (QString dirPath)
-{
-//   // scan directory and populate file list
-//   QHash<QString, qint64> currentState = scanDirectory(dirPath);
-
-//   // reconcile directory and report changes
-//   std::vector<sEventInfo> dirChanges = reconcileDirectory(currentState, dirPath);
-// #ifdef _DEBUG
-//   // DEBUG: Print Changes
-//   printChanges(dirChanges);
-// #endif
-//   // emit the signal if not empty
-//   if(!dirChanges.empty())
-//     emit dirEventSignal(dirChanges);
 }
 
 void
