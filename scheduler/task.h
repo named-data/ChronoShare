@@ -32,6 +32,7 @@
 
 #include <boost/function.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
 #include <sys/time.h>
 
 //////////////////////////////////////////////////
@@ -49,7 +50,7 @@ struct event;
 /**
  * @brief Base class for a task
  */
-class Task
+class Task : public boost::enable_shared_from_this<Task>
 {
 public:
   // callback of this task
