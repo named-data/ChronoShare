@@ -124,6 +124,8 @@ private:
 
   double m_retryPause; // pause to stop trying to fetch (for fetch-manager)
   boost::posix_time::ptime m_nextScheduledRetry;
+
+  Executor m_executor; // to serialize FillPipeline events
 };
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;

@@ -64,11 +64,14 @@ Fetcher::Fetcher (Ccnx::CcnxWrapperPtr ccnx,
   , m_activePipeline (0)
   , m_retryPause (0)
   , m_nextScheduledRetry (date_time::second_clock<boost::posix_time::ptime>::universal_time ())
+  , m_executor (1) // must be 1
 {
+  m_executor.start ();
 }
 
 Fetcher::~Fetcher ()
 {
+  m_executor.shutdown ();
 }
 
 void
@@ -79,10 +82,7 @@ Fetcher::RestartPipeline ()
   // cout << "Restart: " << m_minSendSeqNo << endl;
   m_lastPositiveActivity = date_time::second_clock<boost::posix_time::ptime>::universal_time();
 
-  // Scheduler::scheduleOneTimeTask ();
-  // m_scheduler
-  // m_executor.execute (bind (&Fetcher::FillPipeline, this));
-  FillPipeline ();
+  m_executor.execute (bind (&Fetcher::FillPipeline, this));
 }
 
 void
@@ -192,8 +192,7 @@ Fetcher::OnData (uint64_t seqno, const Ccnx::Name &name, PcoPtr data)
     }
   else
     {
-      FillPipeline ();
-      // m_executor.execute (bind (&Fetcher::FillPipeline, this));
+      m_executor.execute (bind (&Fetcher::FillPipeline, this));
     }
 }
 
