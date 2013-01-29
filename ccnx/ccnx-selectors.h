@@ -33,6 +33,7 @@ class Selectors
 {
 public:
   Selectors();
+  Selectors(const ccn_parsed_interest *);
   Selectors(const Selectors &other);
   ~Selectors(){};
 

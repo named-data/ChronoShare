@@ -24,6 +24,7 @@
 
 #include "sync-log.h"
 #include "ccnx-wrapper.h"
+#include "ccnx-selectors.h"
 #include "scheduler.h"
 #include "task.h"
 
@@ -76,11 +77,11 @@ private:
   void
   handleRecoverData(const Ccnx::Name &name, Ccnx::PcoPtr content);
 
-  Ccnx::Closure::TimeoutCallbackReturnValue
-  handleSyncInterestTimeout(const Ccnx::Name &name);
+  void
+  handleSyncInterestTimeout(const Ccnx::Name &name, const Ccnx::Closure &closure, Ccnx::Selectors selectors);
 
-  Ccnx::Closure::TimeoutCallbackReturnValue
-  handleRecoverInterestTimeout(const Ccnx::Name &name);
+  void
+  handleRecoverInterestTimeout(const Ccnx::Name &name, const Ccnx::Closure &closure, Ccnx::Selectors selectors);
 
   void
   deregister(const Ccnx::Name &name);

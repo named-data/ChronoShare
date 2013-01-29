@@ -33,15 +33,13 @@ Closure::~Closure ()
 {
 }
 
-Closure::TimeoutCallbackReturnValue
-Closure::runTimeoutCallback(Name interest)
+void
+Closure::runTimeoutCallback(Name interest, const Closure &closure, Selectors selectors)
 {
-  if (m_timeoutCallback.empty ())
+  if (!m_timeoutCallback.empty ())
     {
-      return RESULT_OK;
+      m_timeoutCallback (interest, closure, selectors);
     }
-
-  return m_timeoutCallback (interest);
 }
 
 

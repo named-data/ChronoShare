@@ -27,6 +27,38 @@ Selectors::Selectors(const Selectors &other)
   m_publisherPublicKeyDigest = other.m_publisherPublicKeyDigest;
 }
 
+Selectors::Selectors(const ccn_parsed_interest *pi)
+          : m_maxSuffixComps(-1)
+          , m_minSuffixComps(-1)
+          , m_answerOriginKind(AOK_DEFAULT)
+          , m_interestLifetime(-1.0)
+          , m_scope(-1)
+          , m_childSelector(DEFAULT)
+{
+  if (pi != NULL)
+  {
+    m_maxSuffixComps = pi->max_suffix_comps;
+    m_minSuffixComps = pi->min_suffix_comps;
+    switch(pi->orderpref)
+    {
+      case 0: m_childSelector = LEFT; break;
+      case 1: m_childSelector = RIGHT; break;
+      default: break;
+    }
+    switch(pi->answerfrom)
+    {
+      case 0x1: m_answerOriginKind = AOK_CS; break;
+      case 0x2: m_answerOriginKind = AOK_NEW; break;
+      case 0x3: m_answerOriginKind = AOK_DEFAULT; break;
+      case 0x4: m_answerOriginKind = AOK_STALE; break;
+      case 0x10: m_answerOriginKind = AOK_EXPIRE; break;
+      default: break;
+    }
+    m_scope = pi->scope;
+    // scope and interest lifetime do not really matter to receiving application, it's only meaningful to routers
+  }
+}
+
 bool
 Selectors::operator == (const Selectors &other)
 {

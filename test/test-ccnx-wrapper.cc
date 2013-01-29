@@ -61,10 +61,10 @@ void dataCallback(const Name &name, Ccnx::PcoPtr pco)
   BOOST_CHECK_EQUAL(name, msg);
 }
 
-Closure::TimeoutCallbackReturnValue timeout(const Name &name)
+void
+timeout(const Name &name, const Closure &closure, Selectors selectors)
 {
   g_timeout_counter ++;
-  return Closure::RESULT_OK;
 }
 
 BOOST_AUTO_TEST_CASE (BlaCcnxWrapperTest)
@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE (BlaCcnxWrapperTest)
   usleep(100000);
   c2->setInterestFilter(prefix2, bind(publish2, _1));
 
-  Closure closure (bind(dataCallback, _1, _2), bind(timeout, _1));
+  Closure closure (bind(dataCallback, _1, _2), bind(timeout, _1, _2, _3));
 
   c1->sendInterest(Name("/c2/hi"), closure);
   usleep(100000);
@@ -94,7 +94,7 @@ BOOST_AUTO_TEST_CASE (BlaCcnxWrapperTest)
 BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)
 {
 
-  Closure closure (bind(dataCallback, _1, _2), bind(timeout, _1));
+  Closure closure (bind(dataCallback, _1, _2), bind(timeout, _1, _2, _3));
 
   Selectors selectors;
   selectors.interestLifetime(1);

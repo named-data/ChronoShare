@@ -189,21 +189,19 @@ SyncCore::handleSyncInterest(const Name &name)
   }
 }
 
-Closure::TimeoutCallbackReturnValue
-SyncCore::handleSyncInterestTimeout(const Name &name)
+void
+SyncCore::handleSyncInterestTimeout(const Name &name, const Closure &closure, Selectors selectors)
 {
   // sync interest will be resent by scheduler
-  return Closure::RESULT_OK;
 }
 
-Closure::TimeoutCallbackReturnValue
-SyncCore::handleRecoverInterestTimeout(const Name &name)
+void
+SyncCore::handleRecoverInterestTimeout(const Name &name, const Closure &closure, Selectors selectors)
 {
   // We do not re-express recovery interest for now
   // if difference is not resolved, the sync interest will trigger
   // recovery anyway; so it's not so important to have recovery interest
   // re-expressed
-  return Closure::RESULT_OK;
 }
 
 void
@@ -322,7 +320,7 @@ SyncCore::sendSyncInterest()
   }
   m_ccnx->sendInterest(syncInterest,
                          Closure (boost::bind(&SyncCore::handleSyncData, this, _1, _2),
-                                  boost::bind(&SyncCore::handleSyncInterestTimeout, this, _1)),
+                                  boost::bind(&SyncCore::handleSyncInterestTimeout, this, _1, _2, _3)),
                           selectors);
 
   // if there is a pending syncSyncInterest task, reschedule it to be m_syncInterestInterval seconds from now
@@ -347,7 +345,7 @@ SyncCore::recover(HashPtr hash)
 
     m_ccnx->sendInterest(recoverInterest,
                          Closure (boost::bind(&SyncCore::handleRecoverData, this, _1, _2),
-                                  boost::bind(&SyncCore::handleRecoverInterestTimeout, this, _1)));
+                                  boost::bind(&SyncCore::handleRecoverInterestTimeout, this, _1, _2, _3)));
 
   }
   else

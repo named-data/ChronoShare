@@ -42,7 +42,7 @@ class CcnxWrapper
 public:
   const static int MAX_FRESHNESS = 2147; // max value for ccnx
   const static int DEFAULT_FRESHNESS = 60;
-  typedef boost::function<void (const Name &)> InterestCallback;
+  typedef boost::function<void (Name, Selectors)> InterestCallback;
 
   CcnxWrapper();
   virtual ~CcnxWrapper();

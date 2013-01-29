@@ -104,7 +104,7 @@ Fetcher::FillPipeline ()
       // cout << ">>> " << m_minSendSeqNo+1 << endl;
       m_ccnx->sendInterest (Name (m_forwardingHint)(m_name)(m_minSendSeqNo+1),
                             Closure (bind(&Fetcher::OnData, this, m_minSendSeqNo+1, _1, _2),
-                                     bind(&Fetcher::OnTimeout, this, m_minSendSeqNo+1, _1)),
+                                     bind(&Fetcher::OnTimeout, this, m_minSendSeqNo+1, _1, _2, _3)),
                             Selectors().interestLifetime (1)); // Alex: this lifetime should be changed to RTO
       _LOG_DEBUG (" >>> i ok");
 
@@ -181,8 +181,8 @@ Fetcher::OnData (uint64_t seqno, const Ccnx::Name &name, PcoPtr data)
     }
 }
 
-Closure::TimeoutCallbackReturnValue
-Fetcher::OnTimeout (uint64_t seqno, const Ccnx::Name &name)
+void
+Fetcher::OnTimeout (uint64_t seqno, const Ccnx::Name &name, const Closure &closure, Selectors selectors)
 {
   _LOG_DEBUG (" <<< :( timeout " << name.getPartialName (0, name.size () - 1) << ", seq = " << seqno);
 
@@ -202,11 +202,10 @@ Fetcher::OnTimeout (uint64_t seqno, const Ccnx::Name &name)
           m_onFetchFailed (*this);
           // this is not valid anymore, but we still should be able finish work
         }
-      return Closure::RESULT_OK;
     }
   else
     {
       _LOG_DEBUG ("Asking to reexpress");
-      return Closure::RESULT_REEXPRESS;
+      m_ccnx->sendInterest (name, closure, selectors);
     }
 }

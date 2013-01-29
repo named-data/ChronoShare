@@ -86,8 +86,8 @@ private:
   void
   OnData (uint64_t seqno, const Ccnx::Name &name, Ccnx::PcoPtr data);
 
-  Ccnx::Closure::TimeoutCallbackReturnValue
-  OnTimeout (uint64_t seqno, const Ccnx::Name &name);
+  void
+  OnTimeout (uint64_t seqno, const Ccnx::Name &name, const Ccnx::Closure &closure, Ccnx::Selectors selectors);
 
 public:
   boost::intrusive::list_member_hook<> m_managerListHook;

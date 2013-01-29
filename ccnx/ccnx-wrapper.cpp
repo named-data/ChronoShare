@@ -283,8 +283,9 @@ incomingInterest(ccn_closure *selfp,
     }
 
   Name interest(info->interest_ccnb, info->interest_comps);
+  Selectors selectors(info->pi);
 
-  executor->execute (bind (*f, interest));
+  executor->execute (bind (*f, interest, selectors));
   // this will be run in executor
   // (*f) (interest);
   // closure->runInterestCallback(interest);
@@ -294,7 +295,7 @@ incomingInterest(ccn_closure *selfp,
 }
 
 static void
-deleterInDataTuple (tuple<Closure *, ExecutorPtr> *tuple)
+deleterInDataTuple (tuple<Closure *, ExecutorPtr, Selectors> *tuple)
 {
   delete tuple->get<0> ();
   delete tuple;
@@ -308,8 +309,9 @@ incomingData(ccn_closure *selfp,
   // Closure *cp = static_cast<Closure *> (selfp->data);
   Closure *cp;
   ExecutorPtr executor;
-  tuple<Closure *, ExecutorPtr> *realData = reinterpret_cast< tuple<Closure*, ExecutorPtr>* > (selfp->data);
-  tie (cp, executor) = *realData;
+  Selectors selectors;
+  tuple<Closure *, ExecutorPtr, Selectors> *realData = reinterpret_cast< tuple<Closure*, ExecutorPtr, Selectors>* > (selfp->data);
+  tie (cp, executor, selectors) = *realData;
 
   _LOG_TRACE (">> incomingData upcall");
 
@@ -331,14 +333,7 @@ incomingData(ccn_closure *selfp,
       {
         _LOG_TRACE ("<< incomingData timeout");
         Name interest(info->interest_ccnb, info->interest_comps);
-        // We can not run timeout callback in executor, because we need the return value
-        Closure::TimeoutCallbackReturnValue rv = cp->runTimeoutCallback(interest);
-        switch(rv)
-        {
-          case Closure::RESULT_OK : return CCN_UPCALL_RESULT_OK;
-          case Closure::RESULT_REEXPRESS : return CCN_UPCALL_RESULT_REEXPRESS;
-          default : break;
-        }
+        executor->execute (bind (&Closure::runTimeoutCallback, cp, interest, *cp, selectors));
       }
       else
         {
@@ -394,7 +389,7 @@ int CcnxWrapper::sendInterest (const Name &interest, const Closure &closure, con
 
   // Closure *myClosure = new ExecutorClosure(closure, m_executor);
   Closure *myClosure = closure.dup ();
-  dataClosure->data = new tuple<Closure*, ExecutorPtr> (myClosure, m_executor);
+  dataClosure->data = new tuple<Closure*, ExecutorPtr, Selectors> (myClosure, m_executor, selectors);
 
   dataClosure->p = &incomingData;
 

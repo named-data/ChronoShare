@@ -24,6 +24,7 @@
 
 #include "ccnx-common.h"
 #include "ccnx-name.h"
+#include "ccnx-selectors.h"
 #include "executor.h"
 
 namespace Ccnx {
@@ -36,13 +37,7 @@ class Closure
 public:
   typedef boost::function<void (Name, PcoPtr pco)> DataCallback;
 
-  typedef enum
-  {
-    RESULT_OK,
-    RESULT_REEXPRESS
-  } TimeoutCallbackReturnValue;
-
-  typedef boost::function<TimeoutCallbackReturnValue (Name )> TimeoutCallback;
+  typedef boost::function<void (Name, const Closure &, Selectors)> TimeoutCallback;
 
   Closure(const DataCallback &dataCallback, const TimeoutCallback &timeoutCallback = TimeoutCallback());
   virtual ~Closure();
@@ -50,8 +45,8 @@ public:
   virtual void
   runDataCallback(Name name, Ccnx::PcoPtr pco);
 
-  virtual TimeoutCallbackReturnValue
-  runTimeoutCallback(Name interest);
+  virtual void
+  runTimeoutCallback(Name interest, const Closure &closure, Selectors selectors);
 
   virtual Closure *
   dup () const { return new Closure (*this); }
