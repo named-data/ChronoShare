@@ -39,13 +39,20 @@ struct fetcher_disposer { void operator() (Fetcher *delete_this) { delete delete
 
 static const string SCHEDULE_FETCHES_TAG = "ScheduleFetches";
 
-FetchManager::FetchManager (CcnxWrapperPtr ccnx, const Mapping &mapping, uint32_t parallelFetches/* = 3*/)
+FetchManager::FetchManager (Ccnx::CcnxWrapperPtr ccnx
+                , const Mapping &mapping
+                , uint32_t parallelFetches // = 3
+                , const SegmentCallback &defaultSegmentCallback
+                , const FinishCallback &defaultFinishCallback
+                )
   : m_ccnx (ccnx)
   , m_mapping (mapping)
   , m_maxParallelFetches (parallelFetches)
   , m_currentParallelFetches (0)
   , m_scheduler (new Scheduler)
   , m_executor (new Executor(1))
+  , m_defaultSegmentCallback(defaultSegmentCallback)
+  , m_defaultFinishCallback(defaultFinishCallback)
 {
   m_scheduler->start ();
   m_executor->start();
@@ -62,6 +69,14 @@ FetchManager::~FetchManager ()
   m_executor->shutdown();
 
   m_fetchList.clear_and_dispose (fetcher_disposer ());
+}
+
+// Enqueue using default callbacks
+void
+FetchManager::Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
+           uint64_t minSeqNo, uint64_t maxSeqNo, int priority)
+{
+  Enqueue(deviceName, baseName, m_defaultSegmentCallback, m_defaultFinishCallback, minSeqNo, maxSeqNo, priority);
 }
 
 void
