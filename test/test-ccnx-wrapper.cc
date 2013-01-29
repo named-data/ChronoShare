@@ -119,6 +119,10 @@ BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)
   // reset
   g_dataCallback_counter = 0;
   g_timeout_counter = 0;
+
+
+  c1.reset ();
+  c2.reset ();
 }
 
 void
