@@ -33,7 +33,8 @@ using namespace boost;
 INIT_LOGGER ("Dispatcher");
 
 static const string BROADCAST_DOMAIN = "/ndn/broadcast/chronoshare";
-const static double DEFAULT_SYNC_INTEREST_INTERVAL = 10.0;
+static const int CONTENT_FRESHNESS = 1800;  // seconds
+const static double DEFAULT_SYNC_INTEREST_INTERVAL = 10.0; // seconds;
 
 Dispatcher::Dispatcher(const std::string &localUserName
                        , const std::string &sharedFolder
@@ -58,7 +59,8 @@ Dispatcher::Dispatcher(const std::string &localUserName
                                        bind (&Dispatcher::Did_ActionLog_ActionApply_Delete, this, _1));
   Name syncPrefix = Name(BROADCAST_DOMAIN)(sharedFolder);
 
-  m_server = new ContentServer(m_ccnx, m_actionLog, rootDir, m_localUserName, m_sharedFolder);
+  // m_server needs a different ccnx face
+  m_server = new ContentServer(make_shared<CcnxWrapper>(), m_actionLog, rootDir, m_localUserName, m_sharedFolder, CONTENT_FRESHNESS);
   m_server->registerPrefix(Name ("/"));
   m_server->registerPrefix(Name(BROADCAST_DOMAIN));
 
