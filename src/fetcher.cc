@@ -209,7 +209,7 @@ Fetcher::OnTimeout (uint64_t seqno, const Ccnx::Name &name, const Closure &closu
 }
 
 void
-Fetcher::OnTimeout_Execute (uint64_t seqno, Ccnx::Name&name, Ccnx::Closure closure, Ccnx::Selectors selectors)
+Fetcher::OnTimeout_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::Closure closure, Ccnx::Selectors selectors)
 {
   _LOG_DEBUG (" <<< :( timeout " << name.getPartialName (0, name.size () - 1) << ", seq = " << seqno);
 
