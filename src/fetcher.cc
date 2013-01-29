@@ -120,6 +120,12 @@ Fetcher::FillPipeline ()
 void
 Fetcher::OnData (uint64_t seqno, const Ccnx::Name &name, PcoPtr data)
 {
+  m_executor.execute (bind (&Fetcher::OnData_Execute, this, seqno, name, data));
+}
+
+void
+Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
+{
   _LOG_DEBUG (" <<< d " << name.getPartialName (0, name.size () - 1) << ", seq = " << seqno);
 
   if (m_forwardingHint == Name ())
@@ -198,6 +204,12 @@ Fetcher::OnData (uint64_t seqno, const Ccnx::Name &name, PcoPtr data)
 
 void
 Fetcher::OnTimeout (uint64_t seqno, const Ccnx::Name &name, const Closure &closure, Selectors selectors)
+{
+  m_executor.execute (bind (&Fetcher::OnTimeout_Execute, this, seqno, name, closure, selectors));
+}
+
+void
+Fetcher::OnTimeout_Execute (uint64_t seqno, Ccnx::Name&name, Ccnx::Closure closure, Ccnx::Selectors selectors)
 {
   _LOG_DEBUG (" <<< :( timeout " << name.getPartialName (0, name.size () - 1) << ", seq = " << seqno);
 

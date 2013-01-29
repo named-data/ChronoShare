@@ -87,7 +87,13 @@ private:
   OnData (uint64_t seqno, const Ccnx::Name &name, Ccnx::PcoPtr data);
 
   void
+  OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data);
+
+  void
   OnTimeout (uint64_t seqno, const Ccnx::Name &name, const Ccnx::Closure &closure, Ccnx::Selectors selectors);
+
+  void
+  OnTimeout_Execute (uint64_t seqno, Ccnx::Name&name, Ccnx::Closure closure, Ccnx::Selectors selectors);
 
 public:
   boost::intrusive::list_member_hook<> m_managerListHook;
