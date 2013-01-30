@@ -67,8 +67,13 @@ Dispatcher::Dispatcher(const std::string &localUserName
   m_core = new SyncCore (m_syncLog, localUserName, Name ("/"), syncPrefix,
                          bind(&Dispatcher::Did_SyncLog_StateChange, this, _1), ccnx, DEFAULT_SYNC_INTEREST_INTERVAL);
 
-  m_actionFetcher = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3);
-  m_fileFetcher   = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3);
+  m_actionFetcher = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3,
+                                bind (&Dispatcher::Did_FetchManager_ActionFetch, this, _1, _2, _3, _4));
+
+  m_fileFetcher   = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3,
+                                  bind (&Dispatcher::Did_FetchManager_FileSegmentFetch, this, _1, _2, _3, _4),
+                                  bind (&Dispatcher::Did_FetchManager_FileFetchComplete, this, _1, _2));
+
 
   if (m_enablePrefixDiscovery)
   {
@@ -246,7 +251,6 @@ Dispatcher::Did_SyncLog_StateChange_Execute (SyncStateMsgPtr stateMsg)
       Name actionNameBase = Name(userName)("action")(m_sharedFolder);
 
       m_actionFetcher->Enqueue (userName, actionNameBase,
-                                bind (&Dispatcher::Did_FetchManager_ActionFetch, this, _1, _2, _3, _4), FetchManager::FinishCallback (),
                                 std::max<uint64_t> (oldSeq + 1, 1), newSeq, FetchManager::PRIORITY_HIGH);
     }
   }
@@ -283,8 +287,6 @@ Dispatcher::Did_FetchManager_ActionFetch (const Ccnx::Name &deviceName, const Cc
             }
 
           m_fileFetcher->Enqueue (deviceName, fileNameBase,
-                                  bind (&Dispatcher::Did_FetchManager_FileSegmentFetch, this, _1, _2, _3, _4),
-                                  bind (&Dispatcher::Did_FetchManager_FileFetchComplete, this, _1, _2),
                                   0, action->seg_num () - 1, FetchManager::PRIORITY_NORMAL);
         }
     }
