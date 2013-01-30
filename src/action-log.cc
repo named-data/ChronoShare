@@ -784,17 +784,19 @@ ActionLog::LookupFilesInFolder (const std::string &folder)
 FileItemsPtr
 ActionLog::LookupFilesInFolderRecursively (const std::string &folder)
 {
-  // sqlite3_trace(m_db, xTrace, NULL);
+  _LOG_DEBUG ("LookupFilesInFolderRecursively: [" << folder << "]");
 
   sqlite3_stmt *stmt;
-
   if (folder != "")
     {
       sqlite3_prepare_v2 (m_db,
                           "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num "
                           "   FROM FileState "
                           "   WHERE type = 0 AND (directory = ? OR directory LIKE ?)", -1, &stmt, 0);
+      _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
       sqlite3_bind_text (stmt, 1, folder.c_str (), folder.size (), SQLITE_STATIC);
+      _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
 
       ostringstream escapedFolder;
       for (string::const_iterator ch = folder.begin (); ch != folder.end (); ch ++)
@@ -806,7 +808,9 @@ ActionLog::LookupFilesInFolderRecursively (const std::string &folder)
         }
       escapedFolder << "/" << "%";
       string escapedFolderStr = escapedFolder.str ();
+
       sqlite3_bind_text (stmt, 2, escapedFolderStr.c_str (), escapedFolderStr.size (), SQLITE_STATIC);
+      _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
     }
   else
     {

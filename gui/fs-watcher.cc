@@ -177,7 +177,7 @@ FsWatcher::ScanDirectory_NotifyRemovals_Execute (QString dirPath)
 
   filesystem::path triggeredDir (dirPath.toStdString ());
 
-  FileItemsPtr files = m_fileState->LookupFilesInFolderRecursively (triggeredDir.generic_string ());
+  FileItemsPtr files = m_fileState->LookupFilesInFolderRecursively (triggeredDir.relative_path ().generic_string ());
   for (std::list<FileItem>::iterator file = files->begin (); file != files->end (); file ++)
     {
       filesystem::path testFile = filesystem::path (m_dirPath.toStdString ()) / file->filename ();
