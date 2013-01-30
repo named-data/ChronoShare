@@ -104,8 +104,8 @@ BOOST_AUTO_TEST_CASE(DispatcherTest)
   HashPtr fileHash2 = Hash::FromFileContent(ef);
   BOOST_CHECK_EQUAL(*fileHash1, *fileHash2);
 
-  // cleanDir(dir1);
-  // cleanDir(dir2);
+  cleanDir(dir1);
+  cleanDir(dir2);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
