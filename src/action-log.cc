@@ -31,6 +31,7 @@ using namespace Ccnx;
 INIT_LOGGER ("ActionLog");
 
 const std::string INIT_DATABASE = "\
+    PRAGMA foreign_keys = OFF;  /* foreign key here are very bad idea...*/   \n\
 CREATE TABLE ActionLog (                                                \n\
     device_name BLOB NOT NULL,                                          \n\
     seq_no      INTEGER NOT NULL,                                       \n\
@@ -54,12 +55,7 @@ CREATE TABLE ActionLog (                                                \n\
     action_name	     TEXT,                                              \n\
     action_content_object BLOB,                                         \n\
                                                                         \n\
-    PRIMARY KEY (device_name, seq_no),                                  \n\
-                                                                        \n\
-    FOREIGN KEY (parent_device_name, parent_seq_no)                     \n\
-	REFERENCES ActionLog (device_name, seq_no)                      \n\
-	ON UPDATE RESTRICT                                              \n\
-	ON DELETE SET NULL                                              \n\
+    PRIMARY KEY (device_name, seq_no)                                   \n\
 );                                                                      \n\
                                                                         \n\
 CREATE INDEX ActionLog_filename_version ON ActionLog (filename,version);          \n\
@@ -121,6 +117,9 @@ ActionLog::ActionLog (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &
   , m_onFileAddedOrChanged (onFileAddedOrChanged)
   , m_onFileRemoved (onFileRemoved)
 {
+  sqlite3_exec (m_db, "PRAGMA foreign_keys = OFF", NULL, NULL, NULL);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
   sqlite3_exec (m_db, INIT_DATABASE.c_str (), NULL, NULL, NULL);
   _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
 
