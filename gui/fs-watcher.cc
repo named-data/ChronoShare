@@ -57,12 +57,12 @@ FsWatcher::FsWatcher (QString dirPath,
   m_scheduler->start ();
 
   Scheduler::scheduleOneTimeTask (m_scheduler, 0,
-                                  bind (&FsWatcher::ScanDirectory_NotifyRemovals_Execute, this, m_dirPath),
-                                  "r-" + m_dirPath.toStdString ()); // only one task will be scheduled per directory
+                                  bind (&FsWatcher::ScanDirectory_NotifyRemovals_Execute, this, m_dirPath, false/* don't remove incomplete files*/),
+                                  "rescan-r-" + m_dirPath.toStdString ()); // only one task will be scheduled per directory
 
   Scheduler::scheduleOneTimeTask (m_scheduler, 0,
                                   bind (&FsWatcher::ScanDirectory_NotifyUpdates_Execute, this, m_dirPath, true),
-                                  m_dirPath.toStdString ()); // only one task will be scheduled per directory
+                                  "rescan-" +m_dirPath.toStdString ()); // only one task will be scheduled per directory
 }
 
 FsWatcher::~FsWatcher()
@@ -79,7 +79,7 @@ FsWatcher::DidDirectoryChanged (QString dirPath)
   if (!filesystem::exists (filesystem::path (absPathTriggeredDir)))
     {
       Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
-                                      bind (&FsWatcher::ScanDirectory_NotifyRemovals_Execute, this, dirPath),
+                                      bind (&FsWatcher::ScanDirectory_NotifyRemovals_Execute, this, dirPath, true/* ignore incomplete file flag. the whole directory got removed*/),
                                       "r-" + dirPath.toStdString ()); // only one task will be scheduled per directory
     }
   else
@@ -93,6 +93,10 @@ FsWatcher::DidDirectoryChanged (QString dirPath)
       Scheduler::scheduleOneTimeTask (m_scheduler, 300,
                                       bind (&FsWatcher::ScanDirectory_NotifyUpdates_Execute, this, dirPath, true),
                                       "rescan-"+dirPath.toStdString ()); // only one task will be scheduled per directory
+
+      Scheduler::scheduleOneTimeTask (m_scheduler, 300,
+                                      bind (&FsWatcher::ScanDirectory_NotifyRemovals_Execute, this, m_dirPath, false/* don't remove incomplete files*/),
+                                      "rescan-r-" + m_dirPath.toStdString ()); // only one task will be scheduled per directory
     }
 }
 
@@ -173,7 +177,7 @@ FsWatcher::ScanDirectory_NotifyUpdates_Execute (QString dirPath, bool notifyCall
 
 
 void
-FsWatcher::ScanDirectory_NotifyRemovals_Execute (QString dirPath)
+FsWatcher::ScanDirectory_NotifyRemovals_Execute (QString dirPath, bool removeIncomplete)
 {
   _LOG_DEBUG ("Triggered DirPath: " << dirPath.toStdString ());
 
@@ -190,137 +194,15 @@ FsWatcher::ScanDirectory_NotifyRemovals_Execute (QString dirPath)
 
       if (!filesystem::exists (testFile))
         {
-          _LOG_DEBUG ("Notifying about removed file [" << file->filename () << "]");
-          m_onDelete (file->filename ());
+          if (removeIncomplete || file->is_complete ())
+            {
+              _LOG_DEBUG ("Notifying about removed file [" << file->filename () << "]");
+              m_onDelete (file->filename ());
+            }
         }
     }
 }
 
-// std::vector<sEventInfo> FsWatcher::reconcileDirectory(QHash<QString, qint64> currentState, QString dirPath)
-// {
-//   // list of files changed
-//   std::vector<sEventInfo> dirChanges;
-
-//   // compare result (database/stored snapshot) to fileList (current snapshot)
-//   QMutableHashIterator<QString, qint64> i(m_storedState);
-
-//   while(i.hasNext())
-//     {
-//       i.next();
-
-//       QString absFilePath = i.key();
-//       qint64 storedCreated = i.value();
-
-//       // if this file is in a level higher than
-//       // this directory, ignore
-//       if(!absFilePath.startsWith(dirPath))
-//         {
-//           continue;
-//         }
-
-//       // check file existence
-//       if(currentState.contains(absFilePath))
-//         {
-//           qint64 currentCreated = currentState.value(absFilePath);
-
-//           if(storedCreated != currentCreated)
-//             {
-//               // update stored state
-//               i.setValue(currentCreated);
-
-//               // this file has been modified
-//               sEventInfo eventInfo;
-//               eventInfo.event = MODIFIED;
-//               eventInfo.absFilePath = absFilePath.toStdString();
-//               dirChanges.push_back(eventInfo);
-//             }
-
-//           // delete this file from fileList we have processed it
-//           currentState.remove(absFilePath);
-//         }
-//       else
-//         {
-//           // delete from stored state
-//           i.remove();
-
-//           // this file has been deleted
-//           sEventInfo eventInfo;
-//           eventInfo.event = DELETED;
-//           eventInfo.absFilePath = absFilePath.toStdString();
-//           dirChanges.push_back(eventInfo);
-//         }
-//     }
-
-//   // any files left in fileList have been added
-//   for(QHash<QString, qint64>::iterator i = currentState.begin(); i != currentState.end(); ++i)
-//     {
-//       QString absFilePath = i.key();
-//       qint64 currentCreated = i.value();
-
-//       m_storedState.insert(absFilePath, currentCreated);
-
-//       // this file has been added
-//       sEventInfo eventInfo;
-//       eventInfo.event = ADDED;
-//       eventInfo.absFilePath = absFilePath.toStdString();
-//       dirChanges.push_back(eventInfo);
-//     }
-
-//   return dirChanges;
-// }
-
-// QByteArray FsWatcher::calcChecksum(QString absFilePath)
-// {
-//   // initialize checksum
-//   QCryptographicHash crypto(QCryptographicHash::Md5);
-
-//   // open file
-//   QFile file(absFilePath);
-//   file.open(QFile::ReadOnly);
-
-//   // calculate checksum
-//   while(!file.atEnd())
-//     {
-//       crypto.addData(file.read(8192));
-//     }
-
-//   return crypto.result();
-// }
-
-// void FsWatcher::printChanges(std::vector<sEventInfo> dirChanges)
-// {
-//   if(!dirChanges.empty())
-//     {
-//       for(size_t i = 0; i < dirChanges.size(); i++)
-//         {
-//           QString tempString;
-
-//           eEvent event = dirChanges[i].event;
-//           QString absFilePath = QString::fromStdString(dirChanges[i].absFilePath);
-
-//           switch(event)
-//             {
-//             case ADDED:
-//               tempString.append("ADDED: ");
-//               break;
-//             case MODIFIED:
-//               tempString.append("MODIFIED: ");
-//               break;
-//             case DELETED:
-//               tempString.append("DELETED: ");
-//               break;
-//             }
-
-//           tempString.append(absFilePath);
-
-//           _LOG_DEBUG ("\t" << tempString.toStdString ());
-//         }
-//     }
-//   else
-//     {
-//           _LOG_DEBUG ("\t[EMPTY]");
-//     }
-// }
 
 #if WAF
 #include "fs-watcher.moc"

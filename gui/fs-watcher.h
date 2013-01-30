@@ -64,17 +64,7 @@ private:
   ScanDirectory_NotifyUpdates_Execute (QString dirPath, bool notifyCallbacks);
 
   void
-  ScanDirectory_NotifyRemovals_Execute (QString dirPath);
-
-  // // reconcile directory, find changes
-  // std::vector<sEventInfo>
-  // reconcileDirectory (QHash<QString, qint64> fileList, QString dirPath);
-
-  // // calculate checksum
-  // QByteArray calcChecksum(QString absFilePath);
-
-  // // print Changes (DEBUG)
-  // void printChanges(std::vector<sEventInfo> dirChanges);
+  ScanDirectory_NotifyRemovals_Execute (QString dirPath, bool removeIncomplete);
 
 private:
   QFileSystemWatcher* m_watcher; // filesystem watcher

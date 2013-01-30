@@ -93,6 +93,7 @@ CREATE TABLE FileState (                                                \n\
     file_ctime  TIMESTAMP,                                              \n\
     file_chmod  INTEGER,                                                \n\
     file_seg_num INTEGER,                                               \n\
+    is_complete INTEGER,                                               \n\
                                                                         \n\
     PRIMARY KEY (type, filename)                                        \n\
 );                                                                      \n\
@@ -146,6 +147,9 @@ ActionLog::ActionLog (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &
   sqlite3_exec (m_db, "ALTER TABLE FileState ADD COLUMN directory TEXT", NULL, NULL, NULL);
   sqlite3_exec (m_db, "CREATE INDEX FileState_directory ON FileState (directory)", NULL, NULL, NULL);
   sqlite3_exec (m_db, "UPDATE FileState SET directory = directory_name(filename) WHERE directory IS NULL", NULL, NULL, NULL);
+
+  // Another "upgrade"
+  sqlite3_exec (m_db, "BEGIN TRANSACTION; ALTER TABLE FileState ADD COLUMN is_complete INTEGER; UPDATE FileState SET is_complete = 1; END TRANSACTION;", NULL, NULL, NULL);
 }
 
 tuple<sqlite3_int64 /*version*/, Ccnx::CcnxCharbufPtr /*device name*/, sqlite3_int64 /*seq_no*/>
@@ -687,6 +691,23 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
   sqlite3_result_null (context);
 }
 
+
+void
+ActionLog::SetFileComplete (const std::string &filename)
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db,
+                      "UPDATE FileState SET is_complete=1 WHERE type = 0 AND filename = ?", -1, &stmt, 0);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+  sqlite3_bind_text(stmt, 1, filename.c_str(), -1, SQLITE_STATIC);
+
+  sqlite3_step (stmt);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, sqlite3_errmsg (m_db));
+
+  sqlite3_finalize (stmt);
+}
+
+
 /**
  * @todo Implement checking modification time and permissions
  */
@@ -695,9 +716,10 @@ ActionLog::LookupFile (const std::string &filename)
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db,
-                      "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num "
+                      "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
                       "       FROM FileState "
                       "       WHERE type = 0 AND filename = ?", -1, &stmt, 0);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
   sqlite3_bind_text(stmt, 1, filename.c_str(), -1, SQLITE_STATIC);
 
   FileItemPtr retval;
@@ -711,7 +733,9 @@ ActionLog::LookupFile (const std::string &filename)
     retval->set_mtime       (sqlite3_column_int   (stmt, 4));
     retval->set_mode        (sqlite3_column_int   (stmt, 5));
     retval->set_seg_num     (sqlite3_column_int64 (stmt, 6));
+    retval->set_is_complete (sqlite3_column_int   (stmt, 7));
   }
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, sqlite3_errmsg (m_db));
   sqlite3_finalize (stmt);
 
   return retval;
@@ -722,10 +746,12 @@ ActionLog::LookupFilesForHash (const Hash &hash)
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db,
-                      "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num "
+                      "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
                       "   FROM FileState "
                       "   WHERE type = 0 AND file_hash = ?", -1, &stmt, 0);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
   sqlite3_bind_blob(stmt, 1, hash.GetHash (), hash.GetHashBytes (), SQLITE_STATIC);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
 
   FileItemsPtr retval = make_shared<FileItems> ();
   while (sqlite3_step (stmt) == SQLITE_ROW)
@@ -738,9 +764,11 @@ ActionLog::LookupFilesForHash (const Hash &hash)
       file.set_mtime       (sqlite3_column_int   (stmt, 4));
       file.set_mode        (sqlite3_column_int   (stmt, 5));
       file.set_seg_num     (sqlite3_column_int64 (stmt, 6));
+      file.set_is_complete (sqlite3_column_int   (stmt, 7));
 
       retval->push_back (file);
     }
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, sqlite3_errmsg (m_db));
 
   sqlite3_finalize (stmt);
 
@@ -753,7 +781,7 @@ ActionLog::LookupFilesInFolder (const std::string &folder)
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db,
-                      "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num "
+                      "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
                       "   FROM FileState "
                       "   WHERE type = 0 AND directory = ?", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, folder.c_str (), folder.size (), SQLITE_STATIC);
@@ -769,6 +797,7 @@ ActionLog::LookupFilesInFolder (const std::string &folder)
       file.set_mtime       (sqlite3_column_int   (stmt, 4));
       file.set_mode        (sqlite3_column_int   (stmt, 5));
       file.set_seg_num     (sqlite3_column_int64 (stmt, 6));
+      file.set_is_complete (sqlite3_column_int   (stmt, 7));
 
       retval->push_back (file);
     }
@@ -789,7 +818,7 @@ ActionLog::LookupFilesInFolderRecursively (const std::string &folder)
   if (folder != "")
     {
       sqlite3_prepare_v2 (m_db,
-                          "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num "
+                          "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
                           "   FROM FileState "
                           "   WHERE type = 0 AND (directory = ? OR directory LIKE ?)", -1, &stmt, 0);
       _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
@@ -814,7 +843,7 @@ ActionLog::LookupFilesInFolderRecursively (const std::string &folder)
   else
     {
       sqlite3_prepare_v2 (m_db,
-                          "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num "
+                          "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
                           "   FROM FileState "
                           "   WHERE type = 0", -1, &stmt, 0);
     }
@@ -832,6 +861,7 @@ ActionLog::LookupFilesInFolderRecursively (const std::string &folder)
       file.set_mtime       (sqlite3_column_int   (stmt, 4));
       file.set_mode        (sqlite3_column_int   (stmt, 5));
       file.set_seg_num     (sqlite3_column_int64 (stmt, 6));
+      file.set_is_complete (sqlite3_column_int   (stmt, 7));
 
       retval->push_back (file);
     }

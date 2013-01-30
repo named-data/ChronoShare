@@ -397,6 +397,8 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
 
       last_write_time (filePath, file->mtime ());
       permissions (filePath, static_cast<filesystem::perms> (file->mode ()));
+
+      m_actionLog->SetFileComplete (file->filename ());
     }
 }
 

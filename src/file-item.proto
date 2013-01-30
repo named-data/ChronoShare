@@ -8,4 +8,6 @@ message FileItem
   required uint32 mtime = 6;
   required uint32 mode  = 7;
   required uint64 seg_num = 8;
+
+  required uint32 is_complete = 9;
 }

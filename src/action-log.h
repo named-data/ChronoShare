@@ -100,6 +100,14 @@ public:
   ActionItemPtr
   LookupAction (const Ccnx::Name &actionName);
 
+  /**
+   * @brief Set "complete" flag
+   *
+   * The call will do nothing if FileState does not have a record for the file (e.g., file got subsequently deleted)
+   */
+  void
+  SetFileComplete (const std::string &filename);
+
   ///////////////////////////
   // File state operations //
   ///////////////////////////
