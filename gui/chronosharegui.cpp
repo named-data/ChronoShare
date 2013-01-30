@@ -21,6 +21,7 @@
 #include "chronosharegui.h"
 #include "logging.h"
 #include "ccnx-wrapper.h"
+#include <QValidator>
 
 #include <boost/make_shared.hpp>
 
@@ -38,8 +39,18 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
   labelUsername = new QLabel("Username");
   labelSharedFolder = new QLabel("Shared Folder Name");
   labelSharedFolderPath = new QLabel("Shared Folder Path");
+
+  QRegExp regex("(^/[^/]+)+$");
+  QValidator *prefixValidator = new QRegExpValidator(regex, this);
+
   editUsername = new QLineEdit();
+  editUsername->setValidator(prefixValidator);
+
+  QRegExp noPureWhiteSpace("^\\S+.*$");
+  QValidator *wsValidator = new QRegExpValidator(noPureWhiteSpace, this);
   editSharedFolder = new QLineEdit();
+  editSharedFolder->setValidator(wsValidator);
+
   editSharedFolderPath = new QLineEdit();
   editSharedFolderPath->setReadOnly(true);
   QPalette pal = editSharedFolderPath->palette();
@@ -217,12 +228,12 @@ void ChronoShareGui::openSharedFolder()
 void ChronoShareGui::changeSettings()
 {
   if(!editUsername->text().isEmpty())
-    m_username = editUsername->text();
+    m_username = editUsername->text().trimmed();
   else
     editUsername->setText(m_username);
 
   if(!editSharedFolder->text().isEmpty())
-    m_sharedFolderName = editSharedFolder->text();
+    m_sharedFolderName = editSharedFolder->text().trimmed();
   else
     editSharedFolder->setText(m_sharedFolderName);
 
