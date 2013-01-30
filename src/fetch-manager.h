@@ -46,12 +46,22 @@ public:
   typedef boost::function<Ccnx::Name(const Ccnx::Name &)> Mapping;
   typedef boost::function<void(Ccnx::Name &deviceName, Ccnx::Name &baseName, uint64_t seq, Ccnx::PcoPtr pco)> SegmentCallback;
   typedef boost::function<void(Ccnx::Name &deviceName, Ccnx::Name &baseName)> FinishCallback;
-  FetchManager (Ccnx::CcnxWrapperPtr ccnx, const Mapping &mapping, uint32_t parallelFetches = 3);
+  FetchManager (Ccnx::CcnxWrapperPtr ccnx
+                , const Mapping &mapping
+                , uint32_t parallelFetches = 3
+                , const SegmentCallback &defaultSegmentCallback = SegmentCallback()
+                , const FinishCallback &defaultFinishCallback = FinishCallback()
+                );
   virtual ~FetchManager ();
 
   void
   Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
            const SegmentCallback &segmentCallback, const FinishCallback &finishCallback,
+           uint64_t minSeqNo, uint64_t maxSeqNo, int priority=PRIORITY_NORMAL);
+
+  // Enqueue using default callbacks
+  void
+  Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
            uint64_t minSeqNo, uint64_t maxSeqNo, int priority=PRIORITY_NORMAL);
 
   // only for Fetcher
@@ -90,6 +100,8 @@ private:
   SchedulerPtr m_scheduler;
   ExecutorPtr m_executor;
   TaskPtr m_scheduleFetchesTask;
+  SegmentCallback m_defaultSegmentCallback;
+  FinishCallback m_defaultFinishCallback;
 };
 
 Ccnx::CcnxWrapperPtr

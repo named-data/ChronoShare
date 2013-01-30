@@ -72,5 +72,12 @@ Task::setTv(double delay)
 void
 Task::execute()
 {
-  m_scheduler->execute(boost::bind(&Task::run, this));
+  // m_scheduler->execute(boost::bind(&Task::run, this));
+
+  // using a shared_ptr of this to ensure that when invoked from executor
+  // the task object still exists
+  // otherwise, it could be the case that the run() is to be executed, but before it
+  // could finish, the TaskPtr gets deleted from scheduler and the task object
+  // gets destroyed, causing crash
+  m_scheduler->execute(boost::bind(&Task::run, shared_from_this()));
 }
