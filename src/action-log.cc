@@ -145,11 +145,17 @@ ActionLog::ActionLog (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &
 
   // "Upgrading" database
   sqlite3_exec (m_db, "ALTER TABLE FileState ADD COLUMN directory TEXT", NULL, NULL, NULL);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
   sqlite3_exec (m_db, "CREATE INDEX FileState_directory ON FileState (directory)", NULL, NULL, NULL);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
   sqlite3_exec (m_db, "UPDATE FileState SET directory = directory_name(filename) WHERE directory IS NULL", NULL, NULL, NULL);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
 
   // Another "upgrade"
   sqlite3_exec (m_db, "BEGIN TRANSACTION; ALTER TABLE FileState ADD COLUMN is_complete INTEGER; UPDATE FileState SET is_complete = 1; END TRANSACTION;", NULL, NULL, NULL);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
 }
 
 tuple<sqlite3_int64 /*version*/, Ccnx::CcnxCharbufPtr /*device name*/, sqlite3_int64 /*seq_no*/>
@@ -486,6 +492,8 @@ ActionLog::AddRemoteAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno, C
       BOOST_THROW_EXCEPTION (Error::ActionLog () << errmsg_info_str ("action cannot be decoded"));
     }
 
+  _LOG_DEBUG ("AddRemoteAction: [" << deviceName << "] seqno: " << seqno);
+
   sqlite3_stmt *stmt;
   int res = sqlite3_prepare_v2 (m_db, "INSERT INTO ActionLog "
                                 "(device_name, seq_no, action, filename, version, action_timestamp, "
@@ -496,6 +504,7 @@ ActionLog::AddRemoteAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno, C
                                 "        ?, datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), ?,?, "
                                 "        ?, ?, "
                                 "        ?, ?);", -1, &stmt, 0);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
 
   CcnxCharbufPtr device_name = deviceName.toCcnxCharbuf ();
   sqlite3_bind_blob  (stmt, 1, device_name->buf (), device_name->length (), SQLITE_STATIC);

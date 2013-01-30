@@ -163,9 +163,17 @@ FsWatcher::ScanDirectory_NotifyUpdates_Execute (QString dirPath, bool notifyCall
           // _LOG_DEBUG ("Attempt to add path to watcher: " << absFilePath.toStdString ());
           m_watcher->addPath (absFilePath);
 
-          if (notifyCallbacks && fileInfo.isFile ())
+          if (fileInfo.isFile ())
             {
-              DidFileChanged (absFilePath);
+              QString relFile = absFilePath;
+              relFile.remove (0, m_dirPath.size ());
+              filesystem::path aFile (relFile.toStdString ());
+
+              if (notifyCallbacks ||
+                  !m_fileState->LookupFile (aFile.relative_path ().generic_string ()) /* file does not exist there, but exists locally: added */)
+                {
+                  DidFileChanged (absFilePath);
+                }
             }
         }
       else
