@@ -56,11 +56,11 @@ FsWatcher::FsWatcher (QString dirPath,
 
   m_scheduler->start ();
 
-  Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
+  Scheduler::scheduleOneTimeTask (m_scheduler, 0,
                                   bind (&FsWatcher::ScanDirectory_NotifyRemovals_Execute, this, m_dirPath),
                                   "r-" + m_dirPath.toStdString ()); // only one task will be scheduled per directory
 
-  Scheduler::scheduleOneTimeTask (m_scheduler, 1,
+  Scheduler::scheduleOneTimeTask (m_scheduler, 0,
                                   bind (&FsWatcher::ScanDirectory_NotifyUpdates_Execute, this, m_dirPath),
                                   m_dirPath.toStdString ()); // only one task will be scheduled per directory
 }
