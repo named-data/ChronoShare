@@ -32,7 +32,7 @@ using namespace boost;
 using namespace std;
 using namespace Ccnx;
 
-void xTrace (void*, const char* q)
+static  void xTrace (void*, const char* q)
 {
   cout << q << endl;
 }

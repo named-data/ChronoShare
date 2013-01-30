@@ -53,8 +53,8 @@ int main(int argc, char *argv[])
 
   FsWatcher watcher (path.c_str (),
                      bind (&Dispatcher::Did_LocalFile_AddOrModify, &dispatcher, _1),
-                     bind (&Dispatcher::Did_LocalFile_Delete,      &dispatcher, _1));
-
+                     bind (&Dispatcher::Did_LocalFile_Delete,      &dispatcher, _1),
+                     dispatcher.GetFileState ());
 
   return app.exec ();
 }

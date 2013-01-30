@@ -95,6 +95,8 @@ Fetcher::FillPipeline ()
 {
   for (; m_minSendSeqNo < m_maxSeqNo && m_activePipeline < m_pipeline; m_minSendSeqNo++)
     {
+      unique_lock<mutex> lock (m_seqNoMutex);
+
       if (m_outOfOrderRecvSeqNo.find (m_minSendSeqNo+1) != m_outOfOrderRecvSeqNo.end ())
         continue;
 
@@ -157,6 +159,8 @@ Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
   m_lastPositiveActivity = date_time::second_clock<boost::posix_time::ptime>::universal_time();
 
   ////////////////////////////////////////////////////////////////////////////
+  unique_lock<mutex> lock (m_seqNoMutex);
+
   m_outOfOrderRecvSeqNo.insert (seqno);
   m_inActivePipeline.erase (seqno);
   _LOG_DEBUG ("Total segments received: " << m_outOfOrderRecvSeqNo.size ());
@@ -222,12 +226,25 @@ Fetcher::OnTimeout_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::Closure closu
   if (m_lastPositiveActivity <
       (date_time::second_clock<boost::posix_time::ptime>::universal_time() - m_maximumNoActivityPeriod))
     {
-      m_inActivePipeline.erase (seqno);
-      m_activePipeline --;
-      if (m_activePipeline == 0)
+      bool done = false;
+      {
+        unique_lock<mutex> lock (m_seqNoMutex);
+        m_inActivePipeline.erase (seqno);
+        m_activePipeline --;
+
+        if (m_activePipeline == 0)
+          {
+          done = true;
+          }
+      }
+
+      if (done)
         {
-          _LOG_DEBUG ("Telling that fetch failed");
-          _LOG_DEBUG ("Active pipeline size should be zero: " << m_inActivePipeline.size ());
+          {
+            unique_lock<mutex> lock (m_seqNoMutex);
+            _LOG_DEBUG ("Telling that fetch failed");
+            _LOG_DEBUG ("Active pipeline size should be zero: " << m_inActivePipeline.size ());
+          }
 
           m_active = false;
           m_onFetchFailed (ref (*this));

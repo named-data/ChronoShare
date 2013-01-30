@@ -133,6 +133,8 @@ private:
   boost::posix_time::ptime m_nextScheduledRetry;
 
   ExecutorPtr m_executor; // to serialize FillPipeline events
+
+  boost::mutex m_seqNoMutex;
 };
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;

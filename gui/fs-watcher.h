@@ -27,6 +27,7 @@
 #include <boost/filesystem.hpp>
 
 #include "scheduler.h"
+#include "file-state.h"
 
 class FsWatcher : public QObject
 {
@@ -38,6 +39,7 @@ public:
   // constructor
   FsWatcher (QString dirPath,
              LocalFile_Change_Callback onChange, LocalFile_Change_Callback onDelete,
+             FileState *fileState,
              QObject* parent = 0);
 
   // destructor
@@ -59,7 +61,10 @@ private:
   // handle callback from the watcher
   // scan directory and notify callback about any file changes
   void
-  ScanDirectory_Notify_Execute (QString dirPath);
+  ScanDirectory_NotifyUpdates_Execute (QString dirPath, bool notifyCallbacks);
+
+  void
+  ScanDirectory_NotifyRemovals_Execute (QString dirPath);
 
   // // reconcile directory, find changes
   // std::vector<sEventInfo>
@@ -79,6 +84,8 @@ private:
 
   LocalFile_Change_Callback m_onChange;
   LocalFile_Change_Callback m_onDelete;
+
+  FileState *m_fileState;
 };
 
 #endif // FILESYSTEMWATCHER_H
