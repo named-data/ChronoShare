@@ -36,7 +36,7 @@ class Fetcher
 public:
   typedef boost::function<void(Ccnx::Name &deviceName, Ccnx::Name &baseName, uint64_t seq, Ccnx::PcoPtr pco)> SegmentCallback;
   typedef boost::function<void(Ccnx::Name &deviceName, Ccnx::Name &baseName)> FinishCallback;
-  typedef boost::function<void (Fetcher &)> OnFetchCompleteCallback;
+  typedef boost::function<void (Fetcher &, const Ccnx::Name &deviceName, const Ccnx::Name &baseName)> OnFetchCompleteCallback;
   typedef boost::function<void (Fetcher &)> OnFetchFailedCallback;
 
   Fetcher (Ccnx::CcnxWrapperPtr ccnx,

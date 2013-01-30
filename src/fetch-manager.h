@@ -31,6 +31,7 @@
 #include "scheduler.h"
 #include "executor.h"
 #include "ccnx-wrapper.h"
+#include "fetch-task-db.h"
 
 #include "fetcher.h"
 
@@ -51,6 +52,7 @@ public:
                 , uint32_t parallelFetches = 3
                 , const SegmentCallback &defaultSegmentCallback = SegmentCallback()
                 , const FinishCallback &defaultFinishCallback = FinishCallback()
+                , const FetchTaskDbPtr &taskDb = FetchTaskDbPtr()
                 );
   virtual ~FetchManager ();
 
@@ -78,7 +80,7 @@ private:
   DidNoDataTimeout (Fetcher &fetcher);
 
   void
-  DidFetchComplete (Fetcher &fetcher);
+  DidFetchComplete (Fetcher &fetcher, const Ccnx::Name &deviceName, const Ccnx::Name &baseName);
 
   void
   ScheduleFetches ();
@@ -102,6 +104,7 @@ private:
   TaskPtr m_scheduleFetchesTask;
   SegmentCallback m_defaultSegmentCallback;
   FinishCallback m_defaultFinishCallback;
+  FetchTaskDbPtr m_taskDb;
 };
 
 Ccnx::CcnxWrapperPtr

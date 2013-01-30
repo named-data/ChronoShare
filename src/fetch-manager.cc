@@ -44,6 +44,7 @@ FetchManager::FetchManager (Ccnx::CcnxWrapperPtr ccnx
                 , uint32_t parallelFetches // = 3
                 , const SegmentCallback &defaultSegmentCallback
                 , const FinishCallback &defaultFinishCallback
+                , const FetchTaskDbPtr &taskDb
                 )
   : m_ccnx (ccnx)
   , m_mapping (mapping)
@@ -53,9 +54,16 @@ FetchManager::FetchManager (Ccnx::CcnxWrapperPtr ccnx
   , m_executor (new Executor(1))
   , m_defaultSegmentCallback(defaultSegmentCallback)
   , m_defaultFinishCallback(defaultFinishCallback)
+  , m_taskDb(taskDb)
 {
   m_scheduler->start ();
   m_executor->start();
+
+  // resume un-finished fetches if there is any
+  if (m_taskDb)
+  {
+    m_taskDb->foreachTask(bind(&FetchManager::Enqueue, this, _1, _2, _3, _4, _5));
+  }
 
   m_scheduleFetchesTask = Scheduler::schedulePeriodicTask (m_scheduler,
                                                            make_shared<SimpleIntervalGenerator> (300), // no need to check to often. if needed, will be rescheduled
@@ -94,6 +102,8 @@ FetchManager::Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
   Name forwardingHint;
   forwardingHint = m_mapping (deviceName);
 
+  m_taskDb->addTask(deviceName, baseName, minSeqNo, maxSeqNo, priority);
+
   unique_lock<mutex> lock (m_parellelFetchMutex);
 
   _LOG_TRACE ("++++ Create fetcher: " << baseName);
@@ -101,7 +111,7 @@ FetchManager::Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
                                   m_executor,
                                   segmentCallback,
                                   finishCallback,
-                                  bind (&FetchManager::DidFetchComplete, this, _1),
+                                  bind (&FetchManager::DidFetchComplete, this, _1, _2, _3),
                                   bind (&FetchManager::DidNoDataTimeout, this, _1),
                                   deviceName, baseName, minSeqNo, maxSeqNo,
                                   boost::posix_time::seconds (30),
@@ -205,13 +215,14 @@ FetchManager::DidNoDataTimeout (Fetcher &fetcher)
 }
 
 void
-FetchManager::DidFetchComplete (Fetcher &fetcher)
+FetchManager::DidFetchComplete (Fetcher &fetcher, const Name &deviceName, const Name &baseName)
 {
   {
     unique_lock<mutex> lock (m_parellelFetchMutex);
     m_currentParallelFetches --;
     _LOG_TRACE ("+++++ removing fetcher: " << fetcher.GetName ());
     m_fetchList.erase_and_dispose (FetchList::s_iterator_to (fetcher), fetcher_disposer ());
+    m_taskDb->deleteTask(deviceName, baseName);
   }
 
   m_scheduler->rescheduleTaskAt (m_scheduleFetchesTask, 0);

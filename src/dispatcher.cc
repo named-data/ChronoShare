@@ -22,6 +22,7 @@
 #include "dispatcher.h"
 #include "logging.h"
 #include "ccnx-discovery.h"
+#include "fetch-task-db.h"
 
 #include <boost/make_shared.hpp>
 #include <boost/lexical_cast.hpp>
@@ -67,12 +68,15 @@ Dispatcher::Dispatcher(const std::string &localUserName
   m_core = new SyncCore (m_syncLog, localUserName, Name ("/"), syncPrefix,
                          bind(&Dispatcher::Did_SyncLog_StateChange, this, _1), ccnx, DEFAULT_SYNC_INTEREST_INTERVAL);
 
+  FetchTaskDbPtr actionTaskDb = make_shared<FetchTaskDb>(m_rootDir, "action");
   m_actionFetcher = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3,
-                                bind (&Dispatcher::Did_FetchManager_ActionFetch, this, _1, _2, _3, _4));
+                                bind (&Dispatcher::Did_FetchManager_ActionFetch, this, _1, _2, _3, _4), FetchManager::FinishCallback(), actionTaskDb);
 
+  FetchTaskDbPtr fileTaskDb = make_shared<FetchTaskDb>(m_rootDir, "file");
   m_fileFetcher   = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3,
                                   bind (&Dispatcher::Did_FetchManager_FileSegmentFetch, this, _1, _2, _3, _4),
-                                  bind (&Dispatcher::Did_FetchManager_FileFetchComplete, this, _1, _2));
+                                  bind (&Dispatcher::Did_FetchManager_FileFetchComplete, this, _1, _2),
+                                  fileTaskDb);
 
 
   if (m_enablePrefixDiscovery)
