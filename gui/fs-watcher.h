@@ -61,7 +61,7 @@ private:
   // handle callback from the watcher
   // scan directory and notify callback about any file changes
   void
-  ScanDirectory_NotifyUpdates_Execute (QString dirPath);
+  ScanDirectory_NotifyUpdates_Execute (QString dirPath, bool notifyCallbacks);
 
   void
   ScanDirectory_NotifyRemovals_Execute (QString dirPath);

@@ -61,7 +61,7 @@ FsWatcher::FsWatcher (QString dirPath,
                                   "r-" + m_dirPath.toStdString ()); // only one task will be scheduled per directory
 
   Scheduler::scheduleOneTimeTask (m_scheduler, 0,
-                                  bind (&FsWatcher::ScanDirectory_NotifyUpdates_Execute, this, m_dirPath),
+                                  bind (&FsWatcher::ScanDirectory_NotifyUpdates_Execute, this, m_dirPath, true),
                                   m_dirPath.toStdString ()); // only one task will be scheduled per directory
 }
 
@@ -86,8 +86,13 @@ FsWatcher::DidDirectoryChanged (QString dirPath)
     {
       // m_executor.execute (bind (&FsWatcher::ScanDirectory_NotifyUpdates_Execute, this, dirPath));
       Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
-                                      bind (&FsWatcher::ScanDirectory_NotifyUpdates_Execute, this, dirPath),
+                                      bind (&FsWatcher::ScanDirectory_NotifyUpdates_Execute, this, dirPath, false),
                                       dirPath.toStdString ()); // only one task will be scheduled per directory
+
+      // m_executor.execute (bind (&FsWatcher::ScanDirectory_NotifyUpdates_Execute, this, dirPath));
+      Scheduler::scheduleOneTimeTask (m_scheduler, 300,
+                                      bind (&FsWatcher::ScanDirectory_NotifyUpdates_Execute, this, dirPath, true),
+                                      "rescan-"+dirPath.toStdString ()); // only one task will be scheduled per directory
     }
 }
 
@@ -124,7 +129,7 @@ FsWatcher::DidFileChanged (QString filePath)
 }
 
 void
-FsWatcher::ScanDirectory_NotifyUpdates_Execute (QString dirPath)
+FsWatcher::ScanDirectory_NotifyUpdates_Execute (QString dirPath, bool notifyCallbacks)
 {
   _LOG_TRACE (" >> ScanDirectory_NotifyUpdates_Execute");
 
@@ -154,7 +159,7 @@ FsWatcher::ScanDirectory_NotifyUpdates_Execute (QString dirPath)
           // _LOG_DEBUG ("Attempt to add path to watcher: " << absFilePath.toStdString ());
           m_watcher->addPath (absFilePath);
 
-          if (fileInfo.isFile ())
+          if (notifyCallbacks && fileInfo.isFile ())
             {
               DidFileChanged (absFilePath);
             }
