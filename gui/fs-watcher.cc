@@ -35,6 +35,7 @@ INIT_LOGGER ("FsWatcher");
 
 FsWatcher::FsWatcher (QString dirPath,
                       LocalFile_Change_Callback onChange, LocalFile_Change_Callback onDelete,
+                      FileState *fileState,
                       QObject* parent)
   : QObject(parent)
   , m_watcher (new QFileSystemWatcher())
@@ -42,6 +43,7 @@ FsWatcher::FsWatcher (QString dirPath,
   , m_dirPath (dirPath)
   , m_onChange (onChange)
   , m_onDelete (onDelete)
+  , m_fileState (fileState)
 {
   _LOG_DEBUG ("Monitor dir: " << m_dirPath.toStdString ());
   // add main directory to monitor
@@ -54,8 +56,12 @@ FsWatcher::FsWatcher (QString dirPath,
 
   m_scheduler->start ();
 
-  Scheduler::scheduleOneTimeTask (m_scheduler, 0.1,
-                                  bind (&FsWatcher::ScanDirectory_Notify_Execute, this, m_dirPath),
+  Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
+                                  bind (&FsWatcher::ScanDirectory_NotifyRemovals_Execute, this, m_dirPath),
+                                  "r-" + m_dirPath.toStdString ()); // only one task will be scheduled per directory
+
+  Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
+                                  bind (&FsWatcher::ScanDirectory_NotifyUpdates_Execute, this, m_dirPath),
                                   m_dirPath.toStdString ()); // only one task will be scheduled per directory
 }
 
@@ -69,10 +75,23 @@ FsWatcher::DidDirectoryChanged (QString dirPath)
 {
   _LOG_DEBUG ("Triggered DirPath: " << dirPath.toStdString ());
 
-  // m_executor.execute (bind (&FsWatcher::ScanDirectory_Notify_Execute, this, dirPath));
-  Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
-                                  bind (&FsWatcher::ScanDirectory_Notify_Execute, this, dirPath),
-                                  dirPath.toStdString ()); // only one task will be scheduled per directory
+  filesystem::path absPathTriggeredDir (dirPath.toStdString ());
+  dirPath.remove (0, m_dirPath.size ());
+
+  filesystem::path triggeredDir (dirPath.toStdString ());
+  if (!filesystem::exists (filesystem::path (absPathTriggeredDir)))
+    {
+      Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
+                                      bind (&FsWatcher::ScanDirectory_NotifyRemovals_Execute, this, dirPath),
+                                      "r-" + dirPath.toStdString ()); // only one task will be scheduled per directory
+    }
+  else
+    {
+      // m_executor.execute (bind (&FsWatcher::ScanDirectory_NotifyUpdates_Execute, this, dirPath));
+      Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
+                                      bind (&FsWatcher::ScanDirectory_NotifyUpdates_Execute, this, dirPath),
+                                      dirPath.toStdString ()); // only one task will be scheduled per directory
+    }
 }
 
 void
@@ -103,13 +122,15 @@ FsWatcher::DidFileChanged (QString filePath)
 
       Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
                                       bind (m_onDelete, triggeredFile.relative_path ()),
-                                      triggeredFile.relative_path ().string());
+                                      "r-" + triggeredFile.relative_path ().string());
     }
 }
 
 void
-FsWatcher::ScanDirectory_Notify_Execute (QString dirPath)
+FsWatcher::ScanDirectory_NotifyUpdates_Execute (QString dirPath)
 {
+  // _LOG_TRACE (" >> ScanDirectory_NotifyUpdates_Execute");
+
   // exclude working only on last component, not the full path; iterating through all directories, even excluded from monitoring
   QRegExp exclude ("^(\\.|\\.\\.|\\.chronoshare|.*~|.*\\.swp)$");
 
@@ -139,29 +160,35 @@ FsWatcher::ScanDirectory_Notify_Execute (QString dirPath)
             {
               DidFileChanged (absFilePath);
             }
-          // // if this is a directory
-          // if(fileInfo.isDir())
-          //   {
-          //     QStringList dirList = m_watcher->directories();
-
-          //     // if the directory is not already being watched
-          //     if (absFilePath.startsWith(m_dirPath) && !dirList.contains(absFilePath))
-          //       {
-          //         _LOG_DEBUG ("Add new dir to watchlist: " << absFilePath.toStdString ());
-          //         // add this directory to the watch list
-          //         m_watcher->addPath(absFilePath);
-          //       }
-          //   }
-          // else
-          //   {
-          //     _LOG_DEBUG ("Found file: " << absFilePath.toStdString ());
-          //     // add this file to the file list
-          //     // currentState.insert(absFilePath, fileInfo.created().toMSecsSinceEpoch());
-          //   }
         }
       else
         {
           // _LOG_DEBUG ("Excluded file/dir: " << fileInfo.filePath ().toStdString ());
+        }
+    }
+}
+
+
+void
+FsWatcher::ScanDirectory_NotifyRemovals_Execute (QString dirPath)
+{
+  _LOG_DEBUG ("Triggered DirPath: " << dirPath.toStdString ());
+
+  filesystem::path absPathTriggeredDir (dirPath.toStdString ());
+  dirPath.remove (0, m_dirPath.size ());
+
+  filesystem::path triggeredDir (dirPath.toStdString ());
+
+  FileItemsPtr files = m_fileState->LookupFilesInFolderRecursively (triggeredDir.generic_string ());
+  for (std::list<FileItem>::iterator file = files->begin (); file != files->end (); file ++)
+    {
+      filesystem::path testFile = filesystem::path (m_dirPath.toStdString ()) / file->filename ();
+      _LOG_DEBUG ("Check file for deletion [" << testFile.generic_string () << "]");
+
+      if (!filesystem::exists (testFile))
+        {
+          _LOG_DEBUG ("Notifying about removed file [" << file->filename () << "]");
+          m_onDelete (file->filename ());
         }
     }
 }

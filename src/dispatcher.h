@@ -64,9 +64,21 @@ public:
   void
   Did_LocalFile_Delete (const boost::filesystem::path &relativeFilepath);
 
+  /**
+   * @brief Invoked when FileState is detected to have a file which does not exist on a file system
+   */
+  void
+  Restore_LocalFile (FileItemPtr file);
+
+  void
+  Restore_LocalFile_Execute (FileItemPtr file);
+
   // for test
   HashPtr
   SyncRoot() { return m_core->root(); }
+
+  FileState *
+  GetFileState () { return m_actionLog.get (); }
 
 private:
   void

@@ -45,7 +45,7 @@ public:
     sqlite3_prepare_v2 (m_db,
                         "SELECT device_name, seq_no, action, filename, version, file_hash, file_seg_num, parent_device_name, parent_seq_no "
                         "   FROM ActionLog "
-                        /*"   ORDER BY filename,version"*/, -1, &stmt, 0);
+                        "   ORDER BY action_timestamp", -1, &stmt, 0);
 
     cout.setf(std::ios::left, std::ios::adjustfield);
     cout << ">> ACTION LOG <<" << endl;

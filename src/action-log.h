@@ -23,6 +23,7 @@
 #define ACTION_LOG_H
 
 #include "db-helper.h"
+#include "file-state.h"
 #include "sync-log.h"
 #include "action-item.pb.h"
 #include "file-item.pb.h"
@@ -35,11 +36,8 @@ class ActionLog;
 typedef boost::shared_ptr<ActionLog> ActionLogPtr;
 typedef boost::shared_ptr<ActionItem> ActionItemPtr;
 
-typedef std::list<FileItem> FileItems;
-typedef boost::shared_ptr<FileItem>  FileItemPtr;
-typedef boost::shared_ptr<FileItems> FileItemsPtr;
-
 class ActionLog : public DbHelper
+                , public FileState
 {
 public:
   typedef boost::function<void (std::string /*filename*/, Ccnx::Name /*device_name*/, sqlite3_int64 /*seq_no*/,
@@ -52,6 +50,8 @@ public:
              SyncLogPtr syncLog,
              const std::string &sharedFolder,
              OnFileAddedOrChangedCallback onFileAddedOrChanged, OnFileRemovedCallback onFileRemoved);
+
+  virtual ~ActionLog () { }
 
   //////////////////////////
   // Local operations     //
@@ -103,11 +103,17 @@ public:
   ///////////////////////////
   // File state operations //
   ///////////////////////////
-  FileItemPtr
+  virtual FileItemPtr
   LookupFile (const std::string &filename);
 
-  FileItemsPtr
+  virtual FileItemsPtr
   LookupFilesForHash (const Hash &hash);
+
+  virtual FileItemsPtr
+  LookupFilesInFolder (const std::string &folder);
+
+  virtual FileItemsPtr
+  LookupFilesInFolderRecursively (const std::string &folder);
 
 public:
   // for test purposes
@@ -120,6 +126,9 @@ private:
 
   static void
   apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
+
+  static void
+  directory_name_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
 
 private:
   SyncLogPtr m_syncLog;

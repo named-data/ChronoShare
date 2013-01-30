@@ -118,6 +118,12 @@ Dispatcher::Did_LocalPrefix_Updated (const Ccnx::Name &prefix)
   m_server->deregisterPrefix(oldLocalPrefix);
 }
 
+void
+Dispatcher::Restore_LocalFile (FileItemPtr file)
+{
+  m_executor.execute (bind (&Dispatcher::Restore_LocalFile_Execute, this, file));
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -386,4 +392,30 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
       last_write_time (filePath, file->mtime ());
       permissions (filePath, static_cast<filesystem::perms> (file->mode ()));
     }
+}
+
+void
+Dispatcher::Restore_LocalFile_Execute (FileItemPtr file)
+{
+  _LOG_DEBUG ("Got request to restore local file [" << file->filename () << "]");
+  // the rest will gracefully fail if object-db is missing or incomplete
+
+  boost::filesystem::path filePath = m_rootDir / file->filename ();
+  Name deviceName (file->device_name ().c_str (), file->device_name ().size ());
+  Hash hash (file->file_hash ().c_str (), file->file_hash ().size ());
+
+  if (filesystem::exists (filePath) &&
+      filesystem::last_write_time (filePath) == file->mtime () &&
+      filesystem::status (filePath).permissions () == static_cast<filesystem::perms> (file->mode ()) &&
+      *Hash::FromFileContent (filePath) == hash)
+    {
+      _LOG_DEBUG ("Asking to assemble a file, but file already exists on a filesystem");
+      return;
+    }
+
+  m_objectManager.objectsToLocalFile (deviceName, hash, filePath);
+
+  last_write_time (filePath, file->mtime ());
+  permissions (filePath, static_cast<filesystem::perms> (file->mode ()));
+
 }
