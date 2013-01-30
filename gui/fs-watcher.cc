@@ -60,7 +60,7 @@ FsWatcher::FsWatcher (QString dirPath,
                                   bind (&FsWatcher::ScanDirectory_NotifyRemovals_Execute, this, m_dirPath),
                                   "r-" + m_dirPath.toStdString ()); // only one task will be scheduled per directory
 
-  Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
+  Scheduler::scheduleOneTimeTask (m_scheduler, 1,
                                   bind (&FsWatcher::ScanDirectory_NotifyUpdates_Execute, this, m_dirPath),
                                   m_dirPath.toStdString ()); // only one task will be scheduled per directory
 }
@@ -76,9 +76,6 @@ FsWatcher::DidDirectoryChanged (QString dirPath)
   _LOG_DEBUG ("Triggered DirPath: " << dirPath.toStdString ());
 
   filesystem::path absPathTriggeredDir (dirPath.toStdString ());
-  dirPath.remove (0, m_dirPath.size ());
-
-  filesystem::path triggeredDir (dirPath.toStdString ());
   if (!filesystem::exists (filesystem::path (absPathTriggeredDir)))
     {
       Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
@@ -129,7 +126,7 @@ FsWatcher::DidFileChanged (QString filePath)
 void
 FsWatcher::ScanDirectory_NotifyUpdates_Execute (QString dirPath)
 {
-  // _LOG_TRACE (" >> ScanDirectory_NotifyUpdates_Execute");
+  _LOG_TRACE (" >> ScanDirectory_NotifyUpdates_Execute");
 
   // exclude working only on last component, not the full path; iterating through all directories, even excluded from monitoring
   QRegExp exclude ("^(\\.|\\.\\.|\\.chronoshare|.*~|.*\\.swp)$");
@@ -147,6 +144,7 @@ FsWatcher::ScanDirectory_NotifyUpdates_Execute (QString dirPath)
       QFileInfo fileInfo = dirIterator.fileInfo ();
 
       QString name = fileInfo.fileName ();
+      _LOG_DEBUG ("+++ Scanning: " <<  name.toStdString ());
 
       if (!exclude.exactMatch (name))
         {

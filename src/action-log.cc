@@ -303,6 +303,8 @@ ActionLog::AddLocalActionUpdate (const std::string &filename,
 ActionItemPtr
 ActionLog::AddLocalActionDelete (const std::string &filename)
 {
+  _LOG_DEBUG ("Adding local action DELETE");
+
   sqlite3_exec (m_db, "BEGIN TRANSACTION;", 0,0,0);
 
   CcnxCharbufPtr device_name = m_syncLog->GetLocalName ().toCcnxCharbuf ();
@@ -315,6 +317,19 @@ ActionLog::AddLocalActionDelete (const std::string &filename)
   tie (version, parent_device_name, parent_seq_no) = GetLatestActionForFile (filename);
   if (!parent_device_name) // no records exist or file was already deleted
     {
+      _LOG_DEBUG ("Nothing to delete... [" << filename << "]");
+
+      // just in case, remove data from FileState
+      sqlite3_stmt *stmt;
+      sqlite3_prepare_v2 (m_db, "DELETE FROM FileState WHERE filename = ? ", -1, &stmt, 0);
+      sqlite3_bind_text  (stmt, 1, filename.c_str (), filename.size (), SQLITE_TRANSIENT);  // file
+
+      sqlite3_step (stmt);
+
+      _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, sqlite3_errmsg (m_db));
+
+      sqlite3_finalize (stmt);
+
       sqlite3_exec (m_db, "END TRANSACTION;", 0,0,0);
       return ActionItemPtr ();
     }
@@ -610,7 +625,7 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
                           "file_mtime=datetime(?, 'unixepoch'),"
                           "file_ctime=datetime(?, 'unixepoch'),"
                           "file_chmod=?, "
-                          "file_seg_num=?, "
+                          "file_seg_num=? "
                           "WHERE type=0 AND filename=?", -1, &stmt, 0);
 
       sqlite3_bind_blob  (stmt, 1, device_name.buf (), device_name.length (), SQLITE_TRANSIENT);
@@ -710,7 +725,7 @@ ActionLog::LookupFilesForHash (const Hash &hash)
   sqlite3_prepare_v2 (m_db,
                       "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num "
                       "   FROM FileState "
-                      "   WHERE type = 0 AND file_hash = ?;", -1, &stmt, 0);
+                      "   WHERE type = 0 AND file_hash = ?", -1, &stmt, 0);
   sqlite3_bind_blob(stmt, 1, hash.GetHash (), hash.GetHashBytes (), SQLITE_STATIC);
 
   FileItemsPtr retval = make_shared<FileItems> ();
