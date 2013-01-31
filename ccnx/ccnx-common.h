@@ -39,6 +39,13 @@ extern "C" {
 #include <map>
 #include <utility>
 #include <string.h>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/device/back_inserter.hpp>
+#include <boost/range/iterator_range.hpp>
+#include <boost/make_shared.hpp>
+
+namespace io = boost::iostreams;
 
 namespace Ccnx {
 typedef std::vector<unsigned char> Bytes;
@@ -86,7 +93,7 @@ readRawPtr (const unsigned char *src, size_t len)
 }
 
 template<class Msg>
-inline BytesPtr
+BytesPtr
 serializeMsg(const Msg &msg)
 {
   int size = msg.ByteSize ();
@@ -96,13 +103,47 @@ serializeMsg(const Msg &msg)
 }
 
 template<class Msg>
-inline boost::shared_ptr<Msg>
+boost::shared_ptr<Msg>
 deserializeMsg (const Bytes &bytes)
 {
   boost::shared_ptr<Msg> retval (new Msg ());
   retval->ParseFromArray (head (bytes), bytes.size ());
   return retval;
 }
+
+template<class Msg>
+BytesPtr
+serializeGZipMsg(const Msg &msg)
+{
+  std::vector<char> bytes;   // Bytes couldn't work
+  {
+    boost::iostreams::filtering_ostream out;
+    out.push(boost::iostreams::gzip_compressor()); // gzip filter
+    out.push(boost::iostreams::back_inserter(bytes)); // back_inserter sink
+
+    msg.SerializeToOstream(&out);
+  }
+  BytesPtr uBytes = boost::make_shared<Bytes>(bytes.size());
+  memcpy(&(*uBytes)[0], &bytes[0], bytes.size());
+  return uBytes;
+}
+
+template<class Msg>
+boost::shared_ptr<Msg>
+deserializeGZipMsg(const Bytes &bytes)
+{
+  std::vector<char> sBytes(bytes.size());
+  memcpy(&sBytes[0], &bytes[0], bytes.size());
+  boost::iostreams::filtering_istream in;
+  in.push(boost::iostreams::gzip_decompressor()); // gzip filter
+  in.push(boost::make_iterator_range(sBytes)); // source
+
+  boost::shared_ptr<Msg> retval = boost::make_shared<Msg>();
+  retval->ParseFromIstream(&in);
+
+  return retval;
+}
+
 
 // --- Bytes operations end ---
 

@@ -94,7 +94,7 @@ SyncCore::localStateChanged()
 
   // reply sync Interest with oldHash as last component
   Name syncName = Name (m_syncPrefix)(oldHash->GetHash(), oldHash->GetHashBytes());
-  BytesPtr syncData = serializeMsg (*msg);
+  BytesPtr syncData = serializeGZipMsg (*msg);
 
   m_ccnx->publishData(syncName, *syncData, FRESHNESS);
   _LOG_DEBUG ("[" << m_log->GetLocalName () << "] localStateChanged ");
@@ -141,7 +141,7 @@ SyncCore::handleRecoverInterest(const Name &name)
     // we know the hash, should reply everything
     SyncStateMsgPtr msg = m_log->FindStateDifferences(*(Hash::Origin), *m_rootHash);
 
-    BytesPtr syncData = serializeMsg (*msg);
+    BytesPtr syncData = serializeGZipMsg (*msg);
     m_ccnx->publishData(name, *syncData, FRESHNESS);
     _LOG_TRACE ("[" << m_log->GetLocalName () << "] publishes " << hash.shortHash ());
     // _LOG_TRACE (msg);
@@ -171,7 +171,7 @@ SyncCore::handleSyncInterest(const Name &name)
     _LOG_TRACE ("found hash in sync log");
     SyncStateMsgPtr msg = m_log->FindStateDifferences(*hash, *m_rootHash);
 
-    BytesPtr syncData = serializeMsg (*msg);
+    BytesPtr syncData = serializeGZipMsg (*msg);
     m_ccnx->publishData(name, *syncData, FRESHNESS);
     _LOG_TRACE (m_log->GetLocalName () << " publishes: " << hash->shortHash ());
     _LOG_TRACE (msg);
@@ -252,9 +252,8 @@ SyncCore::handleSyncData(const Name &name, PcoPtr content)
 void
 SyncCore::handleStateData(const Bytes &content)
 {
-  SyncStateMsgPtr msg(new SyncStateMsg);
-  bool success = msg->ParseFromArray(head(content), content.size());
-  if(!success)
+  SyncStateMsgPtr msg = deserializeGZipMsg<SyncStateMsg>(content);
+  if(!(msg))
   {
     // ignore misformed SyncData
     _LOG_ERROR ("Misformed SyncData");
