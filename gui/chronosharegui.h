@@ -89,6 +89,10 @@ private:
   // capture close event
   void closeEvent(QCloseEvent* event);
 
+  // starts fs watcher and dispatcher
+  void
+  startBackend();
+
 private:
   QSystemTrayIcon* m_trayIcon; // tray icon
   QMenu* m_trayIconMenu; // tray icon menu

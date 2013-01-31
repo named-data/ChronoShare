@@ -32,6 +32,8 @@ INIT_LOGGER ("Gui");
 
 ChronoShareGui::ChronoShareGui(QWidget *parent)
   : QDialog(parent)
+  , m_watcher(0)
+  , m_dispatcher(0)
 {
 
   setWindowTitle("Preferences");
@@ -40,7 +42,7 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
   labelSharedFolder = new QLabel("Shared Folder Name");
   labelSharedFolderPath = new QLabel("Shared Folder Path");
 
-  QRegExp regex("(^/[^/]+)+$");
+  QRegExp regex("(/[^/]+)+$");
   QValidator *prefixValidator = new QRegExpValidator(regex, this);
 
   editUsername = new QLineEdit();
@@ -72,16 +74,6 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
   mainLayout->addWidget(label);
   setLayout(mainLayout);
 
-  // load settings
-  if(!loadSettings())
-    {
-      // prompt user to choose folder
-      openMessageBox("First Time Setup", "Please enter a username, shared folder name and choose the shared folder path on your local filesystem.");
-      viewSettings();
-      openFileDialog();
-      viewSettings();
-    }
-
   // create actions that result from clicking a menu option
   createActions();
 
@@ -97,6 +89,29 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
   // Dispatcher(const boost::filesystem::path &path, const std::string &localUserName,  const Ccnx::Name &localPrefix,
   //            const std::string &sharedFolder, const boost::filesystem::path &rootDir,
   //            Ccnx::CcnxWrapperPtr ccnx, SchedulerPtr scheduler, int poolSize = 2);
+
+  // load settings
+  if(!loadSettings())
+    {
+      // prompt user to choose folder
+      openMessageBox("First Time Setup", "Please enter a username, shared folder name and choose the shared folder path on your local filesystem.");
+      viewSettings();
+      openFileDialog();
+      viewSettings();
+    }
+  else
+    {
+      startBackend();
+    }
+}
+
+void
+ChronoShareGui::startBackend()
+{
+  if (m_watcher != 0 && m_dispatcher != 0)
+  {
+    return;
+  }
 
   m_dispatcher = new Dispatcher (m_username.toStdString (), m_sharedFolderName.toStdString (),
                                  m_dirPath.toStdString (), make_shared<CcnxWrapper> ());
@@ -239,6 +254,8 @@ void ChronoShareGui::changeSettings()
 
   saveSettings();
   this->hide();
+
+  startBackend();
 }
 
 void ChronoShareGui::openFileDialog()
@@ -277,6 +294,8 @@ void ChronoShareGui::viewSettings()
 {
   //simple for now
   this->show();
+  this->raise();
+  this->activateWindow();
 }
 
 bool ChronoShareGui::loadSettings()
