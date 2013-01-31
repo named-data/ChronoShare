@@ -59,15 +59,14 @@ FetchManager::FetchManager (Ccnx::CcnxWrapperPtr ccnx
   m_scheduler->start ();
   m_executor->start();
 
+  m_scheduleFetchesTask = Scheduler::schedulePeriodicTask (m_scheduler,
+                                                           make_shared<SimpleIntervalGenerator> (300), // no need to check to often. if needed, will be rescheduled
+                                                           bind (&FetchManager::ScheduleFetches, this), SCHEDULE_FETCHES_TAG);
   // resume un-finished fetches if there is any
   if (m_taskDb)
   {
     m_taskDb->foreachTask(bind(&FetchManager::Enqueue, this, _1, _2, _3, _4, _5));
   }
-
-  m_scheduleFetchesTask = Scheduler::schedulePeriodicTask (m_scheduler,
-                                                           make_shared<SimpleIntervalGenerator> (300), // no need to check to often. if needed, will be rescheduled
-                                                           bind (&FetchManager::ScheduleFetches, this), SCHEDULE_FETCHES_TAG);
 }
 
 FetchManager::~FetchManager ()
