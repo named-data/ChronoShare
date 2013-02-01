@@ -400,12 +400,20 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
           _LOG_ERROR ("File operations failed on [" << filePath << "] (ignoring)");
         }
 
-      m_objectManager.objectsToLocalFile (deviceName, hash, filePath);
+      if (ObjectDb::DoesExist (m_rootDir / ".chronoshare",  deviceName, boost::lexical_cast<string>(hash)))
+      {
+        m_objectManager.objectsToLocalFile (deviceName, hash, filePath);
 
-      last_write_time (filePath, file->mtime ());
-      permissions (filePath, static_cast<filesystem::perms> (file->mode ()));
+        last_write_time (filePath, file->mtime ());
+        permissions (filePath, static_cast<filesystem::perms> (file->mode ()));
 
-      m_actionLog->SetFileComplete (file->filename ());
+        m_actionLog->SetFileComplete (file->filename ());
+      }
+      else
+      {
+        _LOG_ERROR (filePath << " supposed to have all segments, but not");
+        // should abort for debugging
+      }
     }
 }
 
