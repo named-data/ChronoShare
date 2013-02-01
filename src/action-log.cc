@@ -296,6 +296,9 @@ ActionLog::AddLocalActionUpdate (const std::string &filename,
 
   sqlite3_finalize (stmt);
 
+  // set complete for local file
+  SetFileComplete(filename);
+
   sqlite3_exec (m_db, "END TRANSACTION;", 0,0,0);
 
   return item;
