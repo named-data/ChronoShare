@@ -143,19 +143,19 @@ ActionLog::ActionLog (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &
                              << errmsg_info_str ("Cannot create function ``directory_name''"));
     }
 
-  // "Upgrading" database
-  sqlite3_exec (m_db, "ALTER TABLE FileState ADD COLUMN directory TEXT", NULL, NULL, NULL);
-  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+  // // "Upgrading" database
+  // sqlite3_exec (m_db, "ALTER TABLE FileState ADD COLUMN directory TEXT", NULL, NULL, NULL);
+  // _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
 
-  sqlite3_exec (m_db, "CREATE INDEX FileState_directory ON FileState (directory)", NULL, NULL, NULL);
-  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+  // sqlite3_exec (m_db, "CREATE INDEX FileState_directory ON FileState (directory)", NULL, NULL, NULL);
+  // _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
 
-  sqlite3_exec (m_db, "UPDATE FileState SET directory = directory_name(filename) WHERE directory IS NULL", NULL, NULL, NULL);
-  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+  // sqlite3_exec (m_db, "UPDATE FileState SET directory = directory_name(filename) WHERE directory IS NULL", NULL, NULL, NULL);
+  // _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
 
-  // Another "upgrade"
-  sqlite3_exec (m_db, "BEGIN TRANSACTION; ALTER TABLE FileState ADD COLUMN is_complete INTEGER; UPDATE FileState SET is_complete = 1; END TRANSACTION;", NULL, NULL, NULL);
-  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+  // // Another "upgrade"
+  // sqlite3_exec (m_db, "BEGIN TRANSACTION; ALTER TABLE FileState ADD COLUMN is_complete INTEGER; UPDATE FileState SET is_complete = 1; END TRANSACTION;", NULL, NULL, NULL);
+  // _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
 }
 
 tuple<sqlite3_int64 /*version*/, Ccnx::CcnxCharbufPtr /*device name*/, sqlite3_int64 /*seq_no*/>
@@ -662,25 +662,37 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
         {
           sqlite3_stmt *stmt;
           sqlite3_prepare_v2 (the->m_db, "INSERT INTO FileState "
-                              "(type,filename,device_name,seq_no,file_hash,file_atime,file_mtime,file_ctime,file_chmod,file_seg_num,directory) "
+                              "(type,filename,device_name,seq_no,file_hash,file_atime,file_mtime,file_ctime,file_chmod,file_seg_num) "
                               "VALUES (0, ?, ?, ?, ?, "
-                              "datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), ?, ?, directory_name(?))", -1, &stmt, 0);
+                              "datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), ?, ?)", -1, &stmt, 0);
 
-          sqlite3_bind_text  (stmt, 1, filename.c_str (), -1, SQLITE_TRANSIENT);
-          sqlite3_bind_blob  (stmt, 2, device_name.buf (), device_name.length (), SQLITE_TRANSIENT);
+          _LOG_DEBUG_COND (sqlite3_errcode (the->m_db) != SQLITE_OK, sqlite3_errmsg (the->m_db));
+
+          sqlite3_bind_text  (stmt, 1, filename.c_str (), -1, SQLITE_STATIC);
+          sqlite3_bind_blob  (stmt, 2, device_name.buf (), device_name.length (), SQLITE_STATIC);
           sqlite3_bind_int64 (stmt, 3, seq_no);
-          sqlite3_bind_blob  (stmt, 4, hash.GetHash (), hash.GetHashBytes (), SQLITE_TRANSIENT);
+          sqlite3_bind_blob  (stmt, 4, hash.GetHash (), hash.GetHashBytes (), SQLITE_STATIC);
           sqlite3_bind_int64 (stmt, 5, atime);
           sqlite3_bind_int64 (stmt, 6, mtime);
           sqlite3_bind_int64 (stmt, 7, ctime);
           sqlite3_bind_int   (stmt, 8, mode);
           sqlite3_bind_int   (stmt, 9, seg_num);
-          sqlite3_bind_text  (stmt, 10, filename.c_str (), -1, SQLITE_TRANSIENT);
+          // sqlite3_bind_text  (stmt, 10, filename.c_str (), -1, SQLITE_STATIC);
 
           sqlite3_step (stmt);
           _LOG_DEBUG_COND (sqlite3_errcode (the->m_db) != SQLITE_DONE,
                            sqlite3_errmsg (the->m_db));
           sqlite3_finalize (stmt);
+
+          sqlite3_prepare_v2 (the->m_db, "UPDATE FileState SET directory=directory_name(filename) WHERE filename=?", -1, &stmt, 0);
+          _LOG_DEBUG_COND (sqlite3_errcode (the->m_db) != SQLITE_OK, sqlite3_errmsg (the->m_db));
+
+          sqlite3_bind_text  (stmt, 1, filename.c_str (), -1, SQLITE_STATIC);
+          sqlite3_step (stmt);
+          _LOG_DEBUG_COND (sqlite3_errcode (the->m_db) != SQLITE_DONE,
+                           sqlite3_errmsg (the->m_db));
+          sqlite3_finalize (stmt);
+
         }
     }
   else if (action == 1) // delete
@@ -692,6 +704,8 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
       _LOG_DEBUG ("Delete " << filename);
 
       sqlite3_step (stmt);
+      _LOG_DEBUG_COND (sqlite3_errcode (the->m_db) != SQLITE_DONE,
+                       sqlite3_errmsg (the->m_db));
       sqlite3_finalize (stmt);
 
       the->m_onFileRemoved (filename);
@@ -793,7 +807,10 @@ ActionLog::LookupFilesInFolder (const std::string &folder)
                       "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
                       "   FROM FileState "
                       "   WHERE type = 0 AND directory = ?", -1, &stmt, 0);
-  sqlite3_bind_text (stmt, 1, folder.c_str (), folder.size (), SQLITE_STATIC);
+  if (folder.size () == 0)
+    sqlite3_bind_null (stmt, 1);
+  else
+    sqlite3_bind_text (stmt, 1, folder.c_str (), folder.size (), SQLITE_STATIC);
 
   FileItemsPtr retval = make_shared<FileItems> ();
   while (sqlite3_step (stmt) == SQLITE_ROW)
@@ -900,7 +917,13 @@ ActionLog::ActionLog::directory_name_xFun (sqlite3_context *context, int argc, s
 
   filesystem::path filePath (string (reinterpret_cast<const char*> (sqlite3_value_text (argv[0])), sqlite3_value_bytes (argv[0])));
   string dirPath = filePath.parent_path ().generic_string ();
-
-  sqlite3_result_text (context, dirPath.c_str (), dirPath.size (), SQLITE_TRANSIENT);
+  // _LOG_DEBUG ("directory_name FUN: " << dirPath);
+  if (dirPath.size () == 0)
+    {
+      sqlite3_result_null (context);
+    }
+  else
+    {
+      sqlite3_result_text (context, dirPath.c_str (), dirPath.size (), SQLITE_TRANSIENT);
+    }
 }
-
