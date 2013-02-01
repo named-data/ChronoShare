@@ -88,15 +88,15 @@ public:
   {
     sqlite3_stmt *stmt;
     sqlite3_prepare_v2 (m_db,
-                        "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num "
+                        "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,directory,is_complete "
                         "   FROM FileState "
                         "   WHERE type = 0 ORDER BY filename", -1, &stmt, 0);
 
     cout.setf(std::ios::left, std::ios::adjustfield);
     cout << ">> FILE STATE <<" << endl;
-    cout << "==============================================================================================================" << endl;
-    cout << "filename                                 | device_name                    | seq_no | file_hash  | file_seg_num" << endl;
-    cout << "==============================================================================================================" << endl;
+    cout << "===================================================================================================================================" << endl;
+    cout << "filename                                 | device_name                    | seq_no | file_hash  | seg_num | directory | is_complete" << endl;
+    cout << "===================================================================================================================================" << endl;
 
     FileItemsPtr retval = make_shared<FileItems> ();
     while (sqlite3_step (stmt) == SQLITE_ROW)
@@ -105,7 +105,16 @@ public:
         cout << setw (30) << lexical_cast<string> (Name (sqlite3_column_blob  (stmt, 1), sqlite3_column_bytes (stmt, 1))) << " | ";
         cout << setw (6) << sqlite3_column_int64 (stmt, 2) << " | ";
         cout << setw (10) << Hash (sqlite3_column_blob  (stmt, 3), sqlite3_column_bytes (stmt, 3)).shortHash () << " | ";
-        cout << setw (6) << sqlite3_column_int64 (stmt, 6) << endl;
+        cout << setw (6) << sqlite3_column_int64 (stmt, 6) << " | ";
+        if (sqlite3_column_bytes (stmt, 7) == 0)
+          cout << setw (20) << "<NULL>" << " | ";
+        else
+          cout << setw (20) << sqlite3_column_text (stmt, 7) << " | ";
+
+        if (sqlite3_column_int (stmt, 8) == 0)
+          cout << setw (20) << "no" << endl;
+        else
+          cout << setw (20) << "yes" << endl;
       }
 
     sqlite3_finalize (stmt);
