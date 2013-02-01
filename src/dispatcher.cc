@@ -384,13 +384,20 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
     {
       boost::filesystem::path filePath = m_rootDir / file->filename ();
 
-      if (filesystem::exists (filePath) &&
-          filesystem::last_write_time (filePath) == file->mtime () &&
-          filesystem::status (filePath).permissions () == static_cast<filesystem::perms> (file->mode ()) &&
-          *Hash::FromFileContent (filePath) == hash)
+      try
         {
-          _LOG_DEBUG ("Asking to assemble a file, but file already exists on a filesystem");
-          continue;
+          if (filesystem::exists (filePath) &&
+              filesystem::last_write_time (filePath) == file->mtime () &&
+              filesystem::status (filePath).permissions () == static_cast<filesystem::perms> (file->mode ()) &&
+              *Hash::FromFileContent (filePath) == hash)
+            {
+              _LOG_DEBUG ("Asking to assemble a file, but file already exists on a filesystem");
+              continue;
+            }
+        }
+      catch (filesystem::filesystem_error &error)
+        {
+          _LOG_ERROR ("File operations failed on [" << filePath << "] (ignoring)");
         }
 
       m_objectManager.objectsToLocalFile (deviceName, hash, filePath);
@@ -412,13 +419,20 @@ Dispatcher::Restore_LocalFile_Execute (FileItemPtr file)
   Name deviceName (file->device_name ().c_str (), file->device_name ().size ());
   Hash hash (file->file_hash ().c_str (), file->file_hash ().size ());
 
-  if (filesystem::exists (filePath) &&
-      filesystem::last_write_time (filePath) == file->mtime () &&
-      filesystem::status (filePath).permissions () == static_cast<filesystem::perms> (file->mode ()) &&
-      *Hash::FromFileContent (filePath) == hash)
+  try
     {
-      _LOG_DEBUG ("Asking to assemble a file, but file already exists on a filesystem");
-      return;
+      if (filesystem::exists (filePath) &&
+          filesystem::last_write_time (filePath) == file->mtime () &&
+          filesystem::status (filePath).permissions () == static_cast<filesystem::perms> (file->mode ()) &&
+          *Hash::FromFileContent (filePath) == hash)
+        {
+          _LOG_DEBUG ("Asking to assemble a file, but file already exists on a filesystem");
+          return;
+        }
+    }
+  catch (filesystem::filesystem_error &error)
+    {
+      _LOG_ERROR ("File operations failed on [" << filePath << "] (ignoring)");
     }
 
   m_objectManager.objectsToLocalFile (deviceName, hash, filePath);
