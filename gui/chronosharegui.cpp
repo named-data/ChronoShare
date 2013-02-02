@@ -119,8 +119,7 @@ ChronoShareGui::startBackend()
   // Alex: this **must** be here, otherwise m_dirPath will be uninitialized
   m_watcher = new FsWatcher (m_dirPath,
                              bind (&Dispatcher::Did_LocalFile_AddOrModify, m_dispatcher, _1),
-                             bind (&Dispatcher::Did_LocalFile_Delete,      m_dispatcher, _1),
-                             m_dispatcher->GetFileState ());
+                             bind (&Dispatcher::Did_LocalFile_Delete,      m_dispatcher, _1));
 }
 
 ChronoShareGui::~ChronoShareGui()

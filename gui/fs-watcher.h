@@ -25,9 +25,9 @@
 #include <vector>
 #include <QFileSystemWatcher>
 #include <boost/filesystem.hpp>
+#include <sqlite3.h>
 
 #include "scheduler.h"
-#include "file-state.h"
 
 class FsWatcher : public QObject
 {
@@ -39,7 +39,6 @@ public:
   // constructor
   FsWatcher (QString dirPath,
              LocalFile_Change_Callback onChange, LocalFile_Change_Callback onDelete,
-             FileState *fileState,
              QObject* parent = 0);
 
   // destructor
@@ -61,10 +60,25 @@ private:
   // handle callback from the watcher
   // scan directory and notify callback about any file changes
   void
-  ScanDirectory_NotifyUpdates_Execute (QString dirPath, bool notifyCallbacks);
+  ScanDirectory_NotifyUpdates_Execute (QString dirPath);
 
   void
-  ScanDirectory_NotifyRemovals_Execute (QString dirPath, bool removeIncomplete);
+  ScanDirectory_NotifyRemovals_Execute (QString dirPath);
+
+  void
+  initFileStateDb();
+
+  bool
+  fileExists(const boost::filesystem::path &filename);
+
+  void
+  addFile(const boost::filesystem::path &filename);
+
+  void
+  deleteFile(const boost::filesystem::path &filename);
+
+  void
+  getFilesInDir(const boost::filesystem::path &dir, std::vector<std::string> &files);
 
 private:
   QFileSystemWatcher* m_watcher; // filesystem watcher
@@ -75,7 +89,7 @@ private:
   LocalFile_Change_Callback m_onChange;
   LocalFile_Change_Callback m_onDelete;
 
-  FileState *m_fileState;
+  sqlite3 *m_db;
 };
 
 #endif // FILESYSTEMWATCHER_H

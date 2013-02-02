@@ -103,10 +103,11 @@ def build (bld):
     if bld.env['TEST']:
       unittests = bld.program (
           target="unit-tests",
-          source = bld.path.ant_glob(['test/*.cc']),
-          features=['cxx', 'cxxprogram'],
-          use = 'BOOST_TEST BOOST_FILESYSTEM LOG4CXX ccnx database chronoshare',
-          includes = "ccnx scheduler src executor",
+          features = "qt4 cxx cxxprogram",
+          defines = "WAF",
+          source = bld.path.ant_glob(['test/*.cc', 'gui/fs-watcher.cc']),
+          use = 'BOOST_TEST BOOST_FILESYSTEM LOG4CXX SQLITE3 QTCORE QTGUI ccnx database chronoshare',
+          includes = "ccnx scheduler src executor gui",
           )
 
     app_plist = '''<?xml version="1.0" encoding="UTF-8"?>
