@@ -411,12 +411,18 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
 
       if (ObjectDb::DoesExist (m_rootDir / ".chronoshare",  deviceName, boost::lexical_cast<string>(hash)))
       {
-        m_objectManager.objectsToLocalFile (deviceName, hash, filePath);
+        bool ok = m_objectManager.objectsToLocalFile (deviceName, hash, filePath);
+        if (ok)
+          {
+            last_write_time (filePath, file->mtime ());
+            permissions (filePath, static_cast<filesystem::perms> (file->mode ()));
 
-        last_write_time (filePath, file->mtime ());
-        permissions (filePath, static_cast<filesystem::perms> (file->mode ()));
-
-        m_actionLog->SetFileComplete (file->filename ());
+            m_actionLog->SetFileComplete (file->filename ());
+          }
+        else
+          {
+            _LOG_ERROR ("Notified about complete fetch, but file cannot be restored from the database: [" << filePath << "]");
+          }
       }
       else
       {
