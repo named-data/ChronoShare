@@ -38,6 +38,8 @@ const double SyncCore::RANDOM_PERCENT = 0.5;
 const std::string SYNC_INTEREST_TAG = "send-sync-interest";
 const std::string SYNC_INTEREST_TAG2 = "send-sync-interest2";
 
+const std::string LOCAL_STATE_CHANGE_DELAYED_TAG = "local-state-changed";
+
 using namespace boost;
 using namespace Ccnx;
 
@@ -109,6 +111,15 @@ SyncCore::localStateChanged()
                                   SYNC_INTEREST_TAG2);
 
   //sendSyncInterest();
+}
+
+void
+SyncCore::localStateChangedDelayed ()
+{
+  // many calls to localStateChangedDelayed within 0.5 second will be suppressed to one localStateChanged calls
+  Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
+                                  bind (&SyncCore::localStateChanged, this),
+                                  LOCAL_STATE_CHANGE_DELAYED_TAG);
 }
 
 void

@@ -168,6 +168,14 @@ Dispatcher::Did_LocalFile_AddOrModify_Execute (filesystem::path relativeFilePath
       return;
     }
 
+  if (currentFile &&
+      !currentFile->is_complete ())
+    {
+      _LOG_ERROR ("Got notification about incomplete file [" << relativeFilePath << "]");
+      return;
+    }
+
+
   int seg_num;
   HashPtr hash;
   tie (hash, seg_num) = m_objectManager.localFileToObjects (absolutePath, m_localUserName);
@@ -179,7 +187,7 @@ Dispatcher::Did_LocalFile_AddOrModify_Execute (filesystem::path relativeFilePath
                                          last_write_time (absolutePath), status (absolutePath).permissions (), seg_num);
 
       // notify SyncCore to propagate the change
-      m_core->localStateChanged();
+      m_core->localStateChangedDelayed ();
     }
   catch (filesystem::filesystem_error &error)
     {
@@ -213,7 +221,7 @@ Dispatcher::Did_LocalFile_Delete_Execute (filesystem::path relativeFilePath)
 
   m_actionLog->AddLocalActionDelete (relativeFilePath.generic_string());
   // notify SyncCore to propagate the change
-  m_core->localStateChanged();
+  m_core->localStateChangedDelayed();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -300,6 +308,7 @@ Dispatcher::Did_FetchManager_ActionFetch (const Ccnx::Name &deviceName, const Cc
                                   0, action->seg_num () - 1, FetchManager::PRIORITY_NORMAL);
         }
     }
+  // if necessary (when version number is the highest) delete will be applied through the trigger in m_actionLog->AddRemoteAction call
 }
 
 void
