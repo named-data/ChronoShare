@@ -262,8 +262,6 @@ incomingInterest(ccn_closure *selfp,
   tuple<CcnxWrapper::InterestCallback *, ExecutorPtr> *realData = reinterpret_cast< tuple<CcnxWrapper::InterestCallback *, ExecutorPtr>* > (selfp->data);
   tie (f, executor) = *realData;
 
-  _LOG_TRACE (">> incomingInterest upcall");
-
   switch (kind)
     {
     case CCN_UPCALL_FINAL: // effective in unit tests
@@ -275,10 +273,11 @@ incomingInterest(ccn_closure *selfp,
       return CCN_UPCALL_RESULT_OK;
 
     case CCN_UPCALL_INTEREST:
+      _LOG_TRACE (">> incomingInterest upcall: " << Name(info->interest_ccnb, info->interest_comps));
       break;
 
     default:
-      _LOG_TRACE ("<< incomingInterest with CCN_UPCALL_RESULT_OK");
+      _LOG_TRACE ("<< incomingInterest with CCN_UPCALL_RESULT_OK: " << Name(info->interest_ccnb, info->interest_comps));
       return CCN_UPCALL_RESULT_OK;
     }
 
@@ -290,7 +289,6 @@ incomingInterest(ccn_closure *selfp,
   // (*f) (interest);
   // closure->runInterestCallback(interest);
 
-  _LOG_TRACE ("<< incomingInterest");
   return CCN_UPCALL_RESULT_OK;
 }
 
@@ -313,8 +311,6 @@ incomingData(ccn_closure *selfp,
   tuple<Closure *, ExecutorPtr, Selectors> *realData = reinterpret_cast< tuple<Closure*, ExecutorPtr, Selectors>* > (selfp->data);
   tie (cp, executor, selectors) = *realData;
 
-  _LOG_TRACE (">> incomingData upcall");
-
   switch (kind)
     {
     case CCN_UPCALL_FINAL:  // effecitve in unit tests
@@ -326,18 +322,19 @@ incomingData(ccn_closure *selfp,
       return CCN_UPCALL_RESULT_OK;
 
     case CCN_UPCALL_CONTENT:
+      _LOG_TRACE (">> incomingData content upcall: " << Name (info->content_ccnb, info->content_comps));
       break;
 
     case CCN_UPCALL_INTEREST_TIMED_OUT: {
       if (cp != NULL)
       {
-        _LOG_TRACE ("<< incomingData timeout");
         Name interest(info->interest_ccnb, info->interest_comps);
+        _LOG_TRACE ("<< incomingData timeout: " << Name (info->interest_ccnb, info->interest_comps));
         executor->execute (bind (&Closure::runTimeoutCallback, cp, interest, *cp, selectors));
       }
       else
         {
-          _LOG_TRACE ("<< incomingData timeout, but callback is not set...");
+          _LOG_TRACE ("<< incomingData timeout, but callback is not set...: " << Name (info->interest_ccnb, info->interest_comps));
         }
       return CCN_UPCALL_RESULT_OK;
     }
@@ -348,24 +345,8 @@ incomingData(ccn_closure *selfp,
 
   PcoPtr pco = make_shared<ParsedContentObject> (info->content_ccnb, info->pco->offset[CCN_PCO_E]);
 
-  // const unsigned char *pcontent;
-  // size_t len;
-  // if (ccn_content_get_value(info->content_ccnb, info->pco->offset[CCN_PCO_E], info->pco, &pcontent, &len) < 0)
-  // {
-  //   // BOOST_THROW_EXCEPTION(CcnxOperationException() << errmsg_info_str("decode ContentObject failed"));
-  // }
-
-  // Name name(info->content_ccnb, info->content_comps);
-
-  // Bytes content;
-  // // copy content and do processing on the copy
-  // // otherwise the pointed memory may have been changed during the processing
-  // readRaw(content, pcontent, len);
-
   // this will be run in executor
   executor->execute (bind (&Closure::runDataCallback, cp, pco->name (), pco));
-  // cp->runDataCallback (pco->name (), pco);
-
   _LOG_TRACE (">> incomingData");
 
   return CCN_UPCALL_RESULT_OK;
@@ -373,7 +354,7 @@ incomingData(ccn_closure *selfp,
 
 int CcnxWrapper::sendInterest (const Name &interest, const Closure &closure, const Selectors &selectors)
 {
-  _LOG_TRACE (">> sendInterest");
+  _LOG_TRACE (">> sendInterest: " << interest);
   {
     UniqueRecLock lock(m_mutex);
     if (!m_running || !m_connected)
@@ -405,8 +386,6 @@ int CcnxWrapper::sendInterest (const Name &interest, const Closure &closure, con
   {
     _LOG_ERROR ("<< sendInterest: ccn_express_interest FAILED!!!");
   }
-
-  _LOG_TRACE ("<< sendInterest");
 
   return 0;
 }
