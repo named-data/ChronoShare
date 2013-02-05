@@ -99,15 +99,24 @@ def build (bld):
         includes = "ccnx scheduler src executor",
         )
 
+    fs_watcher = bld (
+        target = "fs_watcher",
+        features = "qt4 cxx",
+        defines = "WAF",
+        source = bld.path.ant_glob(['fs-watcher/*.cc']),
+        use = "SQLITE3 LOG4CXX scheduler executor QTCORE",
+        includes = "fs-watcher scheduler executor src",
+        )
+
     # Unit tests
     if bld.env['TEST']:
       unittests = bld.program (
           target="unit-tests",
           features = "qt4 cxx cxxprogram",
           defines = "WAF",
-          source = bld.path.ant_glob(['test/*.cc', 'gui/fs-watcher.cc']),
-          use = 'BOOST_TEST BOOST_FILESYSTEM LOG4CXX SQLITE3 QTCORE QTGUI ccnx database chronoshare',
-          includes = "ccnx scheduler src executor gui",
+          source = bld.path.ant_glob(['test/*.cc']),
+          use = 'BOOST_TEST BOOST_FILESYSTEM LOG4CXX SQLITE3 QTCORE QTGUI ccnx database fs_watcher chronoshare',
+          includes = "ccnx scheduler src executor gui fs-watcher",
           )
 
     app_plist = '''<?xml version="1.0" encoding="UTF-8"?>
@@ -136,25 +145,25 @@ def build (bld):
 	features = "qt4 cxx cxxprogram",
 	defines = "WAF",
 	source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.cc', 'gui/*.qrc']),
-	includes = "ccnx scheduler executor gui src . ",
-	use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE QTGUI LOG4CXX fs-watcher ccnx database chronoshare"
+	includes = "ccnx scheduler executor fs-watcher gui src . ",
+	use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE QTGUI LOG4CXX fs_watcher ccnx database chronoshare"
 	)
 
     cmdline = bld (
         target = "csd",
 	features = "qt4 cxx cxxprogram",
 	defines = "WAF",
-	source = "cmd/csd.cc gui/fs-watcher.cc",
-	includes = "ccnx scheduler executor gui src . ",
-	use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE QTGUI LOG4CXX fs-watcher ccnx database chronoshare"
+	source = "cmd/csd.cc",
+	includes = "ccnx scheduler executor gui fs-watcher src . ",
+	use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE QTGUI LOG4CXX fs_watcher ccnx database chronoshare"
 	)
 
     dump_db = bld (
         target = "dump-db",
         features = "cxx cxxprogram",
 	source = "cmd/dump-db.cc",
-	includes = "ccnx scheduler executor gui src . ",
-	use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE LOG4CXX fs-watcher ccnx database chronoshare"
+	includes = "ccnx scheduler executor gui fs-watcher src . ",
+	use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE LOG4CXX fs_watcher ccnx database chronoshare"
         )
 
 
