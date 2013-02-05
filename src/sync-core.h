@@ -56,6 +56,15 @@ public:
   void
   localStateChanged ();
 
+  /**
+   * @brief Schedule an event to update local state with a small delay
+   *
+   * This call is preferred to localStateChanged if many local state updates
+   * are anticipated within a short period of time
+   */
+  void
+  localStateChangedDelayed ();
+
   void
   updateLocalState (sqlite3_int64);
 
