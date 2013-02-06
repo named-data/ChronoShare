@@ -109,12 +109,13 @@ static void xTrace (void*, const char* q)
 
 ActionLog::ActionLog (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &path,
                       SyncLogPtr syncLog,
-                      const std::string &sharedFolder,
+                      const std::string &sharedFolder, const std::string &appName,
                       OnFileAddedOrChangedCallback onFileAddedOrChanged, OnFileRemovedCallback onFileRemoved)
   : DbHelper (path / ".chronoshare", "action-log.db")
   , m_syncLog (syncLog)
   , m_ccnx (ccnx)
   , m_sharedFolderName (sharedFolder)
+  , m_appName (appName)
   , m_onFileAddedOrChanged (onFileAddedOrChanged)
   , m_onFileRemoved (onFileRemoved)
 {
@@ -277,9 +278,12 @@ ActionLog::AddLocalActionUpdate (const std::string &filename,
 
   // assign name to the action, serialize action, and create content object
 
+
   string item_msg;
   item->SerializeToString (&item_msg);
-  Name actionName = Name (m_syncLog->GetLocalName ())("action")(m_sharedFolderName)(seq_no);
+
+  // action name: /<appname>/<shared-folder>/action/<device_name>/<action-seq>
+  Name actionName = Name ("/")(m_appName)(m_sharedFolderName)("action")(m_syncLog->GetLocalName ())(seq_no);
   _LOG_DEBUG ("ActionName: " << actionName);
 
   Bytes actionData = m_ccnx->createContentObject (actionName, item_msg.c_str (), item_msg.size ());
@@ -379,7 +383,10 @@ ActionLog::AddLocalActionDelete (const std::string &filename)
 
   string item_msg;
   item->SerializeToString (&item_msg);
-  Name actionName = Name (m_syncLog->GetLocalName ())("action")(m_sharedFolderName)(seq_no);
+
+  // action name: /<appname>/<shared-folder>/action/<device_name>/<action-seq>
+  Name actionName = Name ("/")(m_appName)(m_sharedFolderName)("action")(m_syncLog->GetLocalName ())(seq_no);
+  _LOG_DEBUG ("ActionName: " << actionName);
 
   Bytes actionData = m_ccnx->createContentObject (actionName, item_msg.c_str (), item_msg.size ());
   CcnxCharbufPtr namePtr = actionName.toCcnxCharbuf ();
@@ -556,23 +563,23 @@ ActionItemPtr
 ActionLog::AddRemoteAction (Ccnx::PcoPtr actionPco)
 {
   Name name = actionPco->name ();
-  // <device_name>/"action"/<shared_folder_name_one_component>/<seqno>
+  // action name: /<appname>/<shared-folder>/action/<device_name>/<action-seq>
 
   uint64_t seqno = name.getCompFromBackAsInt (0);
-  string sharedFolder = name.getCompFromBackAsString (1);
+  string sharedFolder = name.getCompAsString (1);
 
   if (sharedFolder != m_sharedFolderName)
     {
       BOOST_THROW_EXCEPTION (Error::ActionLog () << errmsg_info_str ("Action doesn't belong to this shared folder"));
     }
 
-  string action = name.getCompFromBackAsString (2);
+  string action = name.getCompAsString (2);
 
   if (action != "action")
     {
       BOOST_THROW_EXCEPTION (Error::ActionLog () << errmsg_info_str ("not an action"));
     }
-  Name deviceName = name.getPartialName (0, name.size ()-3);
+  Name deviceName = name.getPartialName (3, name.size ()-4);
 
   _LOG_DEBUG ("From [" << name << "] extracted deviceName: " << deviceName << ", sharedFolder: " << sharedFolder << ", seqno: " << seqno);
 

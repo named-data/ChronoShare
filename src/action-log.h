@@ -48,7 +48,7 @@ public:
 public:
   ActionLog (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &path,
              SyncLogPtr syncLog,
-             const std::string &sharedFolder,
+             const std::string &sharedFolder, const std::string &appName,
              OnFileAddedOrChangedCallback onFileAddedOrChanged, OnFileRemovedCallback onFileRemoved);
 
   virtual ~ActionLog () { }
@@ -143,6 +143,7 @@ private:
 
   Ccnx::CcnxWrapperPtr m_ccnx;
   std::string m_sharedFolderName;
+  std::string m_appName;
 
   OnFileAddedOrChangedCallback m_onFileAddedOrChanged;
   OnFileRemovedCallback        m_onFileRemoved;

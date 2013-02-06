@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE (ObjectManagerTest)
   Name deviceName ("/device");
 
   CcnxWrapperPtr ccnx = make_shared<CcnxWrapper> ();
-  ObjectManager manager (ccnx, tmpdir);
+  ObjectManager manager (ccnx, tmpdir, "test-chronoshare");
 
   tuple<HashPtr,int> hash_semgents = manager.localFileToObjects (fs::path("test") / "test-object-manager.cc", deviceName);
 

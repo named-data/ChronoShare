@@ -24,6 +24,9 @@
 #include "ccnx-wrapper.h"
 #include <boost/test/unit_test.hpp>
 #include <boost/make_shared.hpp>
+#include "logging.h"
+
+INIT_LOGGER ("Test.FetchManager");
 
 using namespace Ccnx;
 using namespace std;
@@ -51,6 +54,8 @@ struct FetcherTestData
   void
   onData (const Ccnx::Name &deviceName, const Ccnx::Name &basename, uint64_t seqno, Ccnx::PcoPtr pco)
   {
+    _LOG_TRACE ("onData: " << seqno);
+
     recvData.insert (seqno);
     differentNames.insert (basename);
     Name name = basename;
@@ -90,6 +95,8 @@ struct FetcherTestData
 
 BOOST_AUTO_TEST_CASE (TestFetcher)
 {
+  INIT_LOGGERS ();
+
   CcnxWrapperPtr ccnx = make_shared<CcnxWrapper> ();
 
   Name baseName ("/base");
@@ -111,6 +118,7 @@ BOOST_AUTO_TEST_CASE (TestFetcher)
 
   FetcherTestData data;
   ExecutorPtr executor = make_shared<Executor>(1);
+  executor->start ();
 
   Fetcher fetcher (ccnx,
                    executor,
@@ -176,6 +184,8 @@ BOOST_AUTO_TEST_CASE (TestFetcher)
     BOOST_CHECK_EQUAL (recvData.str (), "0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, ");
     BOOST_CHECK_EQUAL (recvData.str (), recvContent.str ());
   }
+
+  executor->shutdown ();
 }
 
 // BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)

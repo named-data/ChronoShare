@@ -72,8 +72,9 @@ FetchManager::FetchManager (Ccnx::CcnxWrapperPtr ccnx
 FetchManager::~FetchManager ()
 {
   m_scheduler->shutdown ();
-
   m_executor->shutdown();
+
+  m_ccnx.reset ();
 
   m_fetchList.clear_and_dispose (fetcher_disposer ());
 }
@@ -101,7 +102,10 @@ FetchManager::Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
   Name forwardingHint;
   forwardingHint = m_mapping (deviceName);
 
-  m_taskDb->addTask(deviceName, baseName, minSeqNo, maxSeqNo, priority);
+  if (m_taskDb)
+    {
+      m_taskDb->addTask(deviceName, baseName, minSeqNo, maxSeqNo, priority);
+    }
 
   unique_lock<mutex> lock (m_parellelFetchMutex);
 
@@ -221,7 +225,11 @@ FetchManager::DidFetchComplete (Fetcher &fetcher, const Name &deviceName, const 
     m_currentParallelFetches --;
     _LOG_TRACE ("+++++ removing fetcher: " << fetcher.GetName ());
     m_fetchList.erase_and_dispose (FetchList::s_iterator_to (fetcher), fetcher_disposer ());
-    m_taskDb->deleteTask(deviceName, baseName);
+
+    if (m_taskDb)
+      {
+        m_taskDb->deleteTask(deviceName, baseName);
+      }
   }
 
   m_scheduler->rescheduleTaskAt (m_scheduleFetchesTask, 0);

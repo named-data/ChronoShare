@@ -36,6 +36,10 @@
 #include <stdio.h>
 #include <ctime>
 
+#include "logging.h"
+
+INIT_LOGGER("Test.ServerAndFetch");
+
 using namespace Ccnx;
 using namespace std;
 using namespace boost;
@@ -113,47 +117,55 @@ finishCallback(Name &deviceName, Name &baseName)
 
 BOOST_AUTO_TEST_CASE (TestServeAndFetch)
 {
-  cout << "Setting up test environment ..." << endl;
+  INIT_LOGGERS ();
+
+  _LOG_DEBUG ("Setting up test environment ...");
   setup();
 
   CcnxWrapperPtr ccnx_serve = make_shared<CcnxWrapper>();
   usleep(1000);
   CcnxWrapperPtr ccnx_fetch = make_shared<CcnxWrapper>();
-  ObjectManager om(ccnx_serve, root);
 
   Name deviceName("/test/device");
   Name localPrefix("/local");
   Name broadcastPrefix("/broadcast");
 
+  const string APPNAME = "test-chronoshare";
+
   time_t start = time(NULL);
-  cout << "At time " << start << ", publish local file to database, this is extremely slow ..." << endl;
+  _LOG_DEBUG ("At time " << start << ", publish local file to database, this is extremely slow ...");
   // publish file to db
+  ObjectManager om(ccnx_serve, root, APPNAME);
   tuple<HashPtr, size_t> pub = om.localFileToObjects(filePath, deviceName);
   time_t end = time(NULL);
-  cout << "At time " << end <<", publish finally finished, used " << end - start << " seconds ..."<< endl;
+  _LOG_DEBUG ("At time " << end <<", publish finally finished, used " << end - start << " seconds ...");
 
   ActionLogPtr dummyLog;
-  ContentServer server(ccnx_serve, dummyLog, root, deviceName, "pentagon's secrets", 5);
+  ContentServer server(ccnx_serve, dummyLog, root, deviceName, "pentagon's secrets", APPNAME, 5);
   server.registerPrefix(localPrefix);
   server.registerPrefix(broadcastPrefix);
 
   FetchManager fm(ccnx_fetch, bind(simpleMap, _1));
   HashPtr hash = pub.get<0> ();
-  Name baseName = Name (deviceName)("file")(hash->GetHash(), hash->GetHashBytes());
+  Name baseName = Name ("/")(APPNAME)("file")(hash->GetHash(), hash->GetHashBytes())(deviceName);
+
   fm.Enqueue(deviceName, baseName, bind(segmentCallback, _1, _2, _3, _4), bind(finishCallback, _1, _2), 0, pub.get<1>() - 1);
 
   unique_lock<mutex> lock(mut);
   system_time timeout = get_system_time() + posix_time::milliseconds(5000);
   while (!finished)
-  {
-    if (!cond.timed_wait(lock, timeout))
     {
-      BOOST_FAIL("Fetching has not finished after 5 seconds");
-      break;
+      if (!cond.timed_wait(lock, timeout))
+        {
+          BOOST_FAIL ("Fetching has not finished after 5 seconds");
+          break;
+        }
     }
-  }
+  ccnx_fetch->shutdown ();
+  ccnx_serve->shutdown ();
 
-  cout << "ack : " << ack << endl;
+  _LOG_DEBUG ("Finish");
+  usleep(100000);
 
   teardown();
 }

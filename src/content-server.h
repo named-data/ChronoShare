@@ -34,7 +34,8 @@ class ContentServer
 {
 public:
   ContentServer(Ccnx::CcnxWrapperPtr ccnx, ActionLogPtr actionLog, const boost::filesystem::path &rootDir,
-                const Ccnx::Name &deviceName, const std::string &sharedFolderName, int freshness = -1);
+                const Ccnx::Name &deviceName, const std::string &sharedFolderName, const std::string &appName,
+                int freshness = -1);
   ~ContentServer();
 
   // the assumption is, when the interest comes in, interest is informs of
@@ -45,20 +46,20 @@ public:
   void deregisterPrefix(const Ccnx::Name &prefix);
 
 private:
-  void
-  serve (Ccnx::Name forwardingHint, const Ccnx::Name &interest);
+  // void
+  // serve (Ccnx::Name forwardingHint, const Ccnx::Name &interest);
 
   void
-  serve_Action (Ccnx::Name forwardingHint, const Ccnx::Name &interest);
+  serve_Action (Ccnx::Name forwardingHint, Ccnx::Name locatorPrefix, Ccnx::Name interest);
 
   void
-  serve_File (Ccnx::Name forwardingHint, const Ccnx::Name &interest);
+  serve_File (Ccnx::Name forwardingHint, Ccnx::Name locatorPrefix, Ccnx::Name interest);
 
   void
-  serve_Action_Execute(Ccnx::Name forwardingHint, Ccnx::Name interest);
+  serve_Action_Execute(Ccnx::Name forwardingHint, Ccnx::Name locatorPrefix, Ccnx::Name interest);
 
   void
-  serve_File_Execute(Ccnx::Name forwardingHint, Ccnx::Name interest);
+  serve_File_Execute(Ccnx::Name forwardingHint, Ccnx::Name locatorPrefix, Ccnx::Name interest);
 
 private:
   Ccnx::CcnxWrapperPtr m_ccnx;
@@ -76,5 +77,6 @@ private:
 
   Ccnx::Name  m_deviceName;
   std::string m_sharedFolderName;
+  std::string m_appName;
 };
 #endif // CONTENT_SERVER_H
