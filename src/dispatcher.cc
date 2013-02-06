@@ -33,7 +33,9 @@ using namespace boost;
 
 INIT_LOGGER ("Dispatcher");
 
-static const string BROADCAST_DOMAIN = "/ndn/broadcast/chronoshare";
+static const string CHRONOSHARE_APP = "chronoshare";
+static const string BROADCAST_DOMAIN = "/ndn/broadcast";
+
 static const int CONTENT_FRESHNESS = 1800;  // seconds
 const static double DEFAULT_SYNC_INTEREST_INTERVAL = 10.0; // seconds;
 
@@ -47,36 +49,36 @@ Dispatcher::Dispatcher(const std::string &localUserName
            , m_core(NULL)
            , m_rootDir(rootDir)
            , m_executor(1) // creates problems with file assembly. need to ensure somehow that FinishExectute is called after all Segment_Execute finished
-           , m_objectManager(ccnx, rootDir)
+           , m_objectManager(ccnx, rootDir, CHRONOSHARE_APP)
            , m_localUserName(localUserName)
            , m_sharedFolder(sharedFolder)
            , m_server(NULL)
            , m_enablePrefixDiscovery(enablePrefixDiscovery)
 {
   m_syncLog = make_shared<SyncLog>(m_rootDir, localUserName);
-  m_actionLog = make_shared<ActionLog>(m_ccnx, m_rootDir, m_syncLog, sharedFolder,
+  m_actionLog = make_shared<ActionLog>(m_ccnx, m_rootDir, m_syncLog, sharedFolder, CHRONOSHARE_APP,
                                        // bind (&Dispatcher::Did_ActionLog_ActionApply_AddOrModify, this, _1, _2, _3, _4, _5, _6, _7),
                                        ActionLog::OnFileAddedOrChangedCallback (), // don't really need this callback
                                        bind (&Dispatcher::Did_ActionLog_ActionApply_Delete, this, _1));
-  Name syncPrefix = Name(BROADCAST_DOMAIN)(sharedFolder);
+  Name syncPrefix = Name(BROADCAST_DOMAIN)(CHRONOSHARE_APP)(sharedFolder);
 
   // m_server needs a different ccnx face
-  m_server = new ContentServer(make_shared<CcnxWrapper>(), m_actionLog, rootDir, m_localUserName, m_sharedFolder, CONTENT_FRESHNESS);
-  m_server->registerPrefix(Name ("/"));
+  m_server = new ContentServer(make_shared<CcnxWrapper>(), m_actionLog, rootDir, m_localUserName, m_sharedFolder, CHRONOSHARE_APP, CONTENT_FRESHNESS);
+  m_server->registerPrefix(Name("/"));
   m_server->registerPrefix(Name(BROADCAST_DOMAIN));
 
-  m_core = new SyncCore (m_syncLog, localUserName, Name ("/"), syncPrefix,
+  m_core = new SyncCore (m_syncLog, localUserName, Name("/"), syncPrefix,
                          bind(&Dispatcher::Did_SyncLog_StateChange, this, _1), ccnx, DEFAULT_SYNC_INTEREST_INTERVAL);
 
   FetchTaskDbPtr actionTaskDb = make_shared<FetchTaskDb>(m_rootDir, "action");
   m_actionFetcher = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3,
-                                bind (&Dispatcher::Did_FetchManager_ActionFetch, this, _1, _2, _3, _4), FetchManager::FinishCallback(), actionTaskDb);
+                                               bind (&Dispatcher::Did_FetchManager_ActionFetch, this, _1, _2, _3, _4), FetchManager::FinishCallback(), actionTaskDb);
 
   FetchTaskDbPtr fileTaskDb = make_shared<FetchTaskDb>(m_rootDir, "file");
-  m_fileFetcher   = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3,
-                                  bind (&Dispatcher::Did_FetchManager_FileSegmentFetch, this, _1, _2, _3, _4),
-                                  bind (&Dispatcher::Did_FetchManager_FileFetchComplete, this, _1, _2),
-                                  fileTaskDb);
+  m_fileFetcher  = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3,
+                                              bind (&Dispatcher::Did_FetchManager_FileSegmentFetch, this, _1, _2, _3, _4),
+                                              bind (&Dispatcher::Did_FetchManager_FileFetchComplete, this, _1, _2),
+                                              fileTaskDb);
 
 
   if (m_enablePrefixDiscovery)
@@ -91,7 +93,7 @@ Dispatcher::Dispatcher(const std::string &localUserName
 
 Dispatcher::~Dispatcher()
 {
-  // _LOG_DEBUG ("Enter destructor of dispatcher");
+  _LOG_DEBUG ("Enter destructor of dispatcher");
   m_executor.shutdown ();
 
   // _LOG_DEBUG (">>");
@@ -266,7 +268,7 @@ Dispatcher::Did_SyncLog_StateChange_Execute (SyncStateMsgPtr stateMsg)
       Name userName (reinterpret_cast<const unsigned char *> (state.name ().c_str ()), state.name ().size ());
 
       // fetch actions with oldSeq + 1 to newSeq (inclusive)
-      Name actionNameBase = Name(userName)("action")(m_sharedFolder);
+      Name actionNameBase = Name ("/")(CHRONOSHARE_APP)(m_sharedFolder)("action")(userName);
 
       m_actionFetcher->Enqueue (userName, actionNameBase,
                                 std::max<uint64_t> (oldSeq + 1, 1), newSeq, FetchManager::PRIORITY_HIGH);
@@ -288,7 +290,7 @@ Dispatcher::Did_FetchManager_ActionFetch (const Ccnx::Name &deviceName, const Cc
     {
       Hash hash (action->file_hash ().c_str(), action->file_hash ().size ());
 
-      Name fileNameBase = Name (deviceName)("file")(hash.GetHash (), hash.GetHashBytes ());
+      Name fileNameBase = Name ("/")(CHRONOSHARE_APP)("file")(hash.GetHash (), hash.GetHashBytes ())(deviceName);
 
       string hashStr = lexical_cast<string> (hash);
       if (ObjectDb::DoesExist (m_rootDir / ".chronoshare",  deviceName, hashStr))
@@ -340,7 +342,7 @@ Dispatcher::Did_FetchManager_FileSegmentFetch (const Ccnx::Name &deviceName, con
 void
 Dispatcher::Did_FetchManager_FileSegmentFetch_Execute (Ccnx::Name deviceName, Ccnx::Name fileSegmentBaseName, uint32_t segment, Ccnx::PcoPtr fileSegmentPco)
 {
-  const Bytes &hashBytes = fileSegmentBaseName.getCompFromBack (0);
+  const Bytes &hashBytes = fileSegmentBaseName.getComp (2);
   Hash hash (head(hashBytes), hashBytes.size());
 
   _LOG_DEBUG ("Received segment deviceName: " << deviceName << ", segmentBaseName: " << fileSegmentBaseName << ", segment: " << segment);
@@ -372,8 +374,9 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
 {
   _LOG_DEBUG ("Finished fetching " << deviceName << ", fileBaseName: " << fileBaseName);
 
-  const Bytes &hashBytes = fileBaseName.getCompFromBack (0);
+  const Bytes &hashBytes = fileBaseName.getComp (2);
   Hash hash (head (hashBytes), hashBytes.size ());
+  _LOG_DEBUG ("Extracted hash: " << hash);
 
   if (m_objectDbMap.find (hash) != m_objectDbMap.end())
   {

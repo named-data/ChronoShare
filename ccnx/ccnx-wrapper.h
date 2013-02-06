@@ -47,6 +47,15 @@ public:
   CcnxWrapper();
   virtual ~CcnxWrapper();
 
+  void
+  start (); // called automatically in constructor
+
+  /**
+   * @brief Because of uncertainty with executor, in some case it is necessary to call shutdown explicitly (see test-server-and-fetch.cc)
+   */
+  void
+  shutdown (); // called in destructor, but can called manually
+
   virtual int
   setInterestFilter (const Name &prefix, const InterestCallback &interestCallback);
 

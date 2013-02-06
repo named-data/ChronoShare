@@ -157,7 +157,7 @@ SyncLog::GetNextLocalSeqNo ()
                              << errmsg_info_str ("Impossible thing in SyncLog::GetNextLocalSeqNo"));
     }
 
-  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, sqlite3_errmsg (m_db));
 
   sqlite3_int64 seq_no = sqlite3_column_int64 (stmt_seq, 0) + 1;
   sqlite3_finalize (stmt_seq);
@@ -205,7 +205,7 @@ INSERT INTO SyncStateNodes                              \
   res += sqlite3_bind_int64 (insertStmt, 1, rowId);
   sqlite3_step (insertStmt);
 
-  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, "DbError: " << sqlite3_errmsg (m_db));
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, "DbError: " << sqlite3_errmsg (m_db));
   if (res != SQLITE_OK)
     {
       sqlite3_exec (m_db, "ROLLBACK TRANSACTION;", 0,0,0);
@@ -231,7 +231,7 @@ SELECT state_hash FROM SyncLog WHERE state_id = ?\
     {
       sqlite3_exec (m_db, "ROLLBACK TRANSACTION;", 0,0,0);
 
-      _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, "DbError: " << sqlite3_errmsg (m_db));
+      _LOG_ERROR ("DbError: " << sqlite3_errmsg (m_db));
       BOOST_THROW_EXCEPTION (Error::Db ()
                              << errmsg_info_str ("Not a valid hash in rememberStateInStateLog"));
     }

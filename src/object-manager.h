@@ -33,9 +33,14 @@
 class ObjectManager
 {
 public:
-  ObjectManager (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &folder);
+  ObjectManager (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &folder, const std::string &appName);
   virtual ~ObjectManager ();
 
+  /**
+   * @brief Creates and saves local file in a local database file
+   *
+   * Format: /<appname>/file/<hash>/<devicename>/<segment>
+   */
   boost::tuple<HashPtr /*object-db name*/, size_t /* number of segments*/>
   localFileToObjects (const boost::filesystem::path &file, const Ccnx::Name &deviceName);
 
@@ -45,6 +50,7 @@ public:
 private:
   Ccnx::CcnxWrapperPtr m_ccnx;
   boost::filesystem::path m_folder;
+  std::string m_appName;
 };
 
 typedef boost::shared_ptr<ObjectManager> ObjectManagerPtr;

@@ -42,9 +42,10 @@ namespace fs = boost::filesystem;
 
 const int MAX_FILE_SEGMENT_SIZE = 1024;
 
-ObjectManager::ObjectManager (Ccnx::CcnxWrapperPtr ccnx, const fs::path &folder)
+ObjectManager::ObjectManager (Ccnx::CcnxWrapperPtr ccnx, const fs::path &folder, const std::string &appName)
   : m_ccnx (ccnx)
   , m_folder (folder / ".chronoshare")
+  , m_appName (appName)
 {
   fs::create_directories (m_folder);
 }
@@ -53,6 +54,7 @@ ObjectManager::~ObjectManager ()
 {
 }
 
+// /<appname>/file/<hash>/<devicename>/<segment>
 boost::tuple<HashPtr /*object-db name*/, size_t /* number of segments*/>
 ObjectManager::localFileToObjects (const fs::path &file, const Ccnx::Name &deviceName)
 {
@@ -71,7 +73,7 @@ ObjectManager::localFileToObjects (const fs::path &file, const Ccnx::Name &devic
           break;
         }
 
-      Name name = Name (deviceName)("file")(fileHash->GetHash (), fileHash->GetHashBytes ())(segment);
+      Name name = Name ("/")(m_appName)("file")(fileHash->GetHash (), fileHash->GetHashBytes ())(deviceName)(segment);
 
       // cout << *fileHash << endl;
       // cout << name << endl;
@@ -84,7 +86,7 @@ ObjectManager::localFileToObjects (const fs::path &file, const Ccnx::Name &devic
     }
   if (segment == 0) // handle empty files
     {
-      Name name = Name (deviceName)("file")(fileHash->GetHash (), fileHash->GetHashBytes ())(0);
+      Name name = Name ("/")(m_appName)("file")(fileHash->GetHash (), fileHash->GetHashBytes ())(deviceName)(0);
       Bytes data = m_ccnx->createContentObject (name, 0, 0);
       fileDb.saveContentObject (deviceName, 0, data);
 

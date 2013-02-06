@@ -199,7 +199,10 @@ Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
       // tell FetchManager that we have finish our job
       // m_onFetchComplete (*this);
       // using executor, so we won't be deleted if there is scheduled FillPipeline call
-      m_executor->execute (bind (m_onFetchComplete, ref(*this), m_deviceName, m_name));
+      if (!m_onFetchComplete.empty ())
+        {
+          m_executor->execute (bind (m_onFetchComplete, ref(*this), m_deviceName, m_name));
+        }
     }
   else
     {
@@ -210,6 +213,7 @@ Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
 void
 Fetcher::OnTimeout (uint64_t seqno, const Ccnx::Name &name, const Closure &closure, Selectors selectors)
 {
+  _LOG_DEBUG (this << ", " << m_executor.get ());
   m_executor->execute (bind (&Fetcher::OnTimeout_Execute, this, seqno, name, closure, selectors));
 }
 
@@ -247,7 +251,10 @@ Fetcher::OnTimeout_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::Closure closu
           }
 
           m_active = false;
-          m_onFetchFailed (ref (*this));
+          if (!m_onFetchFailed.empty ())
+            {
+              m_onFetchFailed (ref (*this));
+            }
           // this is not valid anymore, but we still should be able finish work
         }
     }

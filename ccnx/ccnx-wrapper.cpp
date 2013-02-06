@@ -49,9 +49,7 @@ CcnxWrapper::CcnxWrapper()
   , m_connected (false)
   , m_executor (new Executor(1))
 {
-  connectCcnd();
-  m_thread = thread (&CcnxWrapper::ccnLoop, this);
-  m_executor->start();
+  start ();
 }
 
 void
@@ -82,16 +80,36 @@ CcnxWrapper::connectCcnd()
 
 CcnxWrapper::~CcnxWrapper()
 {
+  shutdown ();
+}
+
+void
+CcnxWrapper::start () // called automatically in constructor
+{
+  connectCcnd();
+  m_thread = thread (&CcnxWrapper::ccnLoop, this);
+  m_executor->start();
+}
+
+void
+CcnxWrapper::shutdown () // called in destructor, but can called manually
+{
+  m_executor->shutdown();
+
   {
     UniqueRecLock lock(m_mutex);
     m_running = false;
   }
 
-  m_executor->shutdown();
+  _LOG_DEBUG ("+++++++++SHUTDOWN+++++++");
+  if (m_connected)
+    {
+      m_thread.join ();
 
-  m_thread.join ();
-  ccn_disconnect (m_handle);
-  //ccn_destroy (&m_handle);
+      ccn_disconnect (m_handle);
+      //ccn_destroy (&m_handle);
+      m_connected = false;
+    }
 }
 
 void
@@ -186,6 +204,15 @@ CcnxWrapper::ccnLoop ()
 Bytes
 CcnxWrapper::createContentObject(const Name  &name, const void *buf, size_t len, int freshness)
 {
+  {
+    UniqueRecLock lock(m_mutex);
+    if (!m_running || !m_connected)
+      {
+        _LOG_TRACE ("<< not running or connected");
+        return Bytes ();
+      }
+  }
+
   CcnxCharbufPtr ptr = name.toCcnxCharbuf();
   ccn_charbuf *pname = ptr->getBuf();
   ccn_charbuf *content = ccn_charbuf_create();

@@ -69,7 +69,7 @@ SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPr
 
 SyncCore::~SyncCore()
 {
-  // m_scheduler->shutdown ();
+  m_scheduler->shutdown ();
   // need to "deregister" closures
 }
 

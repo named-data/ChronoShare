@@ -43,12 +43,13 @@ BOOST_AUTO_TEST_CASE(TestExecutor)
 
   {
     Executor executor (3);
+    executor.start ();
     Executor::Job job = bind(timeConsumingJob);
 
     executor.execute(job);
     executor.execute(job);
 
-    usleep(1000);
+    usleep(2000);
     // both jobs should have been taken care of
     BOOST_CHECK_EQUAL(executor.jobQueueSize(), 0);
 
@@ -72,6 +73,8 @@ BOOST_AUTO_TEST_CASE(TestExecutor)
     // all jobs should have been fetched
     usleep(501000);
     BOOST_CHECK_EQUAL(executor.jobQueueSize(), 0);
+
+    executor.shutdown ();
   } //separate scope to ensure that destructor is called
 
 
