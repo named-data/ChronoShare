@@ -37,7 +37,6 @@ typedef boost::shared_ptr<ActionLog> ActionLogPtr;
 typedef boost::shared_ptr<ActionItem> ActionItemPtr;
 
 class ActionLog : public DbHelper
-                , public FileState
 {
 public:
   typedef boost::function<void (std::string /*filename*/, Ccnx::Name /*device_name*/, sqlite3_int64 /*seq_no*/,
@@ -100,28 +99,10 @@ public:
   ActionItemPtr
   LookupAction (const Ccnx::Name &actionName);
 
-  /**
-   * @brief Set "complete" flag
-   *
-   * The call will do nothing if FileState does not have a record for the file (e.g., file got subsequently deleted)
-   */
-  void
-  SetFileComplete (const std::string &filename);
 
-  ///////////////////////////
-  // File state operations //
-  ///////////////////////////
-  virtual FileItemPtr
-  LookupFile (const std::string &filename);
-
-  virtual FileItemsPtr
-  LookupFilesForHash (const Hash &hash);
-
-  virtual FileItemsPtr
-  LookupFilesInFolder (const std::string &folder);
-
-  virtual FileItemsPtr
-  LookupFilesInFolderRecursively (const std::string &folder);
+  //
+  inline FileStatePtr
+  GetFileState ();
 
 public:
   // for test purposes
@@ -135,11 +116,9 @@ private:
   static void
   apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
 
-  static void
-  directory_name_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
-
 private:
   SyncLogPtr m_syncLog;
+  FileStatePtr m_fileState;
 
   Ccnx::CcnxWrapperPtr m_ccnx;
   std::string m_sharedFolderName;
@@ -151,6 +130,12 @@ private:
 
 namespace Error {
 struct ActionLog : virtual boost::exception, virtual std::exception { };
+}
+
+inline FileStatePtr
+ActionLog::GetFileState ()
+{
+  return m_fileState;
 }
 
 

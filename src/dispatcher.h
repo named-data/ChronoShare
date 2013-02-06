@@ -77,9 +77,6 @@ public:
   HashPtr
   SyncRoot() { return m_core->root(); }
 
-  FileState *
-  GetFileState () { return m_actionLog.get (); }
-
 private:
   void
   Did_LocalFile_AddOrModify_Execute (boost::filesystem::path relativeFilepath); // cannot be const & for Execute event!!! otherwise there will be segfault
@@ -164,6 +161,7 @@ private:
   SyncCore *m_core;
   SyncLogPtr   m_syncLog;
   ActionLogPtr m_actionLog;
+  FileStatePtr m_fileState;
 
   boost::filesystem::path m_rootDir;
   Executor m_executor;

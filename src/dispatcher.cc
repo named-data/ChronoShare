@@ -60,6 +60,8 @@ Dispatcher::Dispatcher(const std::string &localUserName
                                        // bind (&Dispatcher::Did_ActionLog_ActionApply_AddOrModify, this, _1, _2, _3, _4, _5, _6, _7),
                                        ActionLog::OnFileAddedOrChangedCallback (), // don't really need this callback
                                        bind (&Dispatcher::Did_ActionLog_ActionApply_Delete, this, _1));
+  m_fileState = m_actionLog->GetFileState ();
+
   Name syncPrefix = Name(BROADCAST_DOMAIN)(CHRONOSHARE_APP)(sharedFolder);
 
   // m_server needs a different ccnx face
@@ -157,7 +159,7 @@ Dispatcher::Did_LocalFile_AddOrModify_Execute (filesystem::path relativeFilePath
       return;
     }
 
-  FileItemPtr currentFile = m_actionLog->LookupFile (relativeFilePath.generic_string ());
+  FileItemPtr currentFile = m_fileState->LookupFile (relativeFilePath.generic_string ());
   if (currentFile &&
       *Hash::FromFileContent (absolutePath) == Hash (currentFile->file_hash ().c_str (), currentFile->file_hash ().size ())
       // The following two are commented out to prevent front end from reporting intermediate files
@@ -214,7 +216,7 @@ Dispatcher::Did_LocalFile_Delete_Execute (filesystem::path relativeFilePath)
       return;
     }
 
-  FileItemPtr currentFile = m_actionLog->LookupFile (relativeFilePath.generic_string ());
+  FileItemPtr currentFile = m_fileState->LookupFile (relativeFilePath.generic_string ());
   if (!currentFile)
     {
       _LOG_ERROR ("File already deleted [" << relativeFilePath << "]");
@@ -388,7 +390,7 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
     _LOG_ERROR ("no db available for this file: " << hash);
   }
 
-  FileItemsPtr filesToAssemble = m_actionLog->LookupFilesForHash (hash);
+  FileItemsPtr filesToAssemble = m_fileState->LookupFilesForHash (hash);
 
   for (FileItems::iterator file = filesToAssemble->begin ();
        file != filesToAssemble->end ();
@@ -420,7 +422,7 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
             last_write_time (filePath, file->mtime ());
             permissions (filePath, static_cast<filesystem::perms> (file->mode ()));
 
-            m_actionLog->SetFileComplete (file->filename ());
+            m_fileState->SetFileComplete (file->filename ());
           }
         else
           {

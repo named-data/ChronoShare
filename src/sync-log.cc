@@ -124,26 +124,6 @@ SyncLog::SyncLog (const boost::filesystem::path &path, const Ccnx::Name &localNa
   sqlite3_finalize (stmt);
 }
 
-// void
-// SyncLog::initYP(map<Name, Name> &yp)
-// {
-//   sqlite3_stmt *stmt;
-//   sqlite3_prepare_v2(m_db, "SELECT device_name, last_known_locator FROM SyncNodes;", -1, &stmt, 0);
-
-//   while (sqlite3_step(stmt) == SQLITE_ROW)
-//   {
-//     Name deviceName((const unsigned char *)sqlite3_column_blob(stmt, 0), sqlite3_column_bytes(stmt, 0));
-//     Name locator;
-//     if (sqlite3_column_type(stmt, 1) == SQLITE_BLOB)
-//     {
-//       locator = Name((const unsigned char *)sqlite3_column_blob(stmt, 1), sqlite3_column_bytes(stmt, 1));
-//     }
-//     yp.insert(make_pair(deviceName, locator));
-//   }
-
-//   sqlite3_finalize(stmt);
-// }
-
 sqlite3_int64
 SyncLog::GetNextLocalSeqNo ()
 {
@@ -371,7 +351,7 @@ void
 SyncLog::UpdateLocator(const Name &deviceName, const Name &locator)
 {
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (m_db, "UPDATE SyncNodes SET last_known_locator=? WHERE device_name=?;", -1, &stmt, 0);
+  sqlite3_prepare_v2 (m_db, "UPDATE SyncNodes SET last_known_locator=?,last_update=datetime('now') WHERE device_name=?;", -1, &stmt, 0);
   Ccnx::CcnxCharbufPtr nameBuf = deviceName;
   Ccnx::CcnxCharbufPtr locatorBuf = locator;
   sqlite3_bind_blob (stmt, 1, locatorBuf->buf(), locatorBuf->length(), SQLITE_STATIC);

@@ -22,6 +22,9 @@
 #ifndef FILE_STATE_H
 #define FILE_STATE_H
 
+#include "db-helper.h"
+
+#include "ccnx-name.h"
 #include "file-item.pb.h"
 #include "hash-helper.h"
 
@@ -35,21 +38,63 @@ typedef boost::shared_ptr<FileItem>  FileItemPtr;
 typedef boost::shared_ptr<FileItems> FileItemsPtr;
 
 
-class FileState
+class FileState : public DbHelper
 {
 public:
-  virtual FileItemPtr
-  LookupFile (const std::string &filename) = 0;
+  FileState (const boost::filesystem::path &path);
+  ~FileState ();
 
-  virtual FileItemsPtr
-  LookupFilesForHash (const Hash &hash) = 0;
+  /**
+   * @brief Update or add a file
+   */
+  void
+  UpdateFile (const std::string &filename, const Hash &hash, const Ccnx::CcnxCharbuf &device_name, sqlite3_int64 seqno,
+              time_t atime, time_t mtime, time_t ctime, int mode, int seg_num);
 
-  virtual FileItemsPtr
-  LookupFilesInFolder (const std::string &folder) = 0;
+  /**
+   * @brief Delete file
+   */
+  void
+  DeleteFile (const std::string &filename);
 
-  virtual FileItemsPtr
-  LookupFilesInFolderRecursively (const std::string &folder) = 0;
+  /**
+   * @brief Set "complete" flag
+   *
+   * The call will do nothing if FileState does not have a record for the file (e.g., file got subsequently deleted)
+   */
+  void
+  SetFileComplete (const std::string &filename);
+
+  /**
+   * @brief Lookup file state using file name
+   */
+  FileItemPtr
+  LookupFile (const std::string &filename) ;
+
+  /**
+   * @brief Lookup file state using content hash (multiple items may be returned)
+   */
+  FileItemsPtr
+  LookupFilesForHash (const Hash &hash);
+
+  /**
+   * @brief Lookup all files in the specified folder
+   */
+  FileItemsPtr
+  LookupFilesInFolder (const std::string &folder);
+
+  /**
+   * @brief Recursively lookup all files in the specified folder
+   */
+  FileItemsPtr
+  LookupFilesInFolderRecursively (const std::string &folder);
+
+private:
+  static void
+  directory_name_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
 };
+
+typedef boost::shared_ptr<FileState> FileStatePtr;
 
 namespace Error {
 struct FileState : virtual boost::exception, virtual std::exception { };
