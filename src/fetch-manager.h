@@ -85,6 +85,9 @@ private:
   void
   ScheduleFetches ();
 
+  void
+  TimedWait (Fetcher &fetcher);
+
 private:
   Ccnx::CcnxWrapperPtr m_ccnx;
   Mapping m_mapping;
