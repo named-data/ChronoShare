@@ -30,6 +30,97 @@ using namespace boost;
 using namespace std;
 using namespace Ccnx;
 
+INIT_LOGGER ("DumpDb");
+
+class StateLogDumper : public DbHelper
+{
+public:
+  StateLogDumper (const filesystem::path &path)
+  : DbHelper (path / ".chronoshare", "sync-log.db")
+  {
+  }
+
+  void
+  DumpState ()
+  {
+    sqlite3_stmt *stmt;
+    sqlite3_prepare_v2 (m_db, "SELECT hash(device_name, seq_no) FROM (SELECT * FROM SyncNodes ORDER BY device_name)", -1, &stmt, 0);
+    sqlite3_step (stmt);
+    Hash hash (sqlite3_column_blob  (stmt, 0), sqlite3_column_bytes (stmt, 0));
+    sqlite3_finalize (stmt);
+
+    sqlite3_prepare_v2 (m_db,
+                        "SELECT device_name, seq_no, last_known_locator, last_update "
+                        "   FROM SyncNodes "
+                        "   ORDER BY device_name", -1, &stmt, 0);
+
+    cout.setf(std::ios::left, std::ios::adjustfield);
+    cout << ">> SYNC NODES (" << hash.shortHash () << ") <<" << endl;
+    cout << "====================================================================================" << endl;
+    cout << setw(30) << "device_name" << " | seq_no | " << setw(20) << "locator" << " | last_update " << endl;
+    cout << "====================================================================================" << endl;
+
+    while (sqlite3_step (stmt) == SQLITE_ROW)
+      {
+        cout << setw (30) << lexical_cast<string> (Name (sqlite3_column_blob  (stmt, 0), sqlite3_column_bytes (stmt, 0))) << " | "; // device_name
+        cout << setw (6) << sqlite3_column_int64 (stmt, 1) << " | "; // seq_no
+        cout << setw (20) << lexical_cast<string> (Name (sqlite3_column_blob  (stmt, 2), sqlite3_column_bytes (stmt, 2))) << " | "; // locator
+        if (sqlite3_column_bytes (stmt, 3) > 0)
+          {
+            cout << setw (10) << sqlite3_column_text (stmt, 3) << endl;
+          }
+        else
+          {
+            cout << "unknown" << endl;
+          }
+      }
+    sqlite3_finalize (stmt);
+  }
+
+  void
+  DumpLog ()
+  {
+    sqlite3_stmt *stmt;
+    sqlite3_prepare_v2 (m_db,
+                        "SELECT state_hash, last_update, state_id "
+                        "   FROM SyncLog "
+                        "   ORDER BY last_update", -1, &stmt, 0);
+
+    cout.setf(std::ios::left, std::ios::adjustfield);
+    cout << ">> SYNC LOG <<" << endl;
+    cout << "====================================================================================" << endl;
+    cout << setw(10) << "state_hash" << " | state details " << endl;
+    cout << "====================================================================================" << endl;
+
+    while (sqlite3_step (stmt) == SQLITE_ROW)
+      {
+        cout << setw (10) << Hash (sqlite3_column_blob  (stmt, 0), sqlite3_column_bytes (stmt, 0)).shortHash () << " | "; // state hash
+
+        sqlite3_stmt *stmt2;
+        sqlite3_prepare_v2 (m_db,
+                            "SELECT device_name, ss.seq_no "
+                            "   FROM SyncStateNodes ss JOIN SyncNodes sn ON ss.device_id = sn.device_id "
+                            "   WHERE state_id=? "
+                            "   ORDER BY device_name", -1, &stmt2, 0);
+        _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+        sqlite3_bind_int64 (stmt2, 1, sqlite3_column_int64 (stmt, 2));
+
+        while (sqlite3_step (stmt2) == SQLITE_ROW)
+          {
+            cout << lexical_cast<string> (Name (sqlite3_column_blob  (stmt2, 0), sqlite3_column_bytes (stmt2, 0)))
+                 << "("
+                 << sqlite3_column_int64 (stmt2, 1)
+                 << "); ";
+          }
+
+        sqlite3_finalize (stmt2);
+
+        cout << endl;
+      }
+    sqlite3_finalize (stmt);
+  }
+};
+
 class ActionLogDumper : public DbHelper
 {
 public:
@@ -39,7 +130,7 @@ public:
   }
 
   void
-  DumpActionLog ()
+  Dump ()
   {
     sqlite3_stmt *stmt;
     sqlite3_prepare_v2 (m_db,
@@ -53,7 +144,6 @@ public:
     cout << setw(30) << "device_name" << " | seq_no | action |" << setw(40) << " filename " << "  | version | file_hash  | seg_num | parent_device_name             | parent_seq_no" << endl;
     cout << "=============================================================================================================================================================================" << endl;
 
-    FileItemsPtr retval = make_shared<FileItems> ();
     while (sqlite3_step (stmt) == SQLITE_ROW)
       {
         cout << setw (30) << lexical_cast<string> (Name (sqlite3_column_blob  (stmt, 0), sqlite3_column_bytes (stmt, 0))) << " | "; // device_name
@@ -82,9 +172,18 @@ public:
 
     sqlite3_finalize (stmt);
   }
+};
+
+class FileStateDumper : public DbHelper
+{
+public:
+  FileStateDumper (const filesystem::path &path)
+  : DbHelper (path / ".chronoshare", "file-state.db")
+  {
+  }
 
   void
-  DumpFileState ()
+  Dump ()
   {
     sqlite3_stmt *stmt;
     sqlite3_prepare_v2 (m_db,
@@ -98,7 +197,6 @@ public:
     cout << "filename                                 | device_name                    | seq_no | file_hash  | seg_num | directory | is_complete" << endl;
     cout << "===================================================================================================================================" << endl;
 
-    FileItemsPtr retval = make_shared<FileItems> ();
     while (sqlite3_step (stmt) == SQLITE_ROW)
       {
         cout << setw (40) << sqlite3_column_text  (stmt, 0) << " | ";
@@ -125,16 +223,54 @@ int main(int argc, char *argv[])
 {
   INIT_LOGGERS ();
 
-  if (argc != 2)
+  if (argc != 3)
     {
-      cerr << "Usage: ./dump-db <path-to-shared-folder>" << endl;
+      cerr << "Usage: ./dump-db state|action|file|all <path-to-shared-folder>" << endl;
       return 1;
     }
 
-  ActionLogDumper dumper (argv[1]);
-  dumper.DumpActionLog ();
-  cout << endl;
-  dumper.DumpFileState ();
+  string type = argv[1];
+  if (type == "state")
+    {
+      StateLogDumper dumper (argv[2]);
+      dumper.DumpState ();
+      dumper.DumpLog ();
+    }
+  else if (type == "action")
+    {
+      ActionLogDumper dumper (argv[2]);
+      dumper.Dump ();
+    }
+  else if (type == "file")
+    {
+      FileStateDumper dumper (argv[2]);
+      dumper.Dump ();
+    }
+  else if (type == "all")
+    {
+      {
+        StateLogDumper dumper (argv[2]);
+        dumper.DumpState ();
+        dumper.DumpLog ();
+      }
+
+      {
+        ActionLogDumper dumper (argv[2]);
+        dumper.Dump ();
+      }
+
+      {
+        FileStateDumper dumper (argv[2]);
+        dumper.Dump ();
+      }
+    }
+  else
+    {
+      cerr << "ERROR: Wrong database type" << endl;
+      cerr << "\nUsage: ./dump-db state|action|file|all <path-to-shared-folder>" << endl;
+      return 1;
+    }
+
 
   return 0;
 }
