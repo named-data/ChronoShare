@@ -23,6 +23,7 @@
 #include <boost/make_shared.hpp>
 #include <boost/ref.hpp>
 #include <boost/throw_exception.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include "simple-interval-generator.h"
 #include "logging.h"
@@ -157,6 +158,12 @@ FetchManager::ScheduleFetches ()
           continue;
         }
 
+      if (item->IsTimedWait ())
+        {
+          _LOG_DEBUG ("Item is in timed-wait");
+          continue;
+        }
+
       if (currentTime < item->GetNextScheduledRetry ())
         {
           if (item->GetNextScheduledRetry () < nextSheduleCheck)
@@ -223,8 +230,6 @@ FetchManager::DidFetchComplete (Fetcher &fetcher, const Name &deviceName, const 
   {
     unique_lock<mutex> lock (m_parellelFetchMutex);
     m_currentParallelFetches --;
-    _LOG_TRACE ("+++++ removing fetcher: " << fetcher.GetName ());
-    m_fetchList.erase_and_dispose (FetchList::s_iterator_to (fetcher), fetcher_disposer ());
 
     if (m_taskDb)
       {
@@ -232,5 +237,16 @@ FetchManager::DidFetchComplete (Fetcher &fetcher, const Name &deviceName, const 
       }
   }
 
+  // like TCP timed-wait
+  m_scheduler->scheduleOneTimeTask(m_scheduler, 10, boost::bind(&FetchManager::TimedWait, this, ref(fetcher)), boost::lexical_cast<string>(baseName));
+
   m_scheduler->rescheduleTaskAt (m_scheduleFetchesTask, 0);
+}
+
+void
+FetchManager::TimedWait (Fetcher &fetcher)
+{
+    unique_lock<mutex> lock (m_parellelFetchMutex);
+    _LOG_TRACE ("+++++ removing fetcher: " << fetcher.GetName ());
+    m_fetchList.erase_and_dispose (FetchList::s_iterator_to (fetcher), fetcher_disposer ());
 }

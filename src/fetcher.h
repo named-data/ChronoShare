@@ -53,6 +53,9 @@ public:
   inline bool
   IsActive () const;
 
+  inline bool
+  IsTimedWait() const { return m_timedwait; }
+
   void
   RestartPipeline ();
 
@@ -109,6 +112,7 @@ private:
   FinishCallback m_finishCallback;
 
   bool m_active;
+  bool m_timedwait;
 
   Ccnx::Name m_name;
   Ccnx::Name m_deviceName;

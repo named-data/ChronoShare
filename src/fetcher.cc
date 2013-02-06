@@ -51,6 +51,7 @@ Fetcher::Fetcher (Ccnx::CcnxWrapperPtr ccnx,
   , m_finishCallback (finishCallback)
 
   , m_active (false)
+  , m_timedwait (false)
   , m_name (name)
   , m_deviceName (deviceName)
   , m_forwardingHint (forwardingHint)
@@ -201,6 +202,7 @@ Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
       // using executor, so we won't be deleted if there is scheduled FillPipeline call
       if (!m_onFetchComplete.empty ())
         {
+          m_timedwait = true;
           m_executor->execute (bind (m_onFetchComplete, ref(*this), m_deviceName, m_name));
         }
     }
