@@ -192,14 +192,14 @@ ActionLog::AddLocalActionUpdate (const std::string &filename,
                              );
     }
 
-  sqlite3_bind_blob  (stmt, 1, device_name->buf (), device_name->length (), SQLITE_TRANSIENT);
+  sqlite3_bind_blob  (stmt, 1, device_name->buf (), device_name->length (), SQLITE_STATIC);
   sqlite3_bind_int64 (stmt, 2, seq_no);
   sqlite3_bind_int   (stmt, 3, 0);
-  sqlite3_bind_text  (stmt, 4, filename.c_str (), filename.size (), SQLITE_TRANSIENT);
+  sqlite3_bind_text  (stmt, 4, filename.c_str (), filename.size (), SQLITE_STATIC);
   sqlite3_bind_int64 (stmt, 5, version);
   sqlite3_bind_int64 (stmt, 6, action_time);
 
-  sqlite3_bind_blob  (stmt, 7, hash.GetHash (), hash.GetHashBytes (), SQLITE_TRANSIENT);
+  sqlite3_bind_blob  (stmt, 7, hash.GetHash (), hash.GetHashBytes (), SQLITE_STATIC);
 
   // sqlite3_bind_int64 (stmt, 8, atime); // NULL
   sqlite3_bind_int64 (stmt, 9, wtime);
@@ -209,7 +209,7 @@ ActionLog::AddLocalActionUpdate (const std::string &filename,
 
   if (parent_device_name && parent_seq_no > 0)
     {
-      sqlite3_bind_blob (stmt, 13, parent_device_name->buf (), parent_device_name->length (), SQLITE_TRANSIENT);
+      sqlite3_bind_blob (stmt, 13, parent_device_name->buf (), parent_device_name->length (), SQLITE_STATIC);
       sqlite3_bind_int64 (stmt, 14, parent_seq_no);
     }
 
@@ -248,8 +248,8 @@ ActionLog::AddLocalActionUpdate (const std::string &filename,
 
   // _LOG_DEBUG (" >>>>>>> " << Name (namePtr->buf () << " " << namePtr->length ());
 
-  sqlite3_bind_blob (stmt, 15, namePtr->buf (), namePtr->length (), SQLITE_TRANSIENT);
-  sqlite3_bind_blob (stmt, 16, head (actionData), actionData.size (), SQLITE_TRANSIENT);
+  sqlite3_bind_blob (stmt, 15, namePtr->buf (), namePtr->length (), SQLITE_STATIC);
+  sqlite3_bind_blob (stmt, 16, head (actionData), actionData.size (), SQLITE_STATIC);
 
   sqlite3_step (stmt);
 
@@ -295,7 +295,7 @@ ActionLog::AddLocalActionDelete (const std::string &filename)
       // just in case, remove data from FileState
       sqlite3_stmt *stmt;
       sqlite3_prepare_v2 (m_db, "DELETE FROM FileState WHERE filename = ? ", -1, &stmt, 0);
-      sqlite3_bind_text  (stmt, 1, filename.c_str (), filename.size (), SQLITE_TRANSIENT);  // file
+      sqlite3_bind_text  (stmt, 1, filename.c_str (), filename.size (), SQLITE_STATIC);  // file
 
       sqlite3_step (stmt);
 
@@ -319,15 +319,15 @@ ActionLog::AddLocalActionDelete (const std::string &filename)
                       "        ?, ?,"
                       "        ?, ?)", -1, &stmt, 0);
 
-  sqlite3_bind_blob  (stmt, 1, device_name->buf (), device_name->length (), SQLITE_TRANSIENT);
+  sqlite3_bind_blob  (stmt, 1, device_name->buf (), device_name->length (), SQLITE_STATIC);
   sqlite3_bind_int64 (stmt, 2, seq_no);
   sqlite3_bind_int   (stmt, 3, 1);
-  sqlite3_bind_text  (stmt, 4, filename.c_str (), filename.size (), SQLITE_TRANSIENT);  // file
+  sqlite3_bind_text  (stmt, 4, filename.c_str (), filename.size (), SQLITE_STATIC);  // file
 
   sqlite3_bind_int64 (stmt, 5, version);
   sqlite3_bind_int64 (stmt, 6, action_time);
 
-  sqlite3_bind_blob  (stmt, 7, parent_device_name->buf (), parent_device_name->length (), SQLITE_TRANSIENT);
+  sqlite3_bind_blob  (stmt, 7, parent_device_name->buf (), parent_device_name->length (), SQLITE_STATIC);
   sqlite3_bind_int64 (stmt, 8, parent_seq_no);
 
   ActionItemPtr item = make_shared<ActionItem> ();
@@ -348,8 +348,8 @@ ActionLog::AddLocalActionDelete (const std::string &filename)
   Bytes actionData = m_ccnx->createContentObject (actionName, item_msg.c_str (), item_msg.size ());
   CcnxCharbufPtr namePtr = actionName.toCcnxCharbuf ();
 
-  sqlite3_bind_blob (stmt, 9, namePtr->buf (), namePtr->length (), SQLITE_TRANSIENT);
-  sqlite3_bind_blob (stmt, 10, &actionData[0], actionData.size (), SQLITE_TRANSIENT);
+  sqlite3_bind_blob (stmt, 9, namePtr->buf (), namePtr->length (), SQLITE_STATIC);
+  sqlite3_bind_blob (stmt, 10, &actionData[0], actionData.size (), SQLITE_STATIC);
 
   sqlite3_step (stmt);
 
@@ -498,7 +498,7 @@ ActionLog::AddRemoteAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno, C
 
   if (action->has_parent_device_name ())
     {
-      sqlite3_bind_blob (stmt, 13, action->parent_device_name ().c_str (), action->parent_device_name ().size (), SQLITE_TRANSIENT);
+      sqlite3_bind_blob (stmt, 13, action->parent_device_name ().c_str (), action->parent_device_name ().size (), SQLITE_STATIC);
       sqlite3_bind_int64 (stmt, 14, action->parent_seq_no ());
     }
 
