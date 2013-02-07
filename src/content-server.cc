@@ -21,6 +21,11 @@
 
 #include "content-server.h"
 #include "logging.h"
+#include <boost/make_shared.hpp>
+#include <utility>
+#include "task.h"
+#include "periodic-task.h"
+#include "simple-interval-generator.h"
 #include <boost/lexical_cast.hpp>
 
 INIT_LOGGER ("ContentServer");
@@ -28,6 +33,8 @@ INIT_LOGGER ("ContentServer");
 using namespace Ccnx;
 using namespace std;
 using namespace boost;
+
+static const int DB_CACHE_LIFETIME = 60;
 
 ContentServer::ContentServer(CcnxWrapperPtr ccnx, ActionLogPtr actionLog,
                              const boost::filesystem::path &rootDir,
@@ -38,17 +45,19 @@ ContentServer::ContentServer(CcnxWrapperPtr ccnx, ActionLogPtr actionLog,
   , m_actionLog(actionLog)
   , m_dbFolder(rootDir / ".chronoshare")
   , m_freshness(freshness)
-  , m_executor (1)
+  , m_scheduler (new Scheduler())
   , m_deviceName (deviceName)
   , m_sharedFolderName (sharedFolderName)
   , m_appName (appName)
 {
-  m_executor.start ();
+  m_scheduler->start ();
+  TaskPtr flushStaleDbCacheTask = boost::make_shared<PeriodicTask>(boost::bind(&ContentServer::flushStaleDbCache, this), "flush-state-db-cache", m_scheduler, boost::make_shared<SimpleIntervalGenerator>(DB_CACHE_LIFETIME));
+  m_scheduler->addTask(flushStaleDbCacheTask);
 }
 
 ContentServer::~ContentServer()
 {
-  m_executor.shutdown ();
+  m_scheduler->shutdown ();
 
   ScopedLock lock (m_mutex);
   for (PrefixIt it = m_prefixes.begin(); it != m_prefixes.end(); ++it)
@@ -123,7 +132,7 @@ void
 ContentServer::serve_Action (Name forwardingHint, Name locatorPrefix, Name interest)
 {
   _LOG_DEBUG (">> content server serving ACTION, hint: " << forwardingHint << ", locatorPrefix: " << locatorPrefix << ", interest: " << interest);
-  m_executor.execute (bind (&ContentServer::serve_Action_Execute, this, forwardingHint, locatorPrefix, interest));
+  m_scheduler->scheduleOneTimeTask (m_scheduler, 0, bind (&ContentServer::serve_Action_Execute, this, forwardingHint, locatorPrefix, interest), boost::lexical_cast<string>(interest));
   // need to unlock ccnx mutex... or at least don't lock it
 }
 
@@ -132,7 +141,7 @@ ContentServer::serve_File (Name forwardingHint, Name locatorPrefix, Name interes
 {
   _LOG_DEBUG (">> content server serving FILE, hint: " << forwardingHint << ", locatorPrefix: " << locatorPrefix << ", interest: " << interest);
 
-  m_executor.execute (bind (&ContentServer::serve_File_Execute, this, forwardingHint, locatorPrefix, interest));
+  m_scheduler->scheduleOneTimeTask (m_scheduler, 0, bind (&ContentServer::serve_File_Execute, this, forwardingHint, locatorPrefix, interest), boost::lexical_cast<string>(interest));
   // need to unlock ccnx mutex... or at least don't lock it
 }
 
@@ -153,42 +162,59 @@ ContentServer::serve_File_Execute (Name forwardingHint, Name locatorPrefix, Name
   _LOG_DEBUG (" server FILE for device: " << deviceName << ", file_hash: " << hash.shortHash () << " segment: " << segment);
 
   string hashStr = lexical_cast<string> (hash);
-  if (ObjectDb::DoesExist (m_dbFolder, deviceName, hashStr)) // this is kind of overkill, as it counts available segments
+
+  ObjectDbPtr db;
+
+  ScopedLock(m_dbCacheMutex);
+  {
+    DbCache::iterator it = m_dbCache.find(hash);
+    if (it != m_dbCache.end())
     {
-      ObjectDb db (m_dbFolder, hashStr);
-      // may do prefetching
-
-      BytesPtr co = db.fetchSegment (deviceName, segment);
-      if (co)
+      db = it->second;
+    }
+    else
+    {
+      if (ObjectDb::DoesExist (m_dbFolder, deviceName, hashStr)) // this is kind of overkill, as it counts available segments
         {
-          if (forwardingHint.size () == 0)
-            {
-              _LOG_DEBUG (ParsedContentObject (*co).name ());
-              m_ccnx->putToCcnd (*co);
-            }
-          else
-            {
-              if (m_freshness > 0)
-                {
-                  m_ccnx->publishData(interest, *co, m_freshness);
-                }
-              else
-                {
-                  m_ccnx->publishData(interest, *co);
-                }
-            }
-
+         db = boost::make_shared<ObjectDb>(m_dbFolder, hashStr);
+         m_dbCache.insert(make_pair(hash, db));
         }
       else
         {
-          _LOG_ERROR ("ObjectDd exists, but no segment " << segment << " for device: " << deviceName << ", file_hash: " << hash.shortHash ());
+          _LOG_ERROR ("ObjectDd doesn't exist for device: " << deviceName << ", file_hash: " << hash.shortHash ());
         }
     }
-  else
-    {
-      _LOG_ERROR ("ObjectDd doesn't exist for device: " << deviceName << ", file_hash: " << hash.shortHash ());
-    }
+  }
 
+  if (db)
+  {
+    BytesPtr co = db->fetchSegment (deviceName, segment);
+    if (co)
+      {
+        if (forwardingHint.size () == 0)
+          {
+            _LOG_DEBUG (ParsedContentObject (*co).name ());
+            m_ccnx->putToCcnd (*co);
+          }
+        else
+          {
+            if (m_freshness > 0)
+              {
+                m_ccnx->publishData(interest, *co, m_freshness);
+              }
+            else
+              {
+                m_ccnx->publishData(interest, *co);
+              }
+          }
+
+      }
+    else
+      {
+        _LOG_ERROR ("ObjectDd exists, but no segment " << segment << " for device: " << deviceName << ", file_hash: " << hash.shortHash ());
+      }
+
+  }
 }
 
 void
@@ -230,4 +256,23 @@ ContentServer::serve_Action_Execute (Name forwardingHint, Name locatorPrefix, Na
     {
       _LOG_ERROR ("ACTION not found for device: " << deviceName << " and seqno: " << seqno);
     }
+}
+
+void
+ContentServer::flushStaleDbCache()
+{
+  ScopedLock(m_dbCacheMutex);
+  DbCache::iterator it = m_dbCache.begin();
+  while (it != m_dbCache.end())
+  {
+    ObjectDbPtr db = it->second;
+    if (db->secondsSinceLastUse() >= DB_CACHE_LIFETIME)
+    {
+      m_dbCache.erase(it++);
+    }
+    else
+    {
+      ++it;
+    }
+  }
 }

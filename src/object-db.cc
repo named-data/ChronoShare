@@ -46,6 +46,7 @@ CREATE INDEX device ON File(device_name);                               \n\
 ";
 
 ObjectDb::ObjectDb (const fs::path &folder, const std::string &hash)
+  : m_lastUsed (time(NULL))
 {
   fs::path actualFolder = folder / "objects" / hash.substr (0, 2);
   fs::create_directories (actualFolder);
@@ -144,6 +145,9 @@ ObjectDb::saveContentObject (const Ccnx::Name &deviceName, sqlite3_int64 segment
   sqlite3_step (stmt);
   //_LOG_DEBUG ("After saving object: " << sqlite3_errmsg (m_db));
   sqlite3_finalize (stmt);
+
+  // update last used time
+  m_lastUsed = time(NULL);
 }
 
 Ccnx::BytesPtr
@@ -169,9 +173,17 @@ ObjectDb::fetchSegment (const Ccnx::Name &deviceName, sqlite3_int64 segment)
 
   sqlite3_finalize (stmt);
 
+  // update last used time
+  m_lastUsed = time(NULL);
+
   return ret;
 }
 
+time_t
+ObjectDb::secondsSinceLastUse()
+{
+  return (time(NULL) - m_lastUsed);
+}
 
 // sqlite3_int64
 // ObjectDb::getNumberOfSegments (const Ccnx::Name &deviceName)

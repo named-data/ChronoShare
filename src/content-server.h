@@ -26,9 +26,10 @@
 #include "object-db.h"
 #include "action-log.h"
 #include <set>
+#include <map>
 #include <boost/thread/shared_mutex.hpp>
 #include <boost/thread/locks.hpp>
-#include "executor.h"
+#include "scheduler.h"
 
 class ContentServer
 {
@@ -61,6 +62,9 @@ private:
   void
   serve_File_Execute(Ccnx::Name forwardingHint, Ccnx::Name locatorPrefix, Ccnx::Name interest);
 
+  void
+  flushStaleDbCache();
+
 private:
   Ccnx::CcnxWrapperPtr m_ccnx;
   ActionLogPtr m_actionLog;
@@ -73,7 +77,10 @@ private:
   boost::filesystem::path m_dbFolder;
   int m_freshness;
 
-  Executor     m_executor;
+  SchedulerPtr     m_scheduler;
+  typedef std::map<Hash, ObjectDbPtr> DbCache;
+  DbCache m_dbCache;
+  Mutex m_dbCacheMutex;
 
   Ccnx::Name  m_deviceName;
   std::string m_sharedFolderName;

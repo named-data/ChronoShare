@@ -28,6 +28,8 @@
 #include <ccnx-name.h>
 #include <boost/filesystem.hpp>
 #include <boost/shared_ptr.hpp>
+#include <ctime>
+#include <vector>
 
 class ObjectDb
 {
@@ -45,6 +47,9 @@ public:
   // sqlite3_int64
   // getNumberOfSegments (const Ccnx::Name &deviceName);
 
+  time_t
+  secondsSinceLastUse();
+
   static bool
   DoesExist (const boost::filesystem::path &folder, const Ccnx::Name &deviceName, const std::string &hash);
 
@@ -57,6 +62,7 @@ private:
 
 private:
   sqlite3 *m_db;
+  time_t m_lastUsed;
 };
 
 typedef boost::shared_ptr<ObjectDb> ObjectDbPtr;
