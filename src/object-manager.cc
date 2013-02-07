@@ -54,7 +54,7 @@ ObjectManager::~ObjectManager ()
 {
 }
 
-// /<appname>/file/<hash>/<devicename>/<segment>
+// /<devicename>/<appname>/file/<hash>/<segment>
 boost::tuple<HashPtr /*object-db name*/, size_t /* number of segments*/>
 ObjectManager::localFileToObjects (const fs::path &file, const Ccnx::Name &deviceName)
 {
@@ -73,7 +73,7 @@ ObjectManager::localFileToObjects (const fs::path &file, const Ccnx::Name &devic
           break;
         }
 
-      Name name = Name ("/")(m_appName)("file")(fileHash->GetHash (), fileHash->GetHashBytes ())(deviceName)(segment);
+      Name name = Name ("/")(deviceName)(m_appName)("file")(fileHash->GetHash (), fileHash->GetHashBytes ())(segment);
 
       // cout << *fileHash << endl;
       // cout << name << endl;

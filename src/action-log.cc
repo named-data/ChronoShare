@@ -239,8 +239,8 @@ ActionLog::AddLocalActionUpdate (const std::string &filename,
   string item_msg;
   item->SerializeToString (&item_msg);
 
-  // action name: /<appname>/<shared-folder>/action/<device_name>/<action-seq>
-  Name actionName = Name ("/")(m_appName)(m_sharedFolderName)("action")(m_syncLog->GetLocalName ())(seq_no);
+  // action name: /<device_name>/<appname>/action/<shared-folder>/<action-seq>
+  Name actionName = Name ("/")(m_syncLog->GetLocalName ())(m_appName)("action")(m_sharedFolderName)(seq_no);
   _LOG_DEBUG ("ActionName: " << actionName);
 
   Bytes actionData = m_ccnx->createContentObject (actionName, item_msg.c_str (), item_msg.size ());
@@ -341,8 +341,8 @@ ActionLog::AddLocalActionDelete (const std::string &filename)
   string item_msg;
   item->SerializeToString (&item_msg);
 
-  // action name: /<appname>/<shared-folder>/action/<device_name>/<action-seq>
-  Name actionName = Name ("/")(m_appName)(m_sharedFolderName)("action")(m_syncLog->GetLocalName ())(seq_no);
+  // action name: /<device_name>/<appname>/action/<shared-folder>/<action-seq>
+  Name actionName = Name ("/")(m_syncLog->GetLocalName ())(m_appName)("action")(m_sharedFolderName)(seq_no);
   _LOG_DEBUG ("ActionName: " << actionName);
 
   Bytes actionData = m_ccnx->createContentObject (actionName, item_msg.c_str (), item_msg.size ());
@@ -450,13 +450,15 @@ ActionLog::AddRemoteAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno, C
 {
   if (!actionPco)
     {
-      BOOST_THROW_EXCEPTION (Error::ActionLog () << errmsg_info_str ("actionPco is not valid"));
+      _LOG_ERROR ("actionPco is not valid");
+      return ActionItemPtr ();
     }
   ActionItemPtr action = deserializeMsg<ActionItem> (actionPco->content ());
 
   if (!action)
     {
-      BOOST_THROW_EXCEPTION (Error::ActionLog () << errmsg_info_str ("action cannot be decoded"));
+      _LOG_ERROR ("action cannot be decoded");
+      return ActionItemPtr ();
     }
 
   _LOG_DEBUG ("AddRemoteAction: [" << deviceName << "] seqno: " << seqno);
@@ -520,23 +522,33 @@ ActionItemPtr
 ActionLog::AddRemoteAction (Ccnx::PcoPtr actionPco)
 {
   Name name = actionPco->name ();
-  // action name: /<appname>/<shared-folder>/action/<device_name>/<action-seq>
+  // action name: /<device_name>/<appname>/action/<shared-folder>/<action-seq>
 
-  uint64_t seqno = name.getCompFromBackAsInt (0);
-  string sharedFolder = name.getCompAsString (1);
+  uint64_t seqno      = name.getCompFromBackAsInt (0);
+  string sharedFolder = name.getCompFromBackAsString (1);
 
   if (sharedFolder != m_sharedFolderName)
     {
-      BOOST_THROW_EXCEPTION (Error::ActionLog () << errmsg_info_str ("Action doesn't belong to this shared folder"));
+      _LOG_ERROR ("Action doesn't belong to this shared folder");
+      return ActionItemPtr ();
     }
 
-  string action = name.getCompAsString (2);
+  string action = name.getCompFromBackAsString (2);
 
   if (action != "action")
     {
-      BOOST_THROW_EXCEPTION (Error::ActionLog () << errmsg_info_str ("not an action"));
+      _LOG_ERROR ("not an action");
+      return ActionItemPtr ();
     }
-  Name deviceName = name.getPartialName (3, name.size ()-4);
+
+  string appName = name.getCompFromBackAsString (3);
+  if (appName != m_appName)
+    {
+      _LOG_ERROR ("Action doesn't belong to this application");
+      return ActionItemPtr ();
+    }
+
+  Name deviceName = name.getPartialName (0, name.size ()-4);
 
   _LOG_DEBUG ("From [" << name << "] extracted deviceName: " << deviceName << ", sharedFolder: " << sharedFolder << ", seqno: " << seqno);
 

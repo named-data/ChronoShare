@@ -47,20 +47,20 @@ public:
   void deregisterPrefix(const Ccnx::Name &prefix);
 
 private:
-  // void
-  // serve (Ccnx::Name forwardingHint, const Ccnx::Name &interest);
+  void
+  filterAndServe (Ccnx::Name forwardingHint, const Ccnx::Name &interest);
 
   void
-  serve_Action (Ccnx::Name forwardingHint, Ccnx::Name locatorPrefix, Ccnx::Name interest);
+  serve_Action (Ccnx::Name forwardingHint, Ccnx::Name interest);
 
   void
-  serve_File (Ccnx::Name forwardingHint, Ccnx::Name locatorPrefix, Ccnx::Name interest);
+  serve_File (Ccnx::Name forwardingHint, Ccnx::Name interest);
 
   void
-  serve_Action_Execute(Ccnx::Name forwardingHint, Ccnx::Name locatorPrefix, Ccnx::Name interest);
+  serve_Action_Execute(Ccnx::Name forwardingHint, Ccnx::Name interest);
 
   void
-  serve_File_Execute(Ccnx::Name forwardingHint, Ccnx::Name locatorPrefix, Ccnx::Name interest);
+  serve_File_Execute(Ccnx::Name forwardingHint, Ccnx::Name interest);
 
   void
   flushStaleDbCache();

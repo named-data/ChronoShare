@@ -77,12 +77,12 @@ BOOST_AUTO_TEST_CASE (ActionLogTest)
   pco = actionLog->LookupActionPco (localName, 1);
   BOOST_CHECK_EQUAL ((bool)pco, true);
 
-  BOOST_CHECK_EQUAL (pco->name (), "/test-chronoshare/top-secret/action/alex/%00%01");
+  BOOST_CHECK_EQUAL (pco->name (), "/alex/test-chronoshare/action/top-secret/%00%01");
 
-  ActionItemPtr action = actionLog->LookupAction (Name ("/test-chronoshare/top-secret/action/alex")(0));
+  ActionItemPtr action = actionLog->LookupAction (Name ("/alex/test-chronoshare/action/top-secret")(0));
   BOOST_CHECK_EQUAL ((bool)action, false);
 
-  action = actionLog->LookupAction (Name ("/test-chronoshare/top-secret/action/alex")(1));
+  action = actionLog->LookupAction (Name ("/alex/test-chronoshare/action/top-secret")(1));
   BOOST_CHECK_EQUAL ((bool)action, true);
 
   if (action)
@@ -117,7 +117,7 @@ BOOST_AUTO_TEST_CASE (ActionLogTest)
       BOOST_CHECK_EQUAL (action->version (), 1);
     }
 
-  BOOST_CHECK_NO_THROW (actionLog->AddRemoteAction (pco));
+  BOOST_CHECK_EQUAL ((bool)actionLog->AddRemoteAction (pco), true);
   BOOST_CHECK_EQUAL (actionLog->LogSize (), 2);
 
   // create a real remote action
@@ -128,11 +128,11 @@ BOOST_AUTO_TEST_CASE (ActionLogTest)
   item.set_timestamp (time (NULL));
 
   BytesPtr item_msg = serializeMsg (item);
-  Name actionName = Name ("/")("test-chronoshare")("top-secret")("action")("zhenkai")(1);
+  Name actionName = Name ("/")(Name("/zhenkai/test"))("test-chronoshare")("action")("top-secret")(1);
   Bytes actionData = ccnx->createContentObject (actionName, head (*item_msg), item_msg->size ());
 
   pco = make_shared<ParsedContentObject> (actionData);
-  BOOST_CHECK_NO_THROW (actionLog->AddRemoteAction (pco));
+  BOOST_CHECK_EQUAL ((bool)actionLog->AddRemoteAction (pco), true);
   BOOST_CHECK_EQUAL (actionLog->LogSize (), 3);
 
   remove_all (tmpdir);

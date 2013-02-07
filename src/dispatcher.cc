@@ -270,7 +270,7 @@ Dispatcher::Did_SyncLog_StateChange_Execute (SyncStateMsgPtr stateMsg)
       Name userName (reinterpret_cast<const unsigned char *> (state.name ().c_str ()), state.name ().size ());
 
       // fetch actions with oldSeq + 1 to newSeq (inclusive)
-      Name actionNameBase = Name ("/")(CHRONOSHARE_APP)(m_sharedFolder)("action")(userName);
+      Name actionNameBase = Name ("/")(userName)(CHRONOSHARE_APP)("action")(m_sharedFolder);
 
       m_actionFetcher->Enqueue (userName, actionNameBase,
                                 std::max<uint64_t> (oldSeq + 1, 1), newSeq, FetchManager::PRIORITY_HIGH);
@@ -286,13 +286,18 @@ Dispatcher::Did_FetchManager_ActionFetch (const Ccnx::Name &deviceName, const Cc
   _LOG_DEBUG ("Received action deviceName: " << deviceName << ", actionBaseName: " << actionBaseName << ", seqno: " << seqno);
 
   ActionItemPtr action = m_actionLog->AddRemoteAction (deviceName, seqno, actionPco);
+  if (!action)
+    {
+      _LOG_ERROR ("AddRemoteAction did not insert action, ignoring");
+      return;
+    }
   // trigger may invoke Did_ActionLog_ActionApply_Delete or Did_ActionLog_ActionApply_AddOrModify callbacks
 
   if (action->action () == ActionItem::UPDATE)
     {
       Hash hash (action->file_hash ().c_str(), action->file_hash ().size ());
 
-      Name fileNameBase = Name ("/")(CHRONOSHARE_APP)("file")(hash.GetHash (), hash.GetHashBytes ())(deviceName);
+      Name fileNameBase = Name ("/")(deviceName)(CHRONOSHARE_APP)("file")(hash.GetHash (), hash.GetHashBytes ());
 
       string hashStr = lexical_cast<string> (hash);
       if (ObjectDb::DoesExist (m_rootDir / ".chronoshare",  deviceName, hashStr))
@@ -344,7 +349,9 @@ Dispatcher::Did_FetchManager_FileSegmentFetch (const Ccnx::Name &deviceName, con
 void
 Dispatcher::Did_FetchManager_FileSegmentFetch_Execute (Ccnx::Name deviceName, Ccnx::Name fileSegmentBaseName, uint32_t segment, Ccnx::PcoPtr fileSegmentPco)
 {
-  const Bytes &hashBytes = fileSegmentBaseName.getComp (2);
+  // fileSegmentBaseName:  /<device_name>/<appname>/file/<hash>
+
+  const Bytes &hashBytes = fileSegmentBaseName.getCompFromBack (0);
   Hash hash (head(hashBytes), hashBytes.size());
 
   _LOG_DEBUG ("Received segment deviceName: " << deviceName << ", segmentBaseName: " << fileSegmentBaseName << ", segment: " << segment);
@@ -374,11 +381,13 @@ Dispatcher::Did_FetchManager_FileFetchComplete (const Ccnx::Name &deviceName, co
 void
 Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, Ccnx::Name fileBaseName)
 {
+  // fileBaseName:  /<device_name>/<appname>/file/<hash>
+
   _LOG_DEBUG ("Finished fetching " << deviceName << ", fileBaseName: " << fileBaseName);
 
-  const Bytes &hashBytes = fileBaseName.getComp (2);
+  const Bytes &hashBytes = fileBaseName.getCompFromBack (0);
   Hash hash (head (hashBytes), hashBytes.size ());
-  _LOG_DEBUG ("Extracted hash: " << hash);
+  _LOG_DEBUG ("Extracted hash: " << hash.shortHash ());
 
   if (m_objectDbMap.find (hash) != m_objectDbMap.end())
   {

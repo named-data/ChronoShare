@@ -62,11 +62,7 @@ ContentServer::~ContentServer()
   ScopedLock lock (m_mutex);
   for (PrefixIt it = m_prefixes.begin(); it != m_prefixes.end(); ++it)
   {
-    Name filePrefix   = Name (*it)(m_appName)("file");
-    Name actionPrefix = Name (*it)(m_appName)(m_sharedFolderName)("action");
-
-    m_ccnx->clearInterestFilter(filePrefix);
-    m_ccnx->clearInterestFilter(actionPrefix);
+    m_ccnx->clearInterestFilter (*it);
   }
 
   m_prefixes.clear ();
@@ -75,17 +71,11 @@ ContentServer::~ContentServer()
 void
 ContentServer::registerPrefix(const Name &forwardingHint)
 {
-  // Format for files:   /<forwarding-hint>/<appname>/file/<hash>/<device_name>/<segment>
-  // Format for actions: /<forwarding-hint>/<appname>/<shared-folder>/action/<device_name>/<action-seq>
+  // Format for files:   /<forwarding-hint>/<device_name>/<appname>/file/<hash>/<segment>
+  // Format for actions: /<forwarding-hint>/<device_name>/<appname>/action/<shared-folder>/<action-seq>
 
-  Name filePrefix   = Name (forwardingHint)(m_appName)("file");
-  Name actionPrefix = Name (forwardingHint)(m_appName)(m_sharedFolderName)("action");
-
-  m_ccnx->setInterestFilter (filePrefix,   bind(&ContentServer::serve_File,   this, forwardingHint, filePrefix,   _1));
-  m_ccnx->setInterestFilter (actionPrefix, bind(&ContentServer::serve_Action, this, forwardingHint, actionPrefix, _1));
-
-  _LOG_DEBUG (">> content server: register FILE   " << filePrefix);
-  _LOG_DEBUG (">> content server: register ACTION " << actionPrefix);
+  _LOG_DEBUG (">> content server: register " << forwardingHint);
+  m_ccnx->setInterestFilter (forwardingHint, bind(&ContentServer::filterAndServe, this, forwardingHint, _1));
 
   ScopedLock lock (m_mutex);
   m_prefixes.insert(forwardingHint);
@@ -94,70 +84,66 @@ ContentServer::registerPrefix(const Name &forwardingHint)
 void
 ContentServer::deregisterPrefix (const Name &forwardingHint)
 {
-  Name filePrefix   = Name (forwardingHint)(m_appName)("file");
-  Name actionPrefix = Name (forwardingHint)(m_appName)(m_sharedFolderName)("action");
-
-  m_ccnx->clearInterestFilter(filePrefix);
-  m_ccnx->clearInterestFilter(actionPrefix);
-
-  _LOG_DEBUG ("<< content server: deregister FILE   " << filePrefix);
-  _LOG_DEBUG ("<< content server: deregister ACTION " << actionPrefix);
+  _LOG_DEBUG ("<< content server: deregister " << forwardingHint);
+  m_ccnx->clearInterestFilter(forwardingHint);
 
   ScopedLock lock (m_mutex);
   m_prefixes.erase (forwardingHint);
 }
 
-// void
-// ContentServer::serve(Name forwardingHint, const Name &interest)
-// {
-//   // /forwardingHint/app-name/device-name/action/shared-folder/action-seq
-//   // /forwardingHint/app-name/device-name/file/file-hash/segment
+void
+ContentServer::filterAndServe (Name forwardingHint, const Name &interest)
+{
+  // Format for files:   /<forwarding-hint>/<device_name>/<appname>/file/<hash>/<segment>
+  // Format for actions: /<forwarding-hint>/<device_name>/<appname>/action/<shared-folder>/<action-seq>
 
-//   Name name = interest.getPartialName(forwardingHint.size());
-//   if (name.size() > 3)
-//   {
-//     string type = name.getCompAsString(name.size() - 3);
-//     if (type == "action")
-//     {
-//       serve_Action (forwardingHint, interest);
-//     }
-//     else if (type == "file")
-//     {
-//       serve_File (forwardingHint, interest);
-//     }
-//   }
-// }
+  Name name = interest.getPartialName (forwardingHint.size());
+  // name for files:   /<device_name>/<appname>/file/<hash>/<segment>
+  // name for actions: /<device_name>/<appname>/action/<shared-folder>/<action-seq>
+
+  if (name.size() >= 4 && name.getCompFromBackAsString (3) == m_appName)
+  {
+    string type = name.getCompFromBackAsString (2);
+    if (type == "file")
+      {
+        serve_File (forwardingHint, interest);
+      }
+    else if (type == "action")
+      {
+        serve_Action (forwardingHint, interest);
+      }
+  }
+}
 
 void
-ContentServer::serve_Action (Name forwardingHint, Name locatorPrefix, Name interest)
+ContentServer::serve_Action (Name forwardingHint, Name interest)
 {
-  _LOG_DEBUG (">> content server serving ACTION, hint: " << forwardingHint << ", locatorPrefix: " << locatorPrefix << ", interest: " << interest);
-  m_scheduler->scheduleOneTimeTask (m_scheduler, 0, bind (&ContentServer::serve_Action_Execute, this, forwardingHint, locatorPrefix, interest), boost::lexical_cast<string>(interest));
+  _LOG_DEBUG (">> content server serving ACTION, hint: " << forwardingHint << ", interest: " << interest);
+  m_scheduler->scheduleOneTimeTask (m_scheduler, 0, bind (&ContentServer::serve_Action_Execute, this, forwardingHint, interest), boost::lexical_cast<string>(interest));
   // need to unlock ccnx mutex... or at least don't lock it
 }
 
 void
-ContentServer::serve_File (Name forwardingHint, Name locatorPrefix, Name interest)
+ContentServer::serve_File (Name forwardingHint, Name interest)
 {
-  _LOG_DEBUG (">> content server serving FILE, hint: " << forwardingHint << ", locatorPrefix: " << locatorPrefix << ", interest: " << interest);
+  _LOG_DEBUG (">> content server serving FILE, hint: " << forwardingHint << ", interest: " << interest);
 
-  m_scheduler->scheduleOneTimeTask (m_scheduler, 0, bind (&ContentServer::serve_File_Execute, this, forwardingHint, locatorPrefix, interest), boost::lexical_cast<string>(interest));
+  m_scheduler->scheduleOneTimeTask (m_scheduler, 0, bind (&ContentServer::serve_File_Execute, this, forwardingHint, interest), boost::lexical_cast<string>(interest));
   // need to unlock ccnx mutex... or at least don't lock it
 }
 
 void
-ContentServer::serve_File_Execute (Name forwardingHint, Name locatorPrefix, Name interest)
+ContentServer::serve_File_Execute (Name forwardingHint, Name interest)
 {
   // forwardingHint: /<forwarding-hint>
-  // locatorPrefix:  /<forwarding-hint>/<appname>/file
-  // interest:       /<forwarding-hint>/<appname>/file/<hash>/<device_name>/<segment>
+  // interest:       /<forwarding-hint>/<device_name>/<appname>/file/<hash>/<segment>
 
-  Name pureInterest = interest.getPartialName (locatorPrefix.size ());
-  // pureInterest:   /<hash>/<device_name>/<segment>
+  Name name = interest.getPartialName (forwardingHint.size());
+  // name:           /<device_name>/<appname>/file/<hash>/<segment>
 
-  int64_t segment = pureInterest.getCompFromBackAsInt (0);
-  Name deviceName = pureInterest.getPartialName (1, pureInterest.size () - 2);
-  Hash hash (head(pureInterest.getComp (0)), pureInterest.getComp (0).size());
+  int64_t segment = name.getCompFromBackAsInt (0);
+  Name deviceName = name.getPartialName (0, name.size () - 4);
+  Hash hash (head(name.getCompFromBack (1)), name.getCompFromBack (1).size());
 
   _LOG_DEBUG (" server FILE for device: " << deviceName << ", file_hash: " << hash.shortHash () << " segment: " << segment);
 
@@ -218,17 +204,16 @@ ContentServer::serve_File_Execute (Name forwardingHint, Name locatorPrefix, Name
 }
 
 void
-ContentServer::serve_Action_Execute (Name forwardingHint, Name locatorPrefix, Name interest)
+ContentServer::serve_Action_Execute (Name forwardingHint, Name interest)
 {
   // forwardingHint: /<forwarding-hint>
-  // locatorPrefix:  /<forwarding-hint>/<appname>/<shared-folder>/action
-  // interest:       /<forwarding-hint>/<appname>/<shared-folder>/action/<device_name>/<action-seq>
+  // interest:       /<forwarding-hint>/<device_name>/<appname>/action/<shared-folder>/<action-seq>
 
-  Name pureInterest = interest.getPartialName (locatorPrefix.size ());
-  // pureInterest:  /<device_name>/<action-seq>
+  Name name = interest.getPartialName (forwardingHint.size());
+  // name for actions: /<device_name>/<appname>/action/<shared-folder>/<action-seq>
 
-  int64_t seqno = pureInterest.getCompFromBackAsInt (0);
-  Name deviceName = pureInterest.getPartialName (0, pureInterest.size () - 1);
+  int64_t seqno = name.getCompFromBackAsInt (0);
+  Name deviceName = name.getPartialName (0, name.size () - 4);
 
   _LOG_DEBUG (" server ACTION for device: " << deviceName << " and seqno: " << seqno);
 
