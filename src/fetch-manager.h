@@ -47,12 +47,13 @@ public:
   typedef boost::function<Ccnx::Name(const Ccnx::Name &)> Mapping;
   typedef boost::function<void(Ccnx::Name &deviceName, Ccnx::Name &baseName, uint64_t seq, Ccnx::PcoPtr pco)> SegmentCallback;
   typedef boost::function<void(Ccnx::Name &deviceName, Ccnx::Name &baseName)> FinishCallback;
-  FetchManager (Ccnx::CcnxWrapperPtr ccnx
-                , const Mapping &mapping
-                , uint32_t parallelFetches = 3
-                , const SegmentCallback &defaultSegmentCallback = SegmentCallback()
-                , const FinishCallback &defaultFinishCallback = FinishCallback()
-                , const FetchTaskDbPtr &taskDb = FetchTaskDbPtr()
+  FetchManager (Ccnx::CcnxWrapperPtr ccnx,
+                const Mapping &mapping,
+                const Ccnx::Name &broadcastForwardingHint,
+                uint32_t parallelFetches = 3,
+                const SegmentCallback &defaultSegmentCallback = SegmentCallback(),
+                const FinishCallback &defaultFinishCallback = FinishCallback(),
+                const FetchTaskDbPtr &taskDb = FetchTaskDbPtr()
                 );
   virtual ~FetchManager ();
 
@@ -108,6 +109,8 @@ private:
   SegmentCallback m_defaultSegmentCallback;
   FinishCallback m_defaultFinishCallback;
   FetchTaskDbPtr m_taskDb;
+
+  const Ccnx::Name m_broadcastHint;
 };
 
 Ccnx::CcnxWrapperPtr

@@ -145,7 +145,7 @@ BOOST_AUTO_TEST_CASE (TestServeAndFetch)
   server.registerPrefix(localPrefix);
   server.registerPrefix(broadcastPrefix);
 
-  FetchManager fm(ccnx_fetch, bind(simpleMap, _1));
+  FetchManager fm(ccnx_fetch, bind(simpleMap, _1), Name("/local/broadcast"));
   HashPtr hash = pub.get<0> ();
   Name baseName = Name ("/")(deviceName)(APPNAME)("file")(hash->GetHash(), hash->GetHashBytes());
 

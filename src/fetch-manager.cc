@@ -34,19 +34,19 @@ using namespace boost;
 using namespace std;
 using namespace Ccnx;
 
-static const Name BROADCAST_DOMAIN = Name ("/ndn/broadcast/chronoshare");
 //The disposer object function
 struct fetcher_disposer { void operator() (Fetcher *delete_this) { delete delete_this; } };
 
 static const string SCHEDULE_FETCHES_TAG = "ScheduleFetches";
 
-FetchManager::FetchManager (Ccnx::CcnxWrapperPtr ccnx
-                , const Mapping &mapping
-                , uint32_t parallelFetches // = 3
-                , const SegmentCallback &defaultSegmentCallback
-                , const FinishCallback &defaultFinishCallback
-                , const FetchTaskDbPtr &taskDb
-                )
+FetchManager::FetchManager (Ccnx::CcnxWrapperPtr ccnx,
+                            const Mapping &mapping,
+                            const Name &broadcastForwardingHint,
+                            uint32_t parallelFetches, // = 3
+                            const SegmentCallback &defaultSegmentCallback,
+                            const FinishCallback &defaultFinishCallback,
+                            const FetchTaskDbPtr &taskDb
+                            )
   : m_ccnx (ccnx)
   , m_mapping (mapping)
   , m_maxParallelFetches (parallelFetches)
@@ -56,6 +56,7 @@ FetchManager::FetchManager (Ccnx::CcnxWrapperPtr ccnx
   , m_defaultSegmentCallback(defaultSegmentCallback)
   , m_defaultFinishCallback(defaultFinishCallback)
   , m_taskDb(taskDb)
+  , m_broadcastHint (broadcastForwardingHint)
 {
   m_scheduler->start ();
   m_executor->start();
@@ -194,7 +195,7 @@ FetchManager::DidNoDataTimeout (Fetcher &fetcher)
     // no need to do anything with the m_fetchList
   }
 
-  if (fetcher.GetForwardingHint () == BROADCAST_DOMAIN)
+  if (fetcher.GetForwardingHint () == m_broadcastHint)
     {
       // try again directly (hopefully with different forwarding hint
 
@@ -205,7 +206,7 @@ FetchManager::DidNoDataTimeout (Fetcher &fetcher)
     }
   else
     {
-      fetcher.SetForwardingHint (BROADCAST_DOMAIN);
+      fetcher.SetForwardingHint (m_broadcastHint);
     }
 
   double delay = fetcher.GetRetryPause ();

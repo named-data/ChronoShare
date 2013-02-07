@@ -73,11 +73,15 @@ Dispatcher::Dispatcher(const std::string &localUserName
                          bind(&Dispatcher::Did_SyncLog_StateChange, this, _1), ccnx, DEFAULT_SYNC_INTEREST_INTERVAL);
 
   FetchTaskDbPtr actionTaskDb = make_shared<FetchTaskDb>(m_rootDir, "action");
-  m_actionFetcher = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3,
+  m_actionFetcher = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1),
+                                               Name(BROADCAST_DOMAIN), // no appname suffix now
+                                               3,
                                                bind (&Dispatcher::Did_FetchManager_ActionFetch, this, _1, _2, _3, _4), FetchManager::FinishCallback(), actionTaskDb);
 
   FetchTaskDbPtr fileTaskDb = make_shared<FetchTaskDb>(m_rootDir, "file");
-  m_fileFetcher  = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1), 3,
+  m_fileFetcher  = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1),
+                                              Name(BROADCAST_DOMAIN), // no appname suffix now
+                                              3,
                                               bind (&Dispatcher::Did_FetchManager_FileSegmentFetch, this, _1, _2, _3, _4),
                                               bind (&Dispatcher::Did_FetchManager_FileFetchComplete, this, _1, _2),
                                               fileTaskDb);
