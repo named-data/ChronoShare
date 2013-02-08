@@ -34,22 +34,26 @@ ParsedContentObject::init(const unsigned char *data, size_t len)
   {
     boost::throw_exception(MisformedContentObjectException());
   }
+
 }
 
-ParsedContentObject::ParsedContentObject(const unsigned char *data, size_t len)
+ParsedContentObject::ParsedContentObject(const unsigned char *data, size_t len, bool verified)
             : m_comps(NULL)
+            , m_verified(verified)
 {
   init(data, len);
 }
 
-ParsedContentObject::ParsedContentObject(const Bytes &bytes)
+ParsedContentObject::ParsedContentObject(const Bytes &bytes, bool verified)
             : m_comps(NULL)
+            , m_verified(verified)
 {
   init(head(bytes), bytes.size());
 }
 
-ParsedContentObject::ParsedContentObject(const ParsedContentObject &other)
+ParsedContentObject::ParsedContentObject(const ParsedContentObject &other, bool verified)
             : m_comps(NULL)
+            , m_verified(verified)
 {
   init(head(other.m_bytes), other.m_bytes.size());
 }

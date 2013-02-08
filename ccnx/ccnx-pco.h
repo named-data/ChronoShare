@@ -33,10 +33,10 @@ struct MisformedContentObjectException : virtual boost::exception, virtual std::
 class ParsedContentObject
 {
 public:
-  ParsedContentObject(const unsigned char *data, size_t len);
-  ParsedContentObject(const unsigned char *data, const ccn_parsed_ContentObject &pco);
-  ParsedContentObject(const Bytes &bytes);
-  ParsedContentObject(const ParsedContentObject &other);
+  ParsedContentObject(const unsigned char *data, size_t len, bool verified = false);
+  ParsedContentObject(const unsigned char *data, const ccn_parsed_ContentObject &pco, bool verified = false);
+  ParsedContentObject(const Bytes &bytes, bool verified = false);
+  ParsedContentObject(const ParsedContentObject &other, bool verified = false);
   virtual ~ParsedContentObject();
 
   Bytes
@@ -51,6 +51,18 @@ public:
   inline const Bytes &
   buf () const;
 
+  bool
+  verified() const { return m_verified; }
+
+  void
+  setVerified(bool verified) { m_verified = verified; }
+
+  const unsigned char *
+  msg() const { return head(m_bytes); }
+
+  const ccn_parsed_ContentObject *
+  pco() const { return &m_pco; }
+
 private:
   void
   init(const unsigned char *data, size_t len);
@@ -59,6 +71,7 @@ protected:
   ccn_parsed_ContentObject m_pco;
   ccn_indexbuf *m_comps;
   Bytes m_bytes;
+  bool m_verified;
 };
 
 const Bytes &

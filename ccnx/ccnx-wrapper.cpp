@@ -475,6 +475,8 @@ incomingData(ccn_closure *selfp,
   tuple<Closure *, ExecutorPtr, Selectors> *realData = reinterpret_cast< tuple<Closure*, ExecutorPtr, Selectors>* > (selfp->data);
   tie (cp, executor, selectors) = *realData;
 
+  bool verified = false;
+
   switch (kind)
     {
     case CCN_UPCALL_FINAL:  // effecitve in unit tests
@@ -486,6 +488,7 @@ incomingData(ccn_closure *selfp,
       return CCN_UPCALL_RESULT_OK;
 
     case CCN_UPCALL_CONTENT:
+      verified = true;
       _LOG_TRACE (">> incomingData content upcall: " << Name (info->content_ccnb, info->content_comps));
       break;
 
@@ -512,7 +515,7 @@ incomingData(ccn_closure *selfp,
       return CCN_UPCALL_RESULT_OK;
     }
 
-  PcoPtr pco = make_shared<ParsedContentObject> (info->content_ccnb, info->pco->offset[CCN_PCO_E]);
+  PcoPtr pco = make_shared<ParsedContentObject> (info->content_ccnb, info->pco->offset[CCN_PCO_E], verified);
 
   // this will be run in executor
   executor->execute (bind (&Closure::runDataCallback, cp, pco->name (), pco));
@@ -692,6 +695,14 @@ CcnxWrapper::getLocalPrefix ()
 
   boost::algorithm::trim(retval);
   return Name(retval);
+}
+
+bool
+CcnxWrapper::verifyPco(PcoPtr &pco)
+{
+  bool verified = ccn_verify_content(m_handle, pco->msg(), (ccn_parsed_ContentObject *)pco->pco());
+  pco->setVerified(verified);
+  return verified;
 }
 
 }

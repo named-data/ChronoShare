@@ -86,6 +86,9 @@ public:
   int
   putToCcnd (const Bytes &contentObject);
 
+  bool
+  verifyPco(PcoPtr &pco);
+
 private:
   CcnxWrapper(const CcnxWrapper &other) {}
 
