@@ -117,7 +117,6 @@ protected:
   bool m_connected;
   std::map<Name, InterestCallback> m_registeredInterests;
   ExecutorPtr m_executor;
-  ccn_keystore *m_keystore;
 };
 
 typedef boost::shared_ptr<CcnxWrapper> CcnxWrapperPtr;

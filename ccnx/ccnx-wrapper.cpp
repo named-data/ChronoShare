@@ -43,58 +43,43 @@ using namespace boost;
 
 namespace Ccnx {
 
+// hack to enable fake signatures
+// min length for signature field is 16, as defined in ccn_buf_decoder.c:728
+const int DEFAULT_SIGNATURE_SIZE = 16;
+
+// Although ccn_buf_decoder.c:745 defines minimum length 16, something else is checking and only 32-byte fake value is accepted by ccnd
+const int PUBLISHER_KEY_SIZE = 32;
+
 static int
-ccn_encode_Signature(struct ccn_charbuf *buf,
-                     const char *digest_algorithm,
-                     const void *witness,
-                     size_t witness_size,
-                     const struct ccn_signature *signature,
-                     size_t signature_size)
+ccn_encode_garbage_Signature(struct ccn_charbuf *buf)
 {
     int res = 0;
 
-    if (signature == NULL)
-        return(-1);
-
     res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Signature, CCN_DTAG);
 
-    if (digest_algorithm != NULL) {
-        res |= ccn_charbuf_append_tt(buf, CCN_DTAG_DigestAlgorithm, CCN_DTAG);
-        res |= ccn_charbuf_append_tt(buf, strlen(digest_algorithm), CCN_UDATA);
-        res |= ccn_charbuf_append_string(buf, digest_algorithm);
-        res |= ccn_charbuf_append_closer(buf);
-    }
+    // Let's cheat more.  Default signing algorithm in ccnd is SHA256, so we just need add 32 bytes of garbage
+    static char garbage [DEFAULT_SIGNATURE_SIZE];
 
-    if (witness != NULL) {
-        res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Witness, CCN_DTAG);
-        res |= ccn_charbuf_append_tt(buf, witness_size, CCN_BLOB);
-        res |= ccn_charbuf_append(buf, witness, witness_size);
-        res |= ccn_charbuf_append_closer(buf);
-    }
+    // digest and witness fields are optional, so use default ones
 
     res |= ccn_charbuf_append_tt(buf, CCN_DTAG_SignatureBits, CCN_DTAG);
-    res |= ccn_charbuf_append_tt(buf, signature_size, CCN_BLOB);
-    res |= ccn_charbuf_append(buf, signature, signature_size);
+    res |= ccn_charbuf_append_tt(buf, DEFAULT_SIGNATURE_SIZE, CCN_BLOB);
+    res |= ccn_charbuf_append(buf, garbage, DEFAULT_SIGNATURE_SIZE);
     res |= ccn_charbuf_append_closer(buf);
-    
+
     res |= ccn_charbuf_append_closer(buf);
 
     return(res == 0 ? 0 : -1);
 }
 
 static int
-ccn_pack_ContentObject(struct ccn_charbuf *buf,
-                         const struct ccn_charbuf *Name,
-                         const struct ccn_charbuf *SignedInfo,
-                         const void *data,
-                         size_t size,
-                         const char *digest_algorithm,
-                         const struct ccn_pkey *private_key
-                         )
+ccn_pack_unsigned_ContentObject(struct ccn_charbuf *buf,
+                                const struct ccn_charbuf *Name,
+                                const struct ccn_charbuf *SignedInfo,
+                                const void *data,
+                                size_t size)
 {
     int res = 0;
-    struct ccn_sigc *sig_ctx;
-    struct ccn_signature *signature;
     struct ccn_charbuf *content_header;
     size_t closer_start;
 
@@ -106,19 +91,16 @@ ccn_pack_ContentObject(struct ccn_charbuf *buf,
     res |= ccn_charbuf_append_closer(content_header);
     if (res < 0)
         return(-1);
-    sig_ctx = ccn_sigc_create();
-    size_t sig_size = ccn_sigc_signature_max_size(sig_ctx, private_key);
-    signature = (ccn_signature *)calloc(1, sig_size);
-    ccn_sigc_destroy(&sig_ctx);
+
     res |= ccn_charbuf_append_tt(buf, CCN_DTAG_ContentObject, CCN_DTAG);
 
-    res |= ccn_encode_Signature(buf, digest_algorithm,
-                                NULL, 0, signature, sig_size);
+    res |= ccn_encode_garbage_Signature(buf);
+
     res |= ccn_charbuf_append_charbuf(buf, Name);
     res |= ccn_charbuf_append_charbuf(buf, SignedInfo);
     res |= ccnb_append_tagged_blob(buf, CCN_DTAG_Content, data, size);
     res |= ccn_charbuf_append_closer(buf);
-    free(signature);
+
     ccn_charbuf_destroy(&content_header);
     return(res == 0 ? 0 : -1);
 }
@@ -128,7 +110,6 @@ CcnxWrapper::CcnxWrapper()
   , m_running (true)
   , m_connected (false)
   , m_executor (new Executor(1))
-  , m_keystore(NULL)
 {
   start ();
 }
@@ -162,10 +143,6 @@ CcnxWrapper::connectCcnd()
 CcnxWrapper::~CcnxWrapper()
 {
   shutdown ();
-  if (m_keystore != NULL)
-  {
-    ccn_keystore_destroy(&m_keystore);
-  }
 }
 
 void
@@ -379,25 +356,17 @@ CcnxWrapper::publishUnsignedData(const Name &name, const unsigned char *buf, siz
   ccn_charbuf *content = ccn_charbuf_create();
   ccn_charbuf *signed_info = ccn_charbuf_create();
 
-  if (m_keystore == NULL)
-  {
-    m_keystore = ccn_keystore_create ();
-    string keystoreFile = string(getenv("HOME")) + string("/.ccnx/.ccnx_keystore");
-    if (ccn_keystore_init (m_keystore, (char *)keystoreFile.c_str(), (char*)"Th1s1sn0t8g00dp8ssw0rd.") < 0)
-      BOOST_THROW_EXCEPTION(CcnxOperationException() << errmsg_info_str(keystoreFile.c_str()));
-  }
+  static char fakeKey[PUBLISHER_KEY_SIZE];
 
   int res = ccn_signed_info_create(signed_info,
-                         ccn_keystore_public_key_digest(m_keystore),
-                         ccn_keystore_public_key_digest_length(m_keystore),
-                         NULL,
-                         CCN_CONTENT_DATA,
-                         freshness,
-                         NULL,
-                         NULL
-                         );
-
-  ccn_pack_ContentObject(content, pname, signed_info, buf, len, NULL,  ccn_keystore_private_key (m_keystore));
+                                   fakeKey, PUBLISHER_KEY_SIZE,
+                                   NULL,
+                                   CCN_CONTENT_DATA,
+                                   freshness,
+                                   NULL,
+                                   NULL  // ccnd is happy with absent key locator and key itself... ha ha
+                                   );
+  ccn_pack_unsigned_ContentObject(content, pname, signed_info, buf, len);
 
   Bytes bytes;
   readRaw(bytes, content->buf, content->length);
