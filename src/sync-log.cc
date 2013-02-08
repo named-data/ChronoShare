@@ -367,11 +367,18 @@ SyncLog::UpdateLocator(const Name &deviceName, const Name &locator)
 }
 
 void
-SyncLog::UpdateLocalLocator (const Ccnx::Name &locator)
+SyncLog::UpdateLocalLocator (const Ccnx::Name &forwardingHint)
 {
-  return UpdateLocator (m_localName, locator);
+  if (m_localName.size () >= forwardingHint.size () &&
+      m_localName.getPartialName (0, forwardingHint.size ()) == forwardingHint)
+    {
+      return UpdateLocator (m_localName, Name ("/")); // "directly" accesible
+    }
+  else
+    {
+      return UpdateLocator (m_localName, forwardingHint);
+    }
 }
-
 
 SyncStateMsgPtr
 SyncLog::FindStateDifferences (const std::string &oldHash, const std::string &newHash, bool includeOldSeq)

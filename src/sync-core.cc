@@ -74,12 +74,6 @@ SyncCore::~SyncCore()
 }
 
 void
-SyncCore::updateLocalPrefix (const Name &localPrefix)
-{
-  m_log->UpdateLocalLocator (localPrefix);
-}
-
-void
 SyncCore::updateLocalState(sqlite3_int64 seqno)
 {
   m_log->UpdateLocalSeqNo (seqno);

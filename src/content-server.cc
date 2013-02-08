@@ -38,7 +38,7 @@ static const int DB_CACHE_LIFETIME = 60;
 
 ContentServer::ContentServer(CcnxWrapperPtr ccnx, ActionLogPtr actionLog,
                              const boost::filesystem::path &rootDir,
-                             const Ccnx::Name &deviceName, const std::string &sharedFolderName,
+                             const Ccnx::Name &userName, const std::string &sharedFolderName,
                              const std::string &appName,
                              int freshness)
   : m_ccnx(ccnx)
@@ -46,7 +46,7 @@ ContentServer::ContentServer(CcnxWrapperPtr ccnx, ActionLogPtr actionLog,
   , m_dbFolder(rootDir / ".chronoshare")
   , m_freshness(freshness)
   , m_scheduler (new Scheduler())
-  , m_deviceName (deviceName)
+  , m_userName (userName)
   , m_sharedFolderName (sharedFolderName)
   , m_appName (appName)
 {
@@ -60,9 +60,9 @@ ContentServer::~ContentServer()
   m_scheduler->shutdown ();
 
   ScopedLock lock (m_mutex);
-  for (PrefixIt it = m_prefixes.begin(); it != m_prefixes.end(); ++it)
+  for (PrefixIt forwardingHint = m_prefixes.begin(); forwardingHint != m_prefixes.end(); ++forwardingHint)
   {
-    m_ccnx->clearInterestFilter (*it);
+    m_ccnx->clearInterestFilter (*forwardingHint);
   }
 
   m_prefixes.clear ();
@@ -75,6 +75,7 @@ ContentServer::registerPrefix(const Name &forwardingHint)
   // Format for actions: /<forwarding-hint>/<device_name>/<appname>/action/<shared-folder>/<action-seq>
 
   _LOG_DEBUG (">> content server: register " << forwardingHint);
+
   m_ccnx->setInterestFilter (forwardingHint, bind(&ContentServer::filterAndServe, this, forwardingHint, _1));
 
   ScopedLock lock (m_mutex);
@@ -91,13 +92,13 @@ ContentServer::deregisterPrefix (const Name &forwardingHint)
   m_prefixes.erase (forwardingHint);
 }
 
-void
-ContentServer::filterAndServe (Name forwardingHint, const Name &interest)
-{
-  // Format for files:   /<forwarding-hint>/<device_name>/<appname>/file/<hash>/<segment>
-  // Format for actions: /<forwarding-hint>/<device_name>/<appname>/action/<shared-folder>/<action-seq>
 
-  Name name = interest.getPartialName (forwardingHint.size());
+void
+ContentServer::filterAndServeImpl (const Name &forwardingHint, const Name &name, const Name &interest)
+{
+  // interest for files:   /<forwarding-hint>/<device_name>/<appname>/file/<hash>/<segment>
+  // interest for actions: /<forwarding-hint>/<device_name>/<appname>/action/<shared-folder>/<action-seq>
+
   // name for files:   /<device_name>/<appname>/file/<hash>/<segment>
   // name for actions: /<device_name>/<appname>/action/<shared-folder>/<action-seq>
 
@@ -106,39 +107,50 @@ ContentServer::filterAndServe (Name forwardingHint, const Name &interest)
     string type = name.getCompFromBackAsString (2);
     if (type == "file")
       {
-        serve_File (forwardingHint, interest);
+        serve_File (forwardingHint, name, interest);
       }
     else if (type == "action")
       {
-        serve_Action (forwardingHint, interest);
+        serve_Action (forwardingHint, name, interest);
       }
   }
 }
 
 void
-ContentServer::serve_Action (Name forwardingHint, Name interest)
+ContentServer::filterAndServe (Name forwardingHint, const Name &interest)
+{
+  if (forwardingHint.size () > 0 &&
+      m_userName.size () >= forwardingHint.size () &&
+      m_userName.getPartialName (0, forwardingHint.size ()) == forwardingHint)
+    {
+      filterAndServeImpl (Name ("/"), interest, interest); // try without forwarding hints
+    }
+
+  filterAndServeImpl (forwardingHint, interest.getPartialName (forwardingHint.size()), interest); // always try with hint... :( have to
+}
+
+void
+ContentServer::serve_Action (const Name &forwardingHint, const Name &name, const Name &interest)
 {
   _LOG_DEBUG (">> content server serving ACTION, hint: " << forwardingHint << ", interest: " << interest);
-  m_scheduler->scheduleOneTimeTask (m_scheduler, 0, bind (&ContentServer::serve_Action_Execute, this, forwardingHint, interest), boost::lexical_cast<string>(interest));
+  m_scheduler->scheduleOneTimeTask (m_scheduler, 0, bind (&ContentServer::serve_Action_Execute, this, forwardingHint, name, interest), boost::lexical_cast<string>(name));
   // need to unlock ccnx mutex... or at least don't lock it
 }
 
 void
-ContentServer::serve_File (Name forwardingHint, Name interest)
+ContentServer::serve_File (const Name &forwardingHint, const Name &name, const Name &interest)
 {
   _LOG_DEBUG (">> content server serving FILE, hint: " << forwardingHint << ", interest: " << interest);
 
-  m_scheduler->scheduleOneTimeTask (m_scheduler, 0, bind (&ContentServer::serve_File_Execute, this, forwardingHint, interest), boost::lexical_cast<string>(interest));
+  m_scheduler->scheduleOneTimeTask (m_scheduler, 0, bind (&ContentServer::serve_File_Execute, this, forwardingHint, name, interest), boost::lexical_cast<string>(name));
   // need to unlock ccnx mutex... or at least don't lock it
 }
 
 void
-ContentServer::serve_File_Execute (Name forwardingHint, Name interest)
+ContentServer::serve_File_Execute (const Name &forwardingHint, const Name &name, const Name &interest)
 {
   // forwardingHint: /<forwarding-hint>
   // interest:       /<forwarding-hint>/<device_name>/<appname>/file/<hash>/<segment>
-
-  Name name = interest.getPartialName (forwardingHint.size());
   // name:           /<device_name>/<appname>/file/<hash>/<segment>
 
   int64_t segment = name.getCompFromBackAsInt (0);
@@ -204,12 +216,10 @@ ContentServer::serve_File_Execute (Name forwardingHint, Name interest)
 }
 
 void
-ContentServer::serve_Action_Execute (Name forwardingHint, Name interest)
+ContentServer::serve_Action_Execute (const Name &forwardingHint, const Name &name, const Name &interest)
 {
   // forwardingHint: /<forwarding-hint>
   // interest:       /<forwarding-hint>/<device_name>/<appname>/action/<shared-folder>/<action-seq>
-
-  Name name = interest.getPartialName (forwardingHint.size());
   // name for actions: /<device_name>/<appname>/action/<shared-folder>/<action-seq>
 
   int64_t seqno = name.getCompFromBackAsInt (0);

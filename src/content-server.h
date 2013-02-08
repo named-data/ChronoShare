@@ -35,7 +35,7 @@ class ContentServer
 {
 public:
   ContentServer(Ccnx::CcnxWrapperPtr ccnx, ActionLogPtr actionLog, const boost::filesystem::path &rootDir,
-                const Ccnx::Name &deviceName, const std::string &sharedFolderName, const std::string &appName,
+                const Ccnx::Name &userName, const std::string &sharedFolderName, const std::string &appName,
                 int freshness = -1);
   ~ContentServer();
 
@@ -51,16 +51,19 @@ private:
   filterAndServe (Ccnx::Name forwardingHint, const Ccnx::Name &interest);
 
   void
-  serve_Action (Ccnx::Name forwardingHint, Ccnx::Name interest);
+  filterAndServeImpl (const Ccnx::Name &forwardingHint, const Ccnx::Name &name, const Ccnx::Name &interest);
 
   void
-  serve_File (Ccnx::Name forwardingHint, Ccnx::Name interest);
+  serve_Action (const Ccnx::Name &forwardingHint, const Ccnx::Name &name, const Ccnx::Name &interest);
 
   void
-  serve_Action_Execute(Ccnx::Name forwardingHint, Ccnx::Name interest);
+  serve_File (const Ccnx::Name &forwardingHint, const Ccnx::Name &name, const Ccnx::Name &interest);
 
   void
-  serve_File_Execute(Ccnx::Name forwardingHint, Ccnx::Name interest);
+  serve_Action_Execute(const Ccnx::Name &forwardingHint, const Ccnx::Name &name, const Ccnx::Name &interest);
+
+  void
+  serve_File_Execute(const Ccnx::Name &forwardingHint, const Ccnx::Name &name, const Ccnx::Name &interest);
 
   void
   flushStaleDbCache();
@@ -82,7 +85,7 @@ private:
   DbCache m_dbCache;
   Mutex m_dbCacheMutex;
 
-  Ccnx::Name  m_deviceName;
+  Ccnx::Name  m_userName;
   std::string m_sharedFolderName;
   std::string m_appName;
 };

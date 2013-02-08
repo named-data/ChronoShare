@@ -51,9 +51,6 @@ public:
   ~SyncCore();
 
   void
-  updateLocalPrefix (const Ccnx::Name &localPrefix);
-
-  void
   localStateChanged ();
 
   /**
