@@ -36,7 +36,7 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
   , m_dispatcher(0)
 {
 
-  setWindowTitle("Preferences");
+  setWindowTitle("Settings");
 
   labelUsername = new QLabel("Username");
   labelSharedFolder = new QLabel("Shared Folder Name");
