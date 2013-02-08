@@ -71,6 +71,12 @@ public:
   int
   publishData (const Name &name, const Bytes &content, int freshness = DEFAULT_FRESHNESS/* max value for ccnx*/);
 
+  int
+  publishUnsignedData(const Name &name, const Bytes &content, int freshness = DEFAULT_FRESHNESS);
+
+  int
+  publishUnsignedData(const Name &name, const unsigned char *buf, size_t len, int freshness = DEFAULT_FRESHNESS);
+
   static Name
   getLocalPrefix ();
 
@@ -108,6 +114,7 @@ protected:
   bool m_connected;
   std::map<Name, InterestCallback> m_registeredInterests;
   ExecutorPtr m_executor;
+  ccn_keystore *m_keystore;
 };
 
 typedef boost::shared_ptr<CcnxWrapper> CcnxWrapperPtr;

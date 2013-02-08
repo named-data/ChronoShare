@@ -43,11 +43,92 @@ using namespace boost;
 
 namespace Ccnx {
 
+static int
+ccn_encode_Signature(struct ccn_charbuf *buf,
+                     const char *digest_algorithm,
+                     const void *witness,
+                     size_t witness_size,
+                     const struct ccn_signature *signature,
+                     size_t signature_size)
+{
+    int res = 0;
+
+    if (signature == NULL)
+        return(-1);
+
+    res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Signature, CCN_DTAG);
+
+    if (digest_algorithm != NULL) {
+        res |= ccn_charbuf_append_tt(buf, CCN_DTAG_DigestAlgorithm, CCN_DTAG);
+        res |= ccn_charbuf_append_tt(buf, strlen(digest_algorithm), CCN_UDATA);
+        res |= ccn_charbuf_append_string(buf, digest_algorithm);
+        res |= ccn_charbuf_append_closer(buf);
+    }
+
+    if (witness != NULL) {
+        res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Witness, CCN_DTAG);
+        res |= ccn_charbuf_append_tt(buf, witness_size, CCN_BLOB);
+        res |= ccn_charbuf_append(buf, witness, witness_size);
+        res |= ccn_charbuf_append_closer(buf);
+    }
+
+    res |= ccn_charbuf_append_tt(buf, CCN_DTAG_SignatureBits, CCN_DTAG);
+    res |= ccn_charbuf_append_tt(buf, signature_size, CCN_BLOB);
+    res |= ccn_charbuf_append(buf, signature, signature_size);
+    res |= ccn_charbuf_append_closer(buf);
+    
+    res |= ccn_charbuf_append_closer(buf);
+
+    return(res == 0 ? 0 : -1);
+}
+
+static int
+ccn_pack_ContentObject(struct ccn_charbuf *buf,
+                         const struct ccn_charbuf *Name,
+                         const struct ccn_charbuf *SignedInfo,
+                         const void *data,
+                         size_t size,
+                         const char *digest_algorithm,
+                         const struct ccn_pkey *private_key
+                         )
+{
+    int res = 0;
+    struct ccn_sigc *sig_ctx;
+    struct ccn_signature *signature;
+    struct ccn_charbuf *content_header;
+    size_t closer_start;
+
+    content_header = ccn_charbuf_create();
+    res |= ccn_charbuf_append_tt(content_header, CCN_DTAG_Content, CCN_DTAG);
+    if (size != 0)
+        res |= ccn_charbuf_append_tt(content_header, size, CCN_BLOB);
+    closer_start = content_header->length;
+    res |= ccn_charbuf_append_closer(content_header);
+    if (res < 0)
+        return(-1);
+    sig_ctx = ccn_sigc_create();
+    size_t sig_size = ccn_sigc_signature_max_size(sig_ctx, private_key);
+    signature = (ccn_signature *)calloc(1, sig_size);
+    ccn_sigc_destroy(&sig_ctx);
+    res |= ccn_charbuf_append_tt(buf, CCN_DTAG_ContentObject, CCN_DTAG);
+
+    res |= ccn_encode_Signature(buf, digest_algorithm,
+                                NULL, 0, signature, sig_size);
+    res |= ccn_charbuf_append_charbuf(buf, Name);
+    res |= ccn_charbuf_append_charbuf(buf, SignedInfo);
+    res |= ccnb_append_tagged_blob(buf, CCN_DTAG_Content, data, size);
+    res |= ccn_charbuf_append_closer(buf);
+    free(signature);
+    ccn_charbuf_destroy(&content_header);
+    return(res == 0 ? 0 : -1);
+}
+
 CcnxWrapper::CcnxWrapper()
   : m_handle (0)
   , m_running (true)
   , m_connected (false)
   , m_executor (new Executor(1))
+  , m_keystore(NULL)
 {
   start ();
 }
@@ -81,6 +162,10 @@ CcnxWrapper::connectCcnd()
 CcnxWrapper::~CcnxWrapper()
 {
   shutdown ();
+  if (m_keystore != NULL)
+  {
+    ccn_keystore_destroy(&m_keystore);
+  }
 }
 
 void
@@ -271,6 +356,58 @@ CcnxWrapper::publishData (const Name &name, const Bytes &content, int freshness)
   return publishData(name, head(content), content.size(), freshness);
 }
 
+int
+CcnxWrapper::publishUnsignedData(const Name &name, const Bytes &content, int freshness)
+{
+  return publishUnsignedData(name, head(content), content.size(), freshness);
+}
+
+int
+CcnxWrapper::publishUnsignedData(const Name &name, const unsigned char *buf, size_t len, int freshness)
+{
+  {
+    UniqueRecLock lock(m_mutex);
+    if (!m_running || !m_connected)
+      {
+        _LOG_TRACE ("<< not running or connected");
+        return -1;
+      }
+  }
+
+  CcnxCharbufPtr ptr = name.toCcnxCharbuf();
+  ccn_charbuf *pname = ptr->getBuf();
+  ccn_charbuf *content = ccn_charbuf_create();
+  ccn_charbuf *signed_info = ccn_charbuf_create();
+
+  if (m_keystore == NULL)
+  {
+    m_keystore = ccn_keystore_create ();
+    string keystoreFile = string(getenv("HOME")) + string("/.ccnx/.ccnx_keystore");
+    if (ccn_keystore_init (m_keystore, (char *)keystoreFile.c_str(), (char*)"Th1s1sn0t8g00dp8ssw0rd.") < 0)
+      BOOST_THROW_EXCEPTION(CcnxOperationException() << errmsg_info_str(keystoreFile.c_str()));
+  }
+
+  int res = ccn_signed_info_create(signed_info,
+                         ccn_keystore_public_key_digest(m_keystore),
+                         ccn_keystore_public_key_digest_length(m_keystore),
+                         NULL,
+                         CCN_CONTENT_DATA,
+                         freshness,
+                         NULL,
+                         NULL
+                         );
+
+  ccn_pack_ContentObject(content, pname, signed_info, buf, len, NULL,  ccn_keystore_private_key (m_keystore));
+
+  Bytes bytes;
+  readRaw(bytes, content->buf, content->length);
+
+  ccn_charbuf_destroy (&content);
+  ccn_charbuf_destroy (&signed_info);
+
+  return putToCcnd (bytes);
+}
+
 
 static void
 deleterInInterestTuple (tuple<CcnxWrapper::InterestCallback *, ExecutorPtr> *tuple)
@@ -352,6 +489,10 @@ incomingData(ccn_closure *selfp,
       _LOG_TRACE (">> incomingData content upcall: " << Name (info->content_ccnb, info->content_comps));
       break;
 
+    case CCN_UPCALL_CONTENT_UNVERIFIED:
+      _LOG_TRACE (">> incomingData content unverified upcall: " << Name (info->content_ccnb, info->content_comps));
+      break;
+
     case CCN_UPCALL_INTEREST_TIMED_OUT: {
       if (cp != NULL)
       {
@@ -367,6 +508,7 @@ incomingData(ccn_closure *selfp,
     }
 
     default:
+      _LOG_TRACE(">> unknown upcall type");
       return CCN_UPCALL_RESULT_OK;
     }
 
