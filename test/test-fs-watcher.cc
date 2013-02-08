@@ -13,7 +13,7 @@ using namespace std;
 using namespace boost;
 namespace fs = boost::filesystem;
 
-BOOST_AUTO_TEST_SUITE(FsWatcherTests)
+BOOST_AUTO_TEST_SUITE(TestFsWatcher)
 
 void
 onChange(set<string> &files, const fs::path &file)
@@ -173,7 +173,35 @@ BOOST_AUTO_TEST_CASE (TestFsWatcher)
     BOOST_CHECK(files.find(filename) != files.end());
   }
 
+  create_file(dir / "add-removal-check.txt", "add-removal-check");
+  usleep(1200000);
+  BOOST_CHECK (files.find("add-removal-check.txt") != files.end());
 
+  fs::remove (dir / "add-removal-check.txt");
+  usleep(1200000);
+  BOOST_CHECK (files.find("add-removal-check.txt") == files.end());
+
+  create_file(dir / "add-removal-check.txt", "add-removal-check");
+  usleep(1200000);
+  BOOST_CHECK (files.find("add-removal-check.txt") != files.end());
+
+  fs::remove (dir / "add-removal-check.txt");
+  usleep(1200000);
+  BOOST_CHECK (files.find("add-removal-check.txt") == files.end());
+
+  create_file(dir / "add-removal-check.txt", "add-removal-check");
+  usleep(1200000);
+  BOOST_CHECK (files.find("add-removal-check.txt") != files.end());
+
+  fs::remove (dir / "add-removal-check.txt");
+  usleep(1200000);
+  BOOST_CHECK (files.find("add-removal-check.txt") == files.end());
+
+  // cleanup
+  if (fs::exists(dir))
+  {
+    fs::remove_all(dir);
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
