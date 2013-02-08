@@ -55,6 +55,7 @@ void publish2(const Name &name)
 
 void dataCallback(const Name &name, Ccnx::PcoPtr pco)
 {
+  cout << " in data callback" << endl;
   BytesPtr content = pco->contentPtr ();
   string msg(reinterpret_cast<const char *> (head (*content)), content->size());
   g_dataCallback_counter ++;
@@ -67,11 +68,36 @@ timeout(const Name &name, const Closure &closure, Selectors selectors)
   g_timeout_counter ++;
 }
 
+void
+setup()
+{
+  if (!c1)
+  {
+    c1 = make_shared<CcnxWrapper> ();
+  }
+  if (!c2)
+  {
+    c2 = make_shared<CcnxWrapper> ();
+  }
+}
+
+void
+teardown()
+{
+  if (c1)
+  {
+    c1.reset();
+  }
+  if (c2)
+  {
+    c2.reset();
+  }
+}
+
+
 BOOST_AUTO_TEST_CASE (BlaCcnxWrapperTest)
 {
-  c1 = make_shared<CcnxWrapper> ();
-  c2 = make_shared<CcnxWrapper> ();
-
+  setup();
   Name prefix1("/c1");
   Name prefix2("/c2");
 
@@ -89,11 +115,14 @@ BOOST_AUTO_TEST_CASE (BlaCcnxWrapperTest)
   // reset
   g_dataCallback_counter = 0;
   g_timeout_counter = 0;
+
+  teardown();
 }
 
 BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)
 {
 
+  setup();
   Closure closure (bind(dataCallback, _1, _2), bind(timeout, _1, _2, _3));
 
   Selectors selectors;
@@ -120,6 +149,7 @@ BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)
   g_dataCallback_counter = 0;
   g_timeout_counter = 0;
 
+  teardown();
 
 }
 
@@ -132,6 +162,7 @@ reexpress(const Name &name, const Closure &closure, Selectors selectors)
 
 BOOST_AUTO_TEST_CASE (TestTimeout)
 {
+  setup();
   g_dataCallback_counter = 0;
   g_timeout_counter = 0;
   Closure closure (bind(dataCallback, _1, _2), bind(reexpress, _1, _2, _3));
@@ -146,37 +177,50 @@ BOOST_AUTO_TEST_CASE (TestTimeout)
   usleep(1000);
   BOOST_CHECK_EQUAL(g_dataCallback_counter, 1);
   BOOST_CHECK_EQUAL(g_timeout_counter, 3);
+  teardown();
 }
 
-BOOST_AUTO_TEST_CASE(Cleanup)
+BOOST_AUTO_TEST_CASE (TestUnsigned)
 {
-  c1.reset ();
-  c2.reset ();
+  setup();
+  string n1 = "/xxxxxx/unsigned/01";
+  Closure closure (bind(dataCallback, _1, _2), bind(timeout, _1, _2, _3));
+
+  g_dataCallback_counter = 0;
+  c1->sendInterest(Name(n1), closure);
+  usleep(1000);
+  c2->publishUnsignedData(Name(n1), (const unsigned char *)n1.c_str(), n1.size(), 1);
+  usleep(1000);
+  BOOST_CHECK_EQUAL(g_dataCallback_counter, 1);
+  teardown();
 }
-// BOOST_AUTO_TEST_CASE (CcnxWrapperSigningTest)
-// {
-//   Bytes data;
-//   data.resize(1024);
-//   for (int i = 0; i < 1024; i++)
-//   {
-//     data[i] = 'm';
-//   }
 
-//   Name name("/signingtest");
+ BOOST_AUTO_TEST_CASE (CcnxWrapperUnsigningTest)
+ {
+   setup();
+   Bytes data;
+   data.resize(1024);
+   for (int i = 0; i < 1024; i++)
+   {
+     data[i] = 'm';
+   }
 
-//   posix_time::ptime start = posix_time::second_clock::local_time();
-//   for (uint64_t i = 0; i < 10000; i++)
-//   {
-//     Name n = name;
-//     n.appendComp(i);
-//     c1->publishData(n, data, 10);
-//   }
-//   posix_time::ptime end = posix_time::second_clock::local_time();
+   Name name("/unsigningtest");
 
-//   posix_time::time_duration duration = end - start;
+   posix_time::ptime start = posix_time::second_clock::local_time();
+   for (uint64_t i = 0; i < 100000; i++)
+   {
+     Name n = name;
+     n.appendComp(i);
+     c1->publishUnsignedData(n, data, 10);
+   }
+   posix_time::ptime end = posix_time::second_clock::local_time();
 
-//   cout << "Publishing 10000 1K size content objects costs " <<duration.total_milliseconds() << " milliseconds" << endl;
-//   cout << "Average time to publish one content object is " << (double) duration.total_milliseconds() / 10000.0 << " milliseconds" << endl;
-// }
+   posix_time::time_duration duration = end - start;
+
+   cout << "Publishing 100000 1K size content objects costs " <<duration.total_milliseconds() << " milliseconds" << endl;
+   cout << "Average time to publish one content object is " << (double) duration.total_milliseconds() / 100000.0 << " milliseconds" << endl;
+    teardown();
+ }
 
 BOOST_AUTO_TEST_SUITE_END()
