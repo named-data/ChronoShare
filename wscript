@@ -117,6 +117,7 @@ def build (bld):
           source = bld.path.ant_glob(['test/*.cc']),
           use = 'BOOST_TEST BOOST_FILESYSTEM LOG4CXX SQLITE3 QTCORE QTGUI ccnx database fs_watcher chronoshare',
           includes = "ccnx scheduler src executor gui fs-watcher",
+          install_prefix = None,
           )
 
     app_plist = '''<?xml version="1.0" encoding="UTF-8"?>
