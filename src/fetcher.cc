@@ -133,10 +133,18 @@ Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
   if (m_forwardingHint == Name ())
   {
     // check whether data is verified in this case; if verified invoke callback
-    if (!m_segmentCallback.empty () && data->verified())
+    if (data->verified())
+    {
+      if (!m_segmentCallback.empty ())
       {
         m_segmentCallback (m_deviceName, m_name, seqno, data);
       }
+    }
+    else
+    {
+      _LOG_ERROR("Can not verify signature content. Name = " << data->name());
+      // probably needs to do more in the future
+    }
     // we don't have to tell FetchManager about this
   }
   else
@@ -146,10 +154,18 @@ Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
         PcoPtr pco = make_shared<ParsedContentObject> (*data->contentPtr ());
 
         // we need to verify this pco and apply callback only when verified
-        if (!m_segmentCallback.empty () && m_ccnx->verifyPco(pco))
-          {
-            m_segmentCallback (m_deviceName, m_name, seqno, pco);
-          }
+        if (m_ccnx->verifyPco(pco))
+        {
+          if (!m_segmentCallback.empty ())
+            {
+              m_segmentCallback (m_deviceName, m_name, seqno, pco);
+            }
+        }
+        else
+        {
+          _LOG_ERROR("Can not verify signature content. Name = " << pco->name());
+          // probably needs to do more in the future
+        }
       }
       catch (MisformedContentObjectException &e)
         {

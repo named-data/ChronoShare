@@ -669,7 +669,7 @@ CcnxWrapper::getLocalPrefix ()
 bool
 CcnxWrapper::verifyPco(PcoPtr &pco)
 {
-  bool verified = ccn_verify_content(m_handle, pco->msg(), (ccn_parsed_ContentObject *)pco->pco());
+  bool verified = (ccn_verify_content(m_handle, pco->msg(), (ccn_parsed_ContentObject *)pco->pco()) == 0);
   pco->setVerified(verified);
   return verified;
 }

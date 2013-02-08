@@ -62,6 +62,15 @@ void dataCallback(const Name &name, Ccnx::PcoPtr pco)
   BOOST_CHECK_EQUAL(name, msg);
 }
 
+void encapCallback(const Name &name, Ccnx::PcoPtr pco)
+{
+  cout << " in encap data callback" << endl;
+  PcoPtr npco = make_shared<ParsedContentObject> (*(pco->contentPtr()));
+  g_dataCallback_counter ++;
+  BOOST_CHECK(npco);
+  BOOST_CHECK(c1->verifyPco(npco));
+}
+
 void
 timeout(const Name &name, const Closure &closure, Selectors selectors)
 {
@@ -192,6 +201,14 @@ BOOST_AUTO_TEST_CASE (TestUnsigned)
   c2->publishUnsignedData(Name(n1), (const unsigned char *)n1.c_str(), n1.size(), 1);
   usleep(1000);
   BOOST_CHECK_EQUAL(g_dataCallback_counter, 1);
+
+  string n2 = "/xxxxxx/signed/01";
+  Bytes content = c1->createContentObject(Name(n1), (const unsigned char *)n2.c_str(), n2.size(), 1);
+  c1->publishUnsignedData(Name(n2), head(content), content.size(), 1);
+  Closure encapClosure(bind(encapCallback, _1, _2), bind(timeout, _1, _2, _3));
+  c2->sendInterest(Name(n2), encapClosure);
+  usleep(2000);
+  BOOST_CHECK_EQUAL(g_dataCallback_counter, 2);
   teardown();
 }
 
@@ -222,5 +239,6 @@ BOOST_AUTO_TEST_CASE (TestUnsigned)
    cout << "Average time to publish one content object is " << (double) duration.total_milliseconds() / 100000.0 << " milliseconds" << endl;
     teardown();
  }
+
 
 BOOST_AUTO_TEST_SUITE_END()
