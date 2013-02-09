@@ -195,17 +195,32 @@ FetchManager::DidNoDataTimeout (Fetcher &fetcher)
     // no need to do anything with the m_fetchList
   }
 
-  if (fetcher.GetForwardingHint () == m_broadcastHint)
+  if (fetcher.GetForwardingHint ().size () == 0)
     {
-      // try again directly (hopefully with different forwarding hint
+      // will be tried initially and again after empty forwarding hint
 
       /// @todo Handle potential exception
       Name forwardingHint;
       forwardingHint = m_mapping (fetcher.GetDeviceName ());
-      fetcher.SetForwardingHint (forwardingHint);
+
+      if (forwardingHint.size () == 0)
+        {
+          // make sure that we will try broadcast forwarding hint eventually
+          fetcher.SetForwardingHint (m_broadcastHint);
+        }
+      else
+        {
+          fetcher.SetForwardingHint (forwardingHint);
+        }
+    }
+  else if (fetcher.GetForwardingHint () == m_broadcastHint)
+    {
+      // will be tried after broadcast forwarding hint
+      fetcher.SetForwardingHint (Name ("/"));
     }
   else
     {
+      // will be tried after normal forwarding hint
       fetcher.SetForwardingHint (m_broadcastHint);
     }
 
