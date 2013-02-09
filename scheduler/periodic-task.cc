@@ -20,7 +20,10 @@
  */
 
 #include "periodic-task.h"
+#include "logging.h"
 #include <utility>
+
+INIT_LOGGER ("Scheduler.PeriodicTask");
 
 PeriodicTask::PeriodicTask(const Callback &callback, const Tag &tag, const SchedulerPtr &scheduler,
                            IntervalGeneratorPtr generator)
@@ -34,9 +37,14 @@ PeriodicTask::run()
 {
   if (!m_invoked)
   {
-    m_callback();
     m_invoked = true;
-    m_scheduler->rescheduleTask(m_tag);
+    m_callback();
+
+    if (m_invoked)
+      {
+        // m_invoked getting back if it is rescheduled inside the callback
+        m_scheduler->rescheduleTask(m_tag);
+      }
   }
 }
 

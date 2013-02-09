@@ -181,7 +181,7 @@ FetchManager::ScheduleFetches ()
       item->RestartPipeline ();
     }
 
-  m_scheduler->rescheduleTaskAt (m_scheduleFetchesTask, (nextSheduleCheck - currentTime).seconds ());
+  m_scheduler->rescheduleTaskAt (m_scheduleFetchesTask, (nextSheduleCheck - currentTime).total_seconds ());
 }
 
 void
