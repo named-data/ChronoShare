@@ -102,31 +102,45 @@ ContentServer::filterAndServeImpl (const Name &forwardingHint, const Name &name,
   // name for files:   /<device_name>/<appname>/file/<hash>/<segment>
   // name for actions: /<device_name>/<appname>/action/<shared-folder>/<action-seq>
 
-  if (name.size() >= 4 && name.getCompFromBackAsString (3) == m_appName)
-  {
-    string type = name.getCompFromBackAsString (2);
-    if (type == "file")
-      {
-        serve_File (forwardingHint, name, interest);
-      }
-    else if (type == "action")
-      {
-        serve_Action (forwardingHint, name, interest);
-      }
-  }
+  try
+    {
+      if (name.size() >= 4 && name.getCompFromBackAsString (3) == m_appName)
+        {
+          string type = name.getCompFromBackAsString (2);
+          if (type == "file")
+            {
+              serve_File (forwardingHint, name, interest);
+            }
+          else if (type == "action")
+            {
+              serve_Action (forwardingHint, name, interest);
+            }
+        }
+    }
+  catch (...)
+    {
+      // ignore any unexpected interests and errors
+    }
 }
 
 void
 ContentServer::filterAndServe (Name forwardingHint, const Name &interest)
 {
-  if (forwardingHint.size () > 0 &&
-      m_userName.size () >= forwardingHint.size () &&
-      m_userName.getPartialName (0, forwardingHint.size ()) == forwardingHint)
+  try
     {
-      filterAndServeImpl (Name ("/"), interest, interest); // try without forwarding hints
-    }
+      if (forwardingHint.size () > 0 &&
+          m_userName.size () >= forwardingHint.size () &&
+          m_userName.getPartialName (0, forwardingHint.size ()) == forwardingHint)
+        {
+          filterAndServeImpl (Name ("/"), interest, interest); // try without forwarding hints
+        }
 
-  filterAndServeImpl (forwardingHint, interest.getPartialName (forwardingHint.size()), interest); // always try with hint... :( have to
+      filterAndServeImpl (forwardingHint, interest.getPartialName (forwardingHint.size()), interest); // always try with hint... :( have to
+    }
+  catch (...)
+    {
+      // ignore any unexpected interests and errors
+    }
 }
 
 void
