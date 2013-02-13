@@ -125,13 +125,46 @@ Dispatcher::~Dispatcher()
 }
 
 void
-Dispatcher::Did_LocalPrefix_Updated (const Ccnx::Name &prefix)
+Dispatcher::Did_LocalPrefix_Updated (const Ccnx::Name &forwardingHint)
 {
-  Name oldLocalPrefix = m_syncLog->LookupLocalLocator ();
-  _LOG_DEBUG ("LocalPrefix changed from: " << oldLocalPrefix << " to: " << prefix);
+  Name effectiveForwardingHint;
+  if (m_localUserName.size () >= forwardingHint.size () &&
+      m_localUserName.getPartialName (0, forwardingHint.size ()) == forwardingHint)
+    {
+      effectiveForwardingHint = Name ("/"); // "directly" accesible
+    }
+  else
+    {
+      effectiveForwardingHint = forwardingHint;
+    }
 
-  m_server->registerPrefix(prefix);
-  m_syncLog->UpdateLocalLocator (prefix);
+  Name oldLocalPrefix = m_syncLog->LookupLocalLocator ();
+
+  if (oldLocalPrefix == effectiveForwardingHint)
+    {
+      _LOG_DEBUG ("Got notification about prefix change from " << oldLocalPrefix << " to: " << forwardingHint << ", but effective prefix didn't change");
+      return;
+    }
+
+  if (effectiveForwardingHint == Name ("/") ||
+      effectiveForwardingHint == Name (BROADCAST_DOMAIN))
+    {
+      _LOG_DEBUG ("Basic effective prefix [" << effectiveForwardingHint << "]. Updating local prefix, but don't reregister");
+      m_syncLog->UpdateLocalLocator (effectiveForwardingHint);
+      return;
+    }
+
+  _LOG_DEBUG ("LocalPrefix changed from: " << oldLocalPrefix << " to: " << effectiveForwardingHint);
+
+  m_server->registerPrefix(effectiveForwardingHint);
+  m_syncLog->UpdateLocalLocator (effectiveForwardingHint);
+
+  if (oldLocalPrefix == Name ("/") ||
+      oldLocalPrefix == Name (BROADCAST_DOMAIN))
+    {
+      _LOG_DEBUG ("Don't deregister basic prefix: " << oldLocalPrefix);
+      return;
+    }
   m_server->deregisterPrefix(oldLocalPrefix);
 }
 
