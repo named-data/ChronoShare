@@ -172,6 +172,54 @@ public:
 
     sqlite3_finalize (stmt);
   }
+
+  void
+  DumpActionData(const Ccnx::Name &deviceName, int64_t seqno)
+  {
+    sqlite3_stmt *stmt;
+    sqlite3_prepare_v2 (m_db, "SELECT action_content_object FROM ActionLog WHERE device_name = ? and seq_no = ?", -1, &stmt, 0);
+    Ccnx::CcnxCharbufPtr device_name = deviceName.toCcnxCharbuf();
+    sqlite3_bind_blob (stmt, 1, device_name->buf(), device_name->length(), SQLITE_STATIC);
+    sqlite3_bind_int64 (stmt, 2, seqno);
+    cout << "Dumping action data for: [" << deviceName << ", " << seqno << "]" <<endl;
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+      PcoPtr pco = make_shared<ParsedContentObject> (reinterpret_cast<const unsigned char *> (sqlite3_column_blob (stmt, 0)), sqlite3_column_bytes (stmt, 0));
+      if (pco)
+      {
+        ActionItemPtr action = deserializeMsg<ActionItem> (pco->content());
+        if (action)
+        {
+          string type = action->action() == ActionItem::UPDATE ? "UPDATE" : "DELETE";
+          cout << "Action Type = " << type << endl;
+          cout << "Timestamp = " << action->timestamp() << endl;
+          string filename = action->filename();
+          cout << "Filename = " << filename << endl;
+          if (action->has_seg_num())
+          {
+            cout << "Segment number = " << action->seg_num() << endl;
+          }
+          if (action->has_file_hash())
+          {
+            cout << "File hash = " << Hash(action->file_hash().c_str(), action->file_hash().size()) << endl;
+          }
+        }
+        else
+        {
+          cerr << "Error! Failed to parse action from pco! " << endl;
+        }
+      }
+      else
+      {
+        cerr << "Error! Invalid pco! " << endl;
+      }
+    }
+    else
+    {
+      cerr << "Error! Can not find the requested action" << endl;
+    }
+    sqlite3_finalize(stmt);
+  }
 };
 
 class FileStateDumper : public DbHelper
@@ -223,9 +271,10 @@ int main(int argc, char *argv[])
 {
   INIT_LOGGERS ();
 
-  if (argc != 3)
+  if (argc != 3 && !(argc == 5 && string(argv[1]) == "action"))
     {
       cerr << "Usage: ./dump-db state|action|file|all <path-to-shared-folder>" << endl;
+      cerr << "   or: ./dump-db action <path-to-shared-folder> <device-name> <seq-no>" << endl;
       return 1;
     }
 
@@ -239,7 +288,14 @@ int main(int argc, char *argv[])
   else if (type == "action")
     {
       ActionLogDumper dumper (argv[2]);
-      dumper.Dump ();
+      if (argc == 5)
+      {
+        dumper.DumpActionData(string(argv[3]), boost::lexical_cast<int64_t>(argv[4]));
+      }
+      else
+      {
+        dumper.Dump ();
+      }
     }
   else if (type == "file")
     {
