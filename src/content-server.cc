@@ -117,7 +117,7 @@ ContentServer::filterAndServeImpl (const Name &forwardingHint, const Name &name,
             }
         }
     }
-  catch (Ccnx::NameException ne)
+  catch (Ccnx::NameException &ne)
     {
       // ignore any unexpected interests and errors
       _LOG_ERROR(boost::get_error_info<Ccnx::error_info_str>(ne));
@@ -138,7 +138,7 @@ ContentServer::filterAndServe (Name forwardingHint, const Name &interest)
 
       filterAndServeImpl (forwardingHint, interest.getPartialName (forwardingHint.size()), interest); // always try with hint... :( have to
     }
-  catch (Ccnx::NameException ne)
+  catch (Ccnx::NameException &ne)
     {
       // ignore any unexpected interests and errors
       _LOG_ERROR(boost::get_error_info<Ccnx::error_info_str>(ne));
