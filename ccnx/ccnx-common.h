@@ -107,7 +107,11 @@ boost::shared_ptr<Msg>
 deserializeMsg (const Bytes &bytes)
 {
   boost::shared_ptr<Msg> retval (new Msg ());
-  retval->ParseFromArray (head (bytes), bytes.size ());
+  if (!retval->ParseFromArray (head (bytes), bytes.size ()))
+    {
+      // to indicate an error
+      return boost::shared_ptr<Msg> ();
+    }
   return retval;
 }
 
@@ -139,7 +143,11 @@ deserializeGZipMsg(const Bytes &bytes)
   in.push(boost::make_iterator_range(sBytes)); // source
 
   boost::shared_ptr<Msg> retval = boost::make_shared<Msg>();
-  retval->ParseFromIstream(&in);
+  if (!retval->ParseFromIstream(&in))
+    {
+      // to indicate an error
+      return boost::shared_ptr<Msg> ();
+    }
 
   return retval;
 }
