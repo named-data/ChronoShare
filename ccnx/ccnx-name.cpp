@@ -105,7 +105,7 @@ Name::Name(const Name &other)
 
 Name::Name(const unsigned char *data, const ccn_indexbuf *comps)
 {
-  for (int i = 0; i < comps->n - 1; i++)
+  for (unsigned int i = 0; i < comps->n - 1; i++)
   {
     const unsigned char *compPtr;
     size_t size;
@@ -284,10 +284,15 @@ Name::getCompAsInt (int index) const
 const Bytes &
 Name::getComp(int index) const
 {
-  if (index >= m_comps.size())
-  {
-    boost::throw_exception(NameException() << error_info_str("Index out of range: " + boost::lexical_cast<string>(index)));
-  }
+  if (index < 0)
+    {
+      boost::throw_exception(NameException() << error_info_str("Negative index: " + boost::lexical_cast<string>(index)));
+    }
+
+  if (static_cast<unsigned int> (index) >= m_comps.size())
+    {
+      boost::throw_exception(NameException() << error_info_str("Index out of range: " + boost::lexical_cast<string>(index)));
+    }
   return m_comps[index];
 }
 

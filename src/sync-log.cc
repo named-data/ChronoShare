@@ -32,10 +32,10 @@ using namespace boost;
 using namespace std;
 using namespace Ccnx;
 
-static  void xTrace (void*, const char* q)
-{
-  cout << q << endl;
-}
+// static  void xTrace (void*, const char* q)
+// {
+//   cout << q << endl;
+// }
 
 const std::string INIT_DATABASE = "\
 CREATE TABLE                                                    \n\

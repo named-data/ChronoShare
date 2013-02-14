@@ -55,10 +55,12 @@ def configure(conf):
 
     if conf.options.debug:
         conf.define ('_DEBUG', 1)
-        conf.env.append_value('CXXFLAGS', ['-O0', '-Wall', '-Wno-unused-variable',
-                                           '-fcolor-diagnostics', '-g3', '-Qunused-arguments'])
+        conf.env.append_value('CXXFLAGS', ['-O0', '-Wall', '-Wno-unused-variable', '-g3'])
     else:
-        conf.env.append_value('CXXFLAGS', ['-O3', '-g', '-Qunused-arguments'])
+        conf.env.append_value('CXXFLAGS', ['-O3', '-g'])
+
+    if conf.env["CXX"] == ["clang++"]:
+        conf.env.append_value('CXXFLAGS', ['-fcolor-diagnostics', '-Qunused-arguments'])
 
     if conf.options._test:
         conf.define ('_TESTS', 1)

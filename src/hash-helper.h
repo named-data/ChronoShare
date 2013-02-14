@@ -111,7 +111,7 @@ public:
     if (m_length > otherHash.m_length)
       return false;
 
-    for (int i = 0; i < m_length; i++)
+    for (unsigned int i = 0; i < m_length; i++)
       {
         if (m_buf [i] < otherHash.m_buf [i])
           return true;
