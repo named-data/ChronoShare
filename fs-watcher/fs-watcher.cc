@@ -173,9 +173,9 @@ FsWatcher::ScanDirectory_NotifyUpdates_Execute (QString dirPath)
 
               if (
                   //!m_fileState->LookupFile (aFile.relative_path ().generic_string ()) /* file does not exist there, but exists locally: added */)
-                  !fileExists(aFile.relative_path().c_str())  /*file does not exist in db, but exists in fs: add */)
+                  !fileExists(aFile.relative_path())  /*file does not exist in db, but exists in fs: add */)
                 {
-                  addFile(aFile.relative_path().c_str());
+                  addFile(aFile.relative_path());
                   DidFileChanged (absFilePath);
                 }
             }
@@ -217,14 +217,14 @@ FsWatcher::ScanDirectory_NotifyRemovals_Execute (QString dirPath)
     */
 
   vector<string> files;
-  getFilesInDir(triggeredDir.relative_path().c_str(), files);
+  getFilesInDir(triggeredDir.relative_path(), files);
   for (vector<string>::iterator file = files.begin(); file != files.end(); file++)
   {
-    filesystem::path targetFile = filesystem::path (m_dirPath.toStdString()) / file->c_str();
+    filesystem::path targetFile = filesystem::path (m_dirPath.toStdString()) / *file;
     if (!filesystem::exists (targetFile))
     {
-      deleteFile(file->c_str());
-      m_onDelete(file->c_str());
+      deleteFile(*file);
+      m_onDelete(*file);
     }
   }
 }
@@ -241,10 +241,10 @@ CREATE INDEX filename_index ON Files (filename);                \n\
 void
 FsWatcher::initFileStateDb()
 {
-  filesystem::path dbFolder = filesystem::path (m_dirPath.toStdString().c_str()) / ".chronoshare" / "fs_watcher";
+  filesystem::path dbFolder = filesystem::path (m_dirPath.toStdString()) / ".chronoshare" / "fs_watcher";
   filesystem::create_directories(dbFolder);
 
-  int res = sqlite3_open((dbFolder / "filestate.db").c_str(), &m_db);
+  int res = sqlite3_open((dbFolder / "filestate.db").string ().c_str (), &m_db);
   if (res != SQLITE_OK)
   {
     BOOST_THROW_EXCEPTION(Error::Db() << errmsg_info_str("Cannot open database: " + (dbFolder / "filestate.db").string()));
