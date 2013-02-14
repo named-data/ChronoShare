@@ -113,7 +113,11 @@ ContentServer::filterAndServeImpl (const Name &forwardingHint, const Name &name,
             }
           else if (type == "action")
             {
-              serve_Action (forwardingHint, name, interest);
+              string folder = name.getCompFromBackAsString (1);
+              if (folder == m_sharedFolderName)
+              {
+                serve_Action (forwardingHint, name, interest);
+              }
             }
         }
     }

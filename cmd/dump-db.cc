@@ -177,7 +177,7 @@ public:
   DumpActionData(const Ccnx::Name &deviceName, int64_t seqno)
   {
     sqlite3_stmt *stmt;
-    sqlite3_prepare_v2 (m_db, "SELECT action_content_object FROM ActionLog WHERE device_name = ? and seq_no = ?", -1, &stmt, 0);
+    sqlite3_prepare_v2 (m_db, "SELECT action_content_object, action_name FROM ActionLog WHERE device_name = ? and seq_no = ?", -1, &stmt, 0);
     Ccnx::CcnxCharbufPtr device_name = deviceName.toCcnxCharbuf();
     sqlite3_bind_blob (stmt, 1, device_name->buf(), device_name->length(), SQLITE_STATIC);
     sqlite3_bind_int64 (stmt, 2, seqno);
@@ -185,11 +185,14 @@ public:
     if (sqlite3_step(stmt) == SQLITE_ROW)
     {
       PcoPtr pco = make_shared<ParsedContentObject> (reinterpret_cast<const unsigned char *> (sqlite3_column_blob (stmt, 0)), sqlite3_column_bytes (stmt, 0));
+      Ccnx::Name actionName = Ccnx::Name(sqlite3_column_blob(stmt, 1), sqlite3_column_bytes(stmt, 0));
       if (pco)
       {
         ActionItemPtr action = deserializeMsg<ActionItem> (pco->content());
         if (action)
         {
+          cout << "Action data size : " << pco->content().size() << endl;
+          cout << "Action data name : " << actionName << endl;
           string type = action->action() == ActionItem::UPDATE ? "UPDATE" : "DELETE";
           cout << "Action Type = " << type << endl;
           cout << "Timestamp = " << action->timestamp() << endl;
