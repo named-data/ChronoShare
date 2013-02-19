@@ -163,6 +163,7 @@ FsWatcher::ScanDirectory_NotifyUpdates_Execute (QString dirPath)
           QString absFilePath = fileInfo.absoluteFilePath ();
 
           // _LOG_DEBUG ("Attempt to add path to watcher: " << absFilePath.toStdString ());
+          m_watcher->removePath (absFilePath);
           m_watcher->addPath (absFilePath);
 
           if (fileInfo.isFile ())
