@@ -110,6 +110,8 @@ FsWatcher::DidFileChanged (QString filePath)
       _LOG_ERROR ("Got notification about a file not from the monitored directory: " << filePath.toStdString());
       return;
     }
+  QString absFilePath = filePath;
+
   filesystem::path absPathTriggeredFile (filePath.toStdString ());
   filePath.remove (0, m_dirPath.size ());
 
@@ -119,6 +121,9 @@ FsWatcher::DidFileChanged (QString filePath)
       _LOG_DEBUG ("Triggered UPDATE of file:  " << triggeredFile.relative_path ().generic_string ());
       // m_onChange (triggeredFile.relative_path ());
 
+      m_watcher->removePath (absFilePath);
+      m_watcher->addPath (absFilePath);
+
       Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
                                       bind (m_onChange, triggeredFile.relative_path ()),
                                       triggeredFile.relative_path ().string());
@@ -127,6 +132,8 @@ FsWatcher::DidFileChanged (QString filePath)
     {
       _LOG_DEBUG ("Triggered DELETE of file: " << triggeredFile.relative_path ().generic_string ());
       // m_onDelete (triggeredFile.relative_path ());
+
+      m_watcher->removePath (absFilePath);
 
       deleteFile(triggeredFile.relative_path());
       Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
