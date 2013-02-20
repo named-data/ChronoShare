@@ -57,10 +57,10 @@ public:
   shutdown (); // called in destructor, but can called manually
 
   virtual int
-  setInterestFilter (const Name &prefix, const InterestCallback &interestCallback);
+  setInterestFilter (const Name &prefix, const InterestCallback &interestCallback, bool record = true);
 
   virtual void
-  clearInterestFilter (const Name &prefix);
+  clearInterestFilter (const Name &prefix, bool record = true);
 
   virtual int
   sendInterest (const Name &interest, const Closure &closure, const Selectors &selector = Selectors());

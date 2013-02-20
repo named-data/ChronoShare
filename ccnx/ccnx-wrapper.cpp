@@ -117,27 +117,30 @@ CcnxWrapper::CcnxWrapper()
 void
 CcnxWrapper::connectCcnd()
 {
-  //if (m_handle != 0) {
-    //ccn_disconnect (m_handle);
+  if (m_handle != 0) {
+    ccn_disconnect (m_handle);
     //ccn_destroy (&m_handle);
-  //}
+  }
+  else
+    {
+      m_handle = ccn_create ();
+    }
 
-  m_handle = ccn_create ();
-  //UniqueRecLock lock(m_mutex);
+  UniqueRecLock lock(m_mutex);
   if (ccn_connect(m_handle, NULL) < 0)
   {
     BOOST_THROW_EXCEPTION (CcnxOperationException() << errmsg_info_str("connection to ccnd failed"));
   }
   m_connected = true;
 
-  //if (!m_registeredInterests.empty())
-  //{
-   // for (map<Name, InterestCallback>::const_iterator it = m_registeredInterests.begin(); it != m_registeredInterests.end(); ++it)
-    //{
-      // clearInterestFilter(it->first);
-     // setInterestFilter(it->first, it->second);
-    //}
-  //}
+  if (!m_registeredInterests.empty())
+  {
+   for (map<Name, InterestCallback>::const_iterator it = m_registeredInterests.begin(); it != m_registeredInterests.end(); ++it)
+    {
+      clearInterestFilter(it->first, false);
+      setInterestFilter(it->first, it->second, false);
+    }
+  }
 }
 
 CcnxWrapper::~CcnxWrapper()
@@ -194,10 +197,9 @@ CcnxWrapper::ccnLoop ()
 
           if (res < 0) {
             _LOG_ERROR ("ccn_run returned negative status: " << res);
-            usleep (100000);
-            continue;
-            // BOOST_THROW_EXCEPTION (CcnxOperationException()
-            //                     << errmsg_info_str("ccn_run returned error"));
+
+            BOOST_THROW_EXCEPTION (CcnxOperationException()
+                                   << errmsg_info_str("ccn_run returned error"));
           }
 
 
@@ -219,10 +221,6 @@ CcnxWrapper::ccnLoop ()
         }
         catch (CcnxOperationException &e)
         {
-          // do not try reconnect for now
-          cout << *get_error_info<errmsg_info_str> (e) << endl;
-          throw e;
-          /*
           m_connected = false;
           // probably ccnd has been stopped
           // try reconnect with sleep
@@ -232,15 +230,15 @@ CcnxWrapper::ccnLoop ()
           {
             try
             {
-              this_thread::sleep (boost::get_system_time () + TIME_SECONDS(interval) + TIME_MILLISECONDS (rangeUniformRandom ()));
+              this_thread::sleep (boost::get_system_time () +  boost::posix_time::seconds (interval) + boost::posix_time::milliseconds (rangeUniformRandom ()));
 
-              connectCcnd();
+              connectCcnd ();
               _LOG_DEBUG("reconnect to ccnd succeeded");
               break;
             }
             catch (CcnxOperationException &e)
             {
-              this_thread::sleep (boost::get_system_time () + TIME_SECONDS(interval) + TIME_MILLISECONDS (rangeUniformRandom ()));
+              this_thread::sleep (boost::get_system_time () +  boost::posix_time::seconds (interval) + boost::posix_time::milliseconds (rangeUniformRandom ()));
 
               // do exponential backup for reconnect interval
               if (interval < maxInterval)
@@ -249,7 +247,6 @@ CcnxWrapper::ccnLoop ()
               }
             }
           }
-          */
         }
         catch (const std::exception &exc)
           {
@@ -531,7 +528,7 @@ int CcnxWrapper::sendInterest (const Name &interest, const Closure &closure, con
   return 0;
 }
 
-int CcnxWrapper::setInterestFilter (const Name &prefix, const InterestCallback &interestCallback)
+int CcnxWrapper::setInterestFilter (const Name &prefix, const InterestCallback &interestCallback, bool record/* = true*/)
 {
   _LOG_TRACE (">> setInterestFilter");
   UniqueRecLock lock(m_mutex);
@@ -555,7 +552,10 @@ int CcnxWrapper::setInterestFilter (const Name &prefix, const InterestCallback &
     _LOG_ERROR ("<< setInterestFilter: ccn_set_interest_filter FAILED");
   }
 
-  m_registeredInterests.insert(pair<Name, InterestCallback>(prefix, interestCallback));
+  if (record)
+    {
+      m_registeredInterests.insert(pair<Name, InterestCallback>(prefix, interestCallback));
+    }
 
   _LOG_TRACE ("<< setInterestFilter");
 
@@ -563,7 +563,7 @@ int CcnxWrapper::setInterestFilter (const Name &prefix, const InterestCallback &
 }
 
 void
-CcnxWrapper::clearInterestFilter (const Name &prefix)
+CcnxWrapper::clearInterestFilter (const Name &prefix, bool record/* = true*/)
 {
   _LOG_TRACE (">> clearInterestFilter");
   UniqueRecLock lock(m_mutex);
@@ -578,7 +578,10 @@ CcnxWrapper::clearInterestFilter (const Name &prefix)
   {
   }
 
-  m_registeredInterests.erase(prefix);
+  if (record)
+    {
+      m_registeredInterests.erase(prefix);
+    }
 
   _LOG_TRACE ("<< clearInterestFilter");
 }
