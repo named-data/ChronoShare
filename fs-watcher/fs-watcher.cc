@@ -128,6 +128,7 @@ FsWatcher::DidFileChanged (QString filePath)
       _LOG_DEBUG ("Triggered DELETE of file: " << triggeredFile.relative_path ().generic_string ());
       // m_onDelete (triggeredFile.relative_path ());
 
+      deleteFile(triggeredFile.relative_path());
       Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
                                       bind (m_onDelete, triggeredFile.relative_path ()),
                                       "r-" + triggeredFile.relative_path ().string());

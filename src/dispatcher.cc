@@ -253,13 +253,6 @@ Dispatcher::Did_LocalFile_Delete_Execute (filesystem::path relativeFilePath)
       return;
     }
 
-  FileItemPtr currentFile = m_fileState->LookupFile (relativeFilePath.generic_string ());
-  if (!currentFile)
-    {
-      _LOG_ERROR ("File already deleted [" << relativeFilePath << "]");
-      return;
-    }
-
   m_actionLog->AddLocalActionDelete (relativeFilePath.generic_string());
   // notify SyncCore to propagate the change
   m_core->localStateChangedDelayed();
