@@ -23,53 +23,11 @@
 #include <boost/lexical_cast.hpp>
 #include <ctype.h>
 #include <boost/algorithm/string/join.hpp>
+#include <boost/make_shared.hpp>
 
 using namespace std;
 
 namespace Ccnx{
-
-void
-CcnxCharbuf::init(ccn_charbuf *buf)
-{
-  if (buf != NULL)
-  {
-    m_buf = ccn_charbuf_create();
-    ccn_charbuf_reserve(m_buf, buf->length);
-    memcpy(m_buf->buf, buf->buf, buf->length);
-    m_buf->length = buf->length;
-  }
-}
-
-CcnxCharbuf::CcnxCharbuf()
-            : m_buf(NULL)
-{
-  m_buf = ccn_charbuf_create();
-}
-
-CcnxCharbuf::CcnxCharbuf(ccn_charbuf *buf)
-            : m_buf(NULL)
-{
-  init(buf);
-}
-
-CcnxCharbuf::CcnxCharbuf(const CcnxCharbuf &other)
-            : m_buf (NULL)
-{
-  init(other.m_buf);
-}
-
-CcnxCharbuf::CcnxCharbuf(const void *buf, size_t length)
-{
-  m_buf = ccn_charbuf_create ();
-  ccn_charbuf_reserve (m_buf, length);
-  memcpy (m_buf->buf, buf, length);
-  m_buf->length = length;
-}
-
-CcnxCharbuf::~CcnxCharbuf()
-{
-  ccn_charbuf_destroy(&m_buf);
-}
 
 Name::Name()
 {
@@ -205,10 +163,11 @@ Name::toString() const
   return ss.str();
 }
 
-CcnxCharbufPtr
-Name::toCcnxCharbuf() const
+CcnxCharbuf*
+Name::toCcnxCharbufRaw () const
 {
-  CcnxCharbufPtr ptr(new CcnxCharbuf());
+  CcnxCharbuf *ptr = new CcnxCharbuf ();
+
   ccn_charbuf *cbuf = ptr->getBuf();
   ccn_name_init(cbuf);
   int size = m_comps.size();
@@ -217,6 +176,13 @@ Name::toCcnxCharbuf() const
     ccn_name_append(cbuf, head(m_comps[i]), m_comps[i].size());
   }
   return ptr;
+}
+
+
+CcnxCharbufPtr
+Name::toCcnxCharbuf () const
+{
+  return CcnxCharbufPtr (toCcnxCharbufRaw ());
 }
 
 Name &

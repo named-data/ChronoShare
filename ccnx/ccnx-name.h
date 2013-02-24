@@ -23,45 +23,9 @@
 #define CCNX_NAME_H
 #include <boost/shared_ptr.hpp>
 #include "ccnx-common.h"
+#include "ccnx-charbuf.h"
 
 namespace Ccnx {
-
-class CcnxCharbuf;
-typedef boost::shared_ptr<CcnxCharbuf> CcnxCharbufPtr;
-
-//  This class is mostly used in CcnxWrapper; users should not be directly using this class
-// The main purpose of this class to is avoid manually create and destroy charbuf everytime
-class CcnxCharbuf
-{
-public:
-  CcnxCharbuf();
-  CcnxCharbuf(ccn_charbuf *buf);
-  CcnxCharbuf(const CcnxCharbuf &other);
-  CcnxCharbuf(const void *buf, size_t length);
-  ~CcnxCharbuf();
-
-  // expose internal data structure, use with caution!!
-  ccn_charbuf *
-  getBuf() { return m_buf; }
-
-  const ccn_charbuf *
-  getBuf() const { return m_buf; }
-
-  const unsigned char *
-  buf () const
-  { return m_buf->buf; }
-
-  size_t
-  length () const
-  { return m_buf->length; }
-
-private:
-  void init(ccn_charbuf *buf);
-
-protected:
-  ccn_charbuf *m_buf;
-};
-
 
 struct NameException:
     virtual boost::exception, virtual std::exception {};
@@ -81,6 +45,9 @@ public:
 
   CcnxCharbufPtr
   toCcnxCharbuf() const;
+
+  CcnxCharbuf*
+  toCcnxCharbufRaw () const;
 
   operator CcnxCharbufPtr () const { return toCcnxCharbuf (); }
 
