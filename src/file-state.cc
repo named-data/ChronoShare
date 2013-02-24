@@ -86,15 +86,15 @@ FileState::UpdateFile (const std::string &filename, const Hash &hash, const Ccnx
                       "file_seg_num=? "
                       "WHERE type=0 AND filename=?", -1, &stmt, 0);
 
-  sqlite3_bind_blob  (stmt, 1, device_name.buf (), device_name.length (), SQLITE_TRANSIENT);
+  sqlite3_bind_blob  (stmt, 1, device_name.buf (), device_name.length (), SQLITE_STATIC);
   sqlite3_bind_int64 (stmt, 2, seq_no);
-  sqlite3_bind_blob  (stmt, 3, hash.GetHash (), hash.GetHashBytes (), SQLITE_TRANSIENT);
+  sqlite3_bind_blob  (stmt, 3, hash.GetHash (), hash.GetHashBytes (), SQLITE_STATIC);
   sqlite3_bind_int64 (stmt, 4, atime);
   sqlite3_bind_int64 (stmt, 5, mtime);
   sqlite3_bind_int64 (stmt, 6, ctime);
   sqlite3_bind_int   (stmt, 7, mode);
   sqlite3_bind_int   (stmt, 8, seg_num);
-  sqlite3_bind_text  (stmt, 9, filename.c_str (), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text  (stmt, 9, filename.c_str (), -1, SQLITE_STATIC);
 
   sqlite3_step (stmt);
 

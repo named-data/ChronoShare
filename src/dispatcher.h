@@ -29,6 +29,7 @@
 #include "object-db.h"
 #include "object-manager.h"
 #include "content-server.h"
+#include "state-server.h"
 #include "fetch-manager.h"
 
 #include <boost/function.hpp>
@@ -70,9 +71,6 @@ public:
   void
   Restore_LocalFile (FileItemPtr file);
 
-  void
-  Restore_LocalFile_Execute (FileItemPtr file);
-
   // for test
   HashPtr
   SyncRoot() { return m_core->root(); }
@@ -84,6 +82,8 @@ private:
   void
   Did_LocalFile_Delete_Execute (boost::filesystem::path relativeFilepath); // cannot be const & for Execute event!!! otherwise there will be segfault
 
+  void
+  Restore_LocalFile_Execute (FileItemPtr file);
 
 private:
   /**
@@ -174,6 +174,7 @@ private:
 
   std::string m_sharedFolder;
   ContentServer *m_server;
+  StateServer   *m_stateServer;
   bool m_enablePrefixDiscovery;
 
   FetchManagerPtr m_actionFetcher;

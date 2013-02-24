@@ -45,6 +45,9 @@ private:
   static void
   hash_xFinal (sqlite3_context *context);
 
+  static void
+  is_prefix_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
+
 protected:
   sqlite3 *m_db;
 };

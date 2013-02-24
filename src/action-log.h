@@ -99,6 +99,8 @@ public:
   ActionItemPtr
   LookupAction (const Ccnx::Name &actionName);
 
+  FileItemPtr
+  LookupAction (const std::string &filename, sqlite3_int64 version, const Hash &filehash);
 
   //
   inline FileStatePtr

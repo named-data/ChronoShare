@@ -69,6 +69,9 @@ Dispatcher::Dispatcher(const std::string &localUserName
   m_server->registerPrefix(Name("/"));
   m_server->registerPrefix(Name(BROADCAST_DOMAIN));
 
+  m_stateServer = new StateServer (make_shared<CcnxWrapper>(), m_actionLog, rootDir, m_localUserName, m_sharedFolder, CHRONOSHARE_APP, m_objectManager, CONTENT_FRESHNESS);
+  // no need to register, right now only listening on localhost prefix
+
   m_core = new SyncCore (m_syncLog, localUserName, Name("/"), syncPrefix,
                          bind(&Dispatcher::Did_SyncLog_StateChange, this, _1), ccnx, DEFAULT_SYNC_INTEREST_INTERVAL);
 
@@ -122,6 +125,12 @@ Dispatcher::~Dispatcher()
     delete m_server;
     m_server = NULL;
   }
+
+  if (m_stateServer != NULL)
+  {
+    delete m_stateServer;
+    m_stateServer = NULL;
+  }
 }
 
 void
@@ -168,11 +177,12 @@ Dispatcher::Did_LocalPrefix_Updated (const Ccnx::Name &forwardingHint)
   m_server->deregisterPrefix(oldLocalPrefix);
 }
 
-void
-Dispatcher::Restore_LocalFile (FileItemPtr file)
-{
-  m_executor.execute (bind (&Dispatcher::Restore_LocalFile_Execute, this, file));
-}
+// moved to state-server
+// void
+// Dispatcher::Restore_LocalFile (FileItemPtr file)
+// {
+//   m_executor.execute (bind (&Dispatcher::Restore_LocalFile_Execute, this, file));
+// }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -476,35 +486,36 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
     }
 }
 
-void
-Dispatcher::Restore_LocalFile_Execute (FileItemPtr file)
-{
-  _LOG_DEBUG ("Got request to restore local file [" << file->filename () << "]");
-  // the rest will gracefully fail if object-db is missing or incomplete
+// moved to state-server
+// void
+// Dispatcher::Restore_LocalFile_Execute (FileItemPtr file)
+// {
+//   _LOG_DEBUG ("Got request to restore local file [" << file->filename () << "]");
+//   // the rest will gracefully fail if object-db is missing or incomplete
 
-  boost::filesystem::path filePath = m_rootDir / file->filename ();
-  Name deviceName (file->device_name ().c_str (), file->device_name ().size ());
-  Hash hash (file->file_hash ().c_str (), file->file_hash ().size ());
+//   boost::filesystem::path filePath = m_rootDir / file->filename ();
+//   Name deviceName (file->device_name ().c_str (), file->device_name ().size ());
+//   Hash hash (file->file_hash ().c_str (), file->file_hash ().size ());
 
-  try
-    {
-      if (filesystem::exists (filePath) &&
-          filesystem::last_write_time (filePath) == file->mtime () &&
-          filesystem::status (filePath).permissions () == static_cast<filesystem::perms> (file->mode ()) &&
-          *Hash::FromFileContent (filePath) == hash)
-        {
-          _LOG_DEBUG ("Asking to assemble a file, but file already exists on a filesystem");
-          return;
-        }
-    }
-  catch (filesystem::filesystem_error &error)
-    {
-      _LOG_ERROR ("File operations failed on [" << filePath << "] (ignoring)");
-    }
+//   try
+//     {
+//       if (filesystem::exists (filePath) &&
+//           filesystem::last_write_time (filePath) == file->mtime () &&
+//           filesystem::status (filePath).permissions () == static_cast<filesystem::perms> (file->mode ()) &&
+//           *Hash::FromFileContent (filePath) == hash)
+//         {
+//           _LOG_DEBUG ("Asking to assemble a file, but file already exists on a filesystem");
+//           return;
+//         }
+//     }
+//   catch (filesystem::filesystem_error &error)
+//     {
+//       _LOG_ERROR ("File operations failed on [" << filePath << "] (ignoring)");
+//     }
 
-  m_objectManager.objectsToLocalFile (deviceName, hash, filePath);
+//   m_objectManager.objectsToLocalFile (deviceName, hash, filePath);
 
-  last_write_time (filePath, file->mtime ());
-  permissions (filePath, static_cast<filesystem::perms> (file->mode ()));
+//   last_write_time (filePath, file->mtime ());
+//   permissions (filePath, static_cast<filesystem::perms> (file->mode ()));
 
-}
+// }

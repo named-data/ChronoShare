@@ -60,6 +60,7 @@ CREATE TABLE ActionLog (                                                \n\
 CREATE INDEX ActionLog_filename_version ON ActionLog (filename,version);          \n\
 CREATE INDEX ActionLog_parent ON ActionLog (parent_device_name, parent_seq_no);   \n\
 CREATE INDEX ActionLog_action_name ON ActionLog (action_name);          \n\
+CREATE INDEX ActionLog_filename_version_hash ON ActionLog (filename,version,file_hash); \n\
                                                                         \n\
 CREATE TRIGGER ActionLogInsert_trigger                                  \n\
     AFTER INSERT ON ActionLog                                           \n\
@@ -444,6 +445,44 @@ ActionLog::LookupAction (const Ccnx::Name &actionName)
 
   return action;
 }
+
+FileItemPtr
+ActionLog::LookupAction (const std::string &filename, sqlite3_int64 version, const Hash &filehash)
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db,
+                      "SELECT device_name, seq_no, file_mtime, file_chmod, file_seg_num, file_hash "
+                      " FROM ActionLog "
+                      " WHERE action = 0 AND "
+                      "       filename=? AND "
+                      "       version=? AND "
+                      "       is_prefix (?, file_hash)=1", -1, &stmt, 0);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
+  sqlite3_bind_text  (stmt, 1, filename.c_str (), filename.size (), SQLITE_STATIC);
+  sqlite3_bind_int64 (stmt, 2, version);
+  sqlite3_bind_blob  (stmt, 3, filehash.GetHash (), filehash.GetHashBytes (), SQLITE_STATIC);
+
+  FileItemPtr fileItem;
+
+  if (sqlite3_step (stmt) == SQLITE_ROW)
+    {
+      fileItem = make_shared<FileItem> ();
+      fileItem->set_filename (filename);
+      fileItem->set_device_name (sqlite3_column_blob (stmt, 0), sqlite3_column_bytes (stmt, 0));
+      fileItem->set_seq_no (sqlite3_column_int64 (stmt, 1));
+      fileItem->set_mtime   (sqlite3_column_int64 (stmt, 2));
+      fileItem->set_mode    (sqlite3_column_int64 (stmt, 3));
+      fileItem->set_seg_num (sqlite3_column_int64 (stmt, 4));
+
+      fileItem->set_file_hash (sqlite3_column_blob (stmt, 5), sqlite3_column_bytes (stmt, 5));
+    }
+
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE || sqlite3_errcode (m_db) != SQLITE_ROW || sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
+  return fileItem;
+}
+
 
 ActionItemPtr
 ActionLog::AddRemoteAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno, Ccnx::PcoPtr actionPco)

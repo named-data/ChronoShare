@@ -54,6 +54,13 @@ DbHelper::DbHelper (const fs::path &path, const std::string &dbname)
                              << errmsg_info_str ("Cannot create function ``hash''"));
     }
 
+  res = sqlite3_create_function (m_db, "is_prefix", 2, SQLITE_ANY, 0, DbHelper::is_prefix_xFun, 0, 0);
+  if (res != SQLITE_OK)
+    {
+      BOOST_THROW_EXCEPTION (Error::Db ()
+                             << errmsg_info_str ("Cannot create function ``is_prefix''"));
+    }
+
   // Alex: determine if tables initialized. if not, initialize... not sure what is the best way to go...
   // for now, just attempt to create everything
   sqlite3_exec (m_db, INIT_DATABASE.c_str (), NULL, NULL, NULL);
@@ -138,5 +145,31 @@ DbHelper::hash_xFinal (sqlite3_context *context)
   EVP_MD_CTX_destroy (*hash_context);
 }
 
+void
+DbHelper::is_prefix_xFun (sqlite3_context *context, int argc, sqlite3_value **argv)
+{
+  int len1 = sqlite3_value_bytes (argv[0]);
+  int len2 = sqlite3_value_bytes (argv[1]);
 
+  if (len1 == 0)
+    {
+      sqlite3_result_int (context, 1);
+      return;
+    }
+
+  if (len1 > len2) // first parameter should be at most equal in length to the second one
+    {
+      sqlite3_result_int (context, 0);
+      return;
+    }
+
+  if (memcmp (sqlite3_value_blob (argv[0]), sqlite3_value_blob (argv[1]), len1) == 0)
+    {
+      sqlite3_result_int (context, 1);
+    }
+  else
+    {
+      sqlite3_result_int (context, 0);
+    }
+}
 
