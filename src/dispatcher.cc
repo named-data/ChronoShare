@@ -372,12 +372,34 @@ Dispatcher::Did_ActionLog_ActionApply_Delete_Execute (std::string filename)
   _LOG_DEBUG ("Action to delete " << filename);
 
   filesystem::path absolutePath = m_rootDir / filename;
-  if (filesystem::exists(absolutePath))
-    {
-      // need some protection from local detection of removal
-      remove (absolutePath);
-    }
-  // don't exist
+  try
+  {
+    if (filesystem::exists(absolutePath))
+      {
+        // need some protection from local detection of removal
+        remove (absolutePath);
+
+        // hack to remove empty parent dirs
+        filesystem::path parentPath = absolutePath.parent_path();
+        while (parentPath > m_rootDir)
+        {
+          if (filesystem::is_empty(parentPath))
+          {
+            filesystem::remove(parentPath);
+            parentPath = parentPath.parent_path();
+          }
+          else
+          {
+            break;
+          }
+        }
+      }
+    // don't exist
+  }
+  catch (filesystem::filesystem_error &error)
+  {
+    _LOG_ERROR ("File operations failed when removing [" << absolutePath << "] (ignoring)");
+  }
 }
 
 void
