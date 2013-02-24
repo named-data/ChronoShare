@@ -3,7 +3,7 @@
 VERSION='0.1'
 APPNAME='chronoshare'
 
-from waflib import Build, Logs
+from waflib import Build, Logs, Utils
 
 def options(opt):
     opt.add_option('--debug',action='store_true',default=False,dest='debug',help='''debugging mode''')
@@ -11,16 +11,20 @@ def options(opt):
     opt.add_option('--yes',action='store_true',default=False) # for autoconf/automake/make compatibility
     opt.add_option('--log4cxx', action='store_true',default=False,dest='log4cxx',help='''Compile with log4cxx logging support''')
 
-    opt.load('compiler_cxx boost ccnx protoc qt4')
+    opt.load('compiler_c compiler_cxx boost ccnx protoc qt4')
 
 def configure(conf):
-    conf.load("compiler_cxx")
+    conf.load("compiler_c compiler_cxx")
 
     conf.define ("CHRONOSHARE_VERSION", VERSION)
 
     conf.check_cfg(package='sqlite3', args=['--cflags', '--libs'], uselib_store='SQLITE3', mandatory=True)
     conf.check_cfg(package='libevent', args=['--cflags', '--libs'], uselib_store='LIBEVENT', mandatory=True)
     conf.check_cfg(package='libevent_pthreads', args=['--cflags', '--libs'], uselib_store='LIBEVENT_PTHREADS', mandatory=True)
+
+    if Utils.unversioned_sys_platform () == "darwin":
+        conf.check_cxx(framework_name='Foundation', uselib_store='OSX_FOUNDATION', cxxflags="-ObjC++", mandatory=False)
+        conf.check_cxx(framework_name='CoreWLAN',   uselib_store='OSX_COREWLAN',   cxxflags="-ObjC++", define_name='HAVE_COREWLAN', mandatory=False)
 
     if not conf.check_cfg(package='openssl', args=['--cflags', '--libs'], uselib_store='SSL', mandatory=False):
         libcrypto = conf.check_cc(lib='crypto',
@@ -52,6 +56,7 @@ def configure(conf):
         return
 
     conf.check_ccnx (path=conf.options.ccnx_dir)
+    conf.define ('CCNX_PATH', conf.env.CCNX_ROOT)
 
     if conf.options.debug:
         conf.define ('_DEBUG', 1)
@@ -93,6 +98,16 @@ def build (bld):
         includes = "ccnx src scheduler executor",
         )
 
+    adhoc = bld (
+        target = "adhoc",
+        features=['cxx'],
+        includes = "ccnx src",
+    )
+    if Utils.unversioned_sys_platform () == "darwin":
+        adhoc.mac_app = True
+        adhoc.source = 'adhoc/adhoc-osx.mm'
+        adhoc.use = "OSX_FOUNDATION OSX_COREWLAN"
+
     chornoshare = bld (
         target="chronoshare",
         features=['cxx'],
@@ -122,7 +137,17 @@ def build (bld):
           install_prefix = None,
           )
 
-    app_plist = '''<?xml version="1.0" encoding="UTF-8"?>
+    qt = bld (
+        target = "ChronoShare",
+        features = "qt4 cxx cxxprogram",
+        defines = "WAF",
+        source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.cc', 'gui/*.qrc']),
+        includes = "ccnx scheduler executor fs-watcher gui src . ",
+        use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE QTGUI LOG4CXX fs_watcher ccnx database chronoshare"
+        )
+
+    if Utils.unversioned_sys_platform () == "darwin":
+        app_plist = '''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist SYSTEM "file://localhost/System/Library/DTDs/PropertyList.dtd">
 <plist version="0.9">
 <dict>
@@ -140,17 +165,11 @@ def build (bld):
     <string>1</string>
 </dict>
 </plist>'''
+        qt.mac_app = "ChronoShare.app"
+        qt.mac_plist = app_plist % "ChronoShare"
+        qt.use += " OSX_FOUNDATION OSX_COREWLAN adhoc"
+        # qt.use += " OSX_FOUNDATION OSX_COREWLAN adhoc"
 
-    qt = bld (
-	target = "ChronoShare",
-        mac_app = "ChronoShare.app",
-        mac_plist = app_plist % "ChronoShare",
-	features = "qt4 cxx cxxprogram",
-	defines = "WAF",
-	source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.cc', 'gui/*.qrc']),
-	includes = "ccnx scheduler executor fs-watcher gui src . ",
-	use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE QTGUI LOG4CXX fs_watcher ccnx database chronoshare"
-	)
 
     cmdline = bld (
         target = "csd",
@@ -169,10 +188,8 @@ def build (bld):
 	use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE LOG4CXX fs_watcher ccnx database chronoshare"
         )
 
-
-
-
-
-
-
-
+from waflib import TaskGen
+@TaskGen.extension('.mm')
+def m_hook(self, node):
+    """Alias .mm files to be compiled the same as .cc files, gcc/clang will do the right thing."""
+    return self.create_compiled_task('cxx', node)
