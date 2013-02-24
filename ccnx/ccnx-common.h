@@ -116,6 +116,20 @@ deserializeMsg (const Bytes &bytes)
 }
 
 template<class Msg>
+boost::shared_ptr<Msg>
+deserializeMsg (const void *buf, size_t length)
+{
+  boost::shared_ptr<Msg> retval (new Msg ());
+  if (!retval->ParseFromArray (buf, length))
+    {
+      // to indicate an error
+      return boost::shared_ptr<Msg> ();
+    }
+  return retval;
+}
+
+
+template<class Msg>
 BytesPtr
 serializeGZipMsg(const Msg &msg)
 {

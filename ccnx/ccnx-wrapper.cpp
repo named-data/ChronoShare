@@ -325,18 +325,6 @@ CcnxWrapper::publishData (const Name &name, const unsigned char *buf, size_t len
 }
 
 int
-CcnxWrapper::publishData (const Name &name, const Bytes &content, int freshness)
-{
-  return publishData(name, head(content), content.size(), freshness);
-}
-
-int
-CcnxWrapper::publishUnsignedData(const Name &name, const Bytes &content, int freshness)
-{
-  return publishUnsignedData(name, head(content), content.size(), freshness);
-}
-
-int
 CcnxWrapper::publishUnsignedData(const Name &name, const unsigned char *buf, size_t len, int freshness)
 {
   {

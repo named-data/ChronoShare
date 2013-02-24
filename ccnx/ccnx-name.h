@@ -162,6 +162,8 @@ private:
   std::vector<Bytes> m_comps;
 };
 
+typedef boost::shared_ptr<Name> NamePtr;
+
 std::ostream&
 operator <<(std::ostream &os, const Name &name);
 

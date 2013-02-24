@@ -35,7 +35,7 @@
 
 namespace Ccnx {
 
-struct CcnxOperationException : virtual boost::exception, virtual std::exception { };
+struct CcnxOperationException : boost::exception, std::exception { };
 
 class CcnxWrapper
 {
@@ -45,7 +45,7 @@ public:
   typedef boost::function<void (Name, Selectors)> InterestCallback;
 
   CcnxWrapper();
-  virtual ~CcnxWrapper();
+  ~CcnxWrapper();
 
   void
   start (); // called automatically in constructor
@@ -56,26 +56,32 @@ public:
   void
   shutdown (); // called in destructor, but can called manually
 
-  virtual int
+  int
   setInterestFilter (const Name &prefix, const InterestCallback &interestCallback, bool record = true);
 
-  virtual void
+  void
   clearInterestFilter (const Name &prefix, bool record = true);
 
-  virtual int
+  int
   sendInterest (const Name &interest, const Closure &closure, const Selectors &selector = Selectors());
 
-  virtual int
+  int
   publishData (const Name &name, const unsigned char *buf, size_t len, int freshness = DEFAULT_FRESHNESS/* max value for ccnx*/);
 
-  int
+  inline int
   publishData (const Name &name, const Bytes &content, int freshness = DEFAULT_FRESHNESS/* max value for ccnx*/);
 
-  int
-  publishUnsignedData(const Name &name, const Bytes &content, int freshness = DEFAULT_FRESHNESS);
+  inline int
+  publishData (const Name &name, const std::string &content, int freshness = DEFAULT_FRESHNESS/* max value for ccnx*/);
 
   int
   publishUnsignedData(const Name &name, const unsigned char *buf, size_t len, int freshness = DEFAULT_FRESHNESS);
+
+  inline int
+  publishUnsignedData(const Name &name, const Bytes &content, int freshness = DEFAULT_FRESHNESS);
+
+  inline int
+  publishUnsignedData(const Name &name, const std::string &content, int freshness = DEFAULT_FRESHNESS);
 
   static Name
   getLocalPrefix ();
@@ -120,6 +126,30 @@ protected:
 };
 
 typedef boost::shared_ptr<CcnxWrapper> CcnxWrapperPtr;
+
+inline int
+CcnxWrapper::publishData (const Name &name, const Bytes &content, int freshness)
+{
+  return publishData(name, head(content), content.size(), freshness);
+}
+
+inline int
+CcnxWrapper::publishData (const Name &name, const std::string &content, int freshness)
+{
+  return publishData(name, reinterpret_cast<const unsigned char *> (content.c_str ()), content.size (), freshness);
+}
+
+inline int
+CcnxWrapper::publishUnsignedData(const Name &name, const Bytes &content, int freshness)
+{
+  return publishUnsignedData(name, head(content), content.size(), freshness);
+}
+
+inline int
+CcnxWrapper::publishUnsignedData(const Name &name, const std::string &content, int freshness)
+{
+  return publishUnsignedData(name, reinterpret_cast<const unsigned char *> (content.c_str ()), content.size (), freshness);
+}
 
 
 } // Ccnx
