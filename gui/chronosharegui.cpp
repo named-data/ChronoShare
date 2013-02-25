@@ -26,6 +26,8 @@
 #include "logging.h"
 #include "ccnx-wrapper.h"
 #include <QValidator>
+#include <QDir>
+#include <QDesktopServices>
 
 #include <boost/make_shared.hpp>
 
@@ -287,26 +289,8 @@ void ChronoShareGui::setIcon()
 
 void ChronoShareGui::openSharedFolder()
 {
-  // Alex: isn't there an OS-independent way in QT for this?
-
-  // tell Finder to open the shared folder
-  QStringList scriptArgs;
-  scriptArgs << QLatin1String("-e")
-             << QString::fromLatin1("tell application \"Finder\" to reveal POSIX file \"%1\"")
-    .arg(m_dirPath);
-
-  // execute the commands to make it happen
-  QProcess::execute(QLatin1String("/usr/bin/osascript"), scriptArgs);
-
-  // clear command arguments
-  scriptArgs.clear();
-
-  // tell Finder to appear
-  scriptArgs << QLatin1String("-e")
-             << QLatin1String("tell application \"Finder\" to activate");
-
-  // execute the commands to make it happen
-  QProcess::execute("/usr/bin/osascript", scriptArgs);
+  QString path = QDir::toNativeSeparators(m_dirPath);
+  QDesktopServices::openUrl(QUrl("file:///" + path));
 }
 
 void ChronoShareGui::changeSettings()
