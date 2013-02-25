@@ -42,7 +42,7 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
   , m_executor (1)
 #endif
 #ifdef SPARKLE_SUPPORTED
-  , m_autoUpdate(0)
+  , m_autoUpdate(new SparkleAutoUpdate(tr("http://no-url.org")))
 #endif
 {
   setWindowTitle("Settings");
@@ -152,6 +152,7 @@ ChronoShareGui::~ChronoShareGui()
 #endif
 #ifdef SPARKLE_SUPPORTED
   delete m_autoUpdate;
+  delete m_checkForUpdates;
 #endif
   delete m_openFolder;
   delete m_viewSettings;
@@ -215,8 +216,8 @@ void ChronoShareGui::createActions()
 #endif
 
 #ifdef SPARKLE_SUPPORTED
-  m_autoUpdate = new QAction (tr("Check For Updates"), this);
-  connect (m_autoUpdate, SIGNAL(triggered()), this, SLOT(onCheckForUpdates()));
+  m_checkForUpdates = new QAction (tr("Check For Updates"), this);
+  connect (m_checkForUpdates, SIGNAL(triggered()), this, SLOT(onCheckForUpdates()));
 #endif
 
   // create the "quit program" action

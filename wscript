@@ -1,6 +1,4 @@
 # -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
-import os
-
 VERSION='0.1'
 APPNAME='chronoshare'
 
@@ -13,38 +11,9 @@ def options(opt):
     opt.add_option('--log4cxx', action='store_true',default=False,dest='log4cxx',help='''Compile with log4cxx logging support''')
 
     if Utils.unversioned_sys_platform () == "darwin":
-        opt.add_option('--autoupdate', action='store_true',default=False,dest='autoupdate',help='''(OSX) Download sparkle framework and enable autoupdate feature''')
+        opt.add_option('--auto-update', action='store_true',default=False,dest='autoupdate',help='''(OSX) Download sparkle framework and enable autoupdate feature''')
 
     opt.load('compiler_c compiler_cxx boost ccnx protoc qt4')
-
-def check_framework(conf, name, **kwargs):
-  frameworkLocations = (os.environ.get('HOME') + '/Library/Frameworks'
-                        , '/opt/local/Library/Frameworks'
-                        , '/Library/Frameworks'
-                        , '/Network/Library/Frameworks'
-                        , '/System/Library/Frameworks'
-                        )
-  uselib = name.upper()
-  frameworkName = name + ".framework"
-  found = False
-  for frameworkLocation in frameworkLocations:
-    dynamicLib = os.path.join(frameworkLocation, frameworkName, name)
-    if os.path.exists(dynamicLib):
-      conf.env.append_unique('FRAMEWORK_' + uselib, name)
-      conf.msg('Checking for %s' % name, dynamicLib, 'GREEN')
-      conf.env.append_unique('INCLUDES_' + uselib, os.path.join(frameworkLocation, frameworkName, 'Headers'))
-      found = True
-      define_name = kwargs.get('define_name', None)
-      if define_name is not None:
-        conf.define(define_name, 1)
-      break
-
-  if not found:
-    mandatory = kwargs.get('mandatory', True)
-    if mandatory:
-      conf.fatal('Cannot find ' + frameworkName)
-    else:
-      conf.msg('Checking for %s' % name, False, 'YELLOW')
 
 def configure(conf):
     conf.load("compiler_c compiler_cxx")
@@ -60,31 +29,38 @@ def configure(conf):
         conf.check_cxx(framework_name='CoreWLAN',   uselib_store='OSX_COREWLAN',   define_name='HAVE_COREWLAN', mandatory=False, compile_filename='test.mm')
 
         if conf.options.autoupdate:
+            def check_sparkle(**kwargs):
+              conf.check_cxx (framework_name='Sparkle', header_name="Foundation/Foundation.h",
+                              uselib_store='OSX_SPARKLE', define_name='HAVE_SPARKLE', mandatory=True,
+                              compile_filename='test.mm',
+                              **kwargs
+                              )
             try:
                 # Try standard paths first
-                conf.check_cxx (framework_name='Sparkle', header_name="Foundation/Foundation.h",
-                                uselib_store='OSX_SPARKLE', define_name='HAVE_SPARKLE', mandatory=True, compile_filename='test.mm')
+                check_sparkle()
             except:
                 try:
                     # Try local path
                     Logs.info ("Check local version of Sparkle framework")
-                    conf.check_cxx (framework_name='Sparkle', header_name="Foundation/Foundation.h",
-                                    uselib_store='OSX_SPARKLE', define_name='HAVE_SPARKLE', mandatory=True,
-                                    cxxflags="-F%s/build/Sparkle" % conf.path.abspath(),
-                                    linkflags="-F%s/build/Sparkle" % conf.path.abspath(), compile_filename='test.mm')
+                    check_sparkle(cxxflags="-F%s/build/Sparkle" % conf.path.abspath(),
+                              linkflags="-F%s/build/Sparkle" % conf.path.abspath())
                 except:
                     # Download to local path and retry
                     Logs.info ("Sparkle framework not found, trying to download it to 'build/'")
 
                     import urllib, subprocess, os
                     urllib.urlretrieve ("http://sparkle.andymatuschak.org/files/Sparkle%201.5b6.zip", "build/Sparkle.zip")
-                    subprocess.call ("unzip build/Sparkle.zip -d build/Sparkle", shell=True)
-                    os.remove ("build/Sparkle.zip")
+                    if os.path.exists('build/Sparkle.zip'):
+                      try:
+                        subprocess.check_call (['unzip', '-qq', 'build/Sparkle.zip', '-d', 'build/Sparkle'])
+                        os.remove ("build/Sparkle.zip")
+                        check_sparkle(cxxflags="-F%s/build/Sparkle" % conf.path.abspath(),
+                              linkflags="-F%s/build/Sparkle" % conf.path.abspath())
+                      except subprocess.CalledProcessError as e:
+                        conf.fatal("Cannot find Sparkle framework. Auto download failed: '%s' returned %s" % (' '.join(e.cmd), e.returncode))
+                      except:
+                        conf.fatal("Unknown Error happened when auto downloading Sparkle framework")
 
-                    conf.check_cxx (framework_name='Sparkle', header_name="Foundation/Foundation.h",
-                                    uselib_store='OSX_SPARKLE', define_name='HAVE_SPARKLE', mandatory=True,
-                                    cxxflags="-F%s/build/Sparkle" % conf.path.abspath(),
-                                    linkflags="-F%s/build/Sparkle" % conf.path.abspath(), compile_filename='test.mm')
             if conf.is_defined('HAVE_SPARKLE'):
                 conf.env.HAVE_SPARKLE = 1 # small cheat for wscript
 

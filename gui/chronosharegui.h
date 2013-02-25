@@ -27,7 +27,7 @@
 
 #if __APPLE__ && HAVE_SPARKLE
 #define SPARKLE_SUPPORTED 1
-#include "auto-update.h"
+#include "sparkle-auto-update.h"
 #endif
 
 #include <QtGui>

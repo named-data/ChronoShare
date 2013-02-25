@@ -29,7 +29,7 @@ class SparkleAutoUpdate : public AutoUpdate
 {
 public:
   SparkleAutoUpdate (const QString &url);
-  ~SparkleAutoUpdate ();
+  virtual ~SparkleAutoUpdate ();
   virtual void checkForUpdates();
 private:
   class Private;
