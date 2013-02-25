@@ -99,6 +99,13 @@ Adhoc::DestroyAdhoc ()
   CWInterface *airport = [CWInterface interfaceWithName:interfaceName];
 
   [airport disassociate];
+
+  NSError *err;
+  [airport setPower:NO error:&err];
+  [airport setPower:YES error:&err];
+
+  // ok. this trick works.  if just disassociate, then it will stay OFF
+  // setting power OFF/ON trick the system to reconnect to default WiFi
 }
 
 #endif // ADHOC_SUPPORTED

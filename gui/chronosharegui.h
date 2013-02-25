@@ -16,10 +16,14 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Jared Lindblom <lindblom@cs.ucla.edu>
+ *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
+ *         Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
 #ifndef CHRONOSHAREGUI_H
 #define CHRONOSHAREGUI_H
+
+#include "adhoc.h"
 
 #include <QtGui>
 #include <QWidget>
@@ -64,6 +68,10 @@ private slots:
   // change chronoshare settings
   void changeSettings();
 
+  // click on adhoc button
+  void onAdHocChange (bool state); // cannot be protected with #ifdef. otherwise something fishy with QT
+
+
 private:
   // create actions that result from clicking a menu option
   void createActions();
@@ -102,6 +110,8 @@ private:
   QAction* m_changeFolder; // change the shared folder action
   QAction* m_quitProgram; // quit program action
 
+  QAction *m_wifiAction;
+
   QString m_dirPath; // shared directory
   QString m_username; // username
   QString m_sharedFolderName; // shared folder name
@@ -118,6 +128,10 @@ private:
   QLineEdit* editSharedFolderPath;
   QLabel *label;
   QVBoxLayout *mainLayout;
+
+#ifdef ADHOC_SUPPORTED
+  Executor m_executor;
+#endif
 
   // QString m_settingsFilePath; // settings file path
   // QString m_settings;

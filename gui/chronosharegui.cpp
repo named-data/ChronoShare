@@ -16,9 +16,13 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Jared Lindblom <lindblom@cs.ucla.edu>
+ *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
+ *         Zhenkai Zhu <zhenkai@cs.ucla.edu>
+ *         Ilya Moiseenko <iliamo@ucla.edu>
  */
 
 #include "chronosharegui.h"
+
 #include "logging.h"
 #include "ccnx-wrapper.h"
 #include <QValidator>
@@ -34,8 +38,10 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
   : QDialog(parent)
   , m_watcher(0)
   , m_dispatcher(0)
+#ifdef ADHOC_SUPPORTED
+  , m_executor (1)
+#endif
 {
-
   setWindowTitle("Settings");
 
   labelUsername = new QLabel("Username (hint: /<username>)");
@@ -103,6 +109,10 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
     {
       startBackend();
     }
+
+#ifdef ADHOC_SUPPORTED
+  m_executor.start ();
+#endif
 }
 
 void
@@ -124,12 +134,19 @@ ChronoShareGui::startBackend()
 
 ChronoShareGui::~ChronoShareGui()
 {
+#ifdef ADHOC_SUPPORTED
+  m_executor.shutdown ();
+#endif
+
   delete m_watcher; // stop filewatching ASAP
   delete m_dispatcher; // stop dispatcher ASAP, but after watcher (to prevent triggering callbacks on deleted object)
 
   // cleanup
   delete m_trayIcon;
   delete m_trayIconMenu;
+#ifdef ADHOC_SUPPORTED
+  delete m_wifiAction;
+#endif
   delete m_openFolder;
   delete m_viewSettings;
   delete m_changeFolder;
@@ -169,6 +186,8 @@ void ChronoShareGui::openMessageBox(QString title, QString text, QString infotex
 
 void ChronoShareGui::createActions()
 {
+  _LOG_DEBUG ("Create actions");
+
   // create the "open folder" action
   m_openFolder = new QAction(tr("&Open Folder"), this);
   connect(m_openFolder, SIGNAL(triggered()), this, SLOT(openSharedFolder()));
@@ -180,6 +199,14 @@ void ChronoShareGui::createActions()
   // create the "change folder" action
   m_changeFolder = new QAction(tr("&Change Folder"), this);
   connect(m_changeFolder, SIGNAL(triggered()), this, SLOT(openFileDialog()));
+
+#ifdef ADHOC_SUPPORTED
+  // create "AdHoc Wifi" action
+  m_wifiAction = new QAction (tr("Enable AdHoc &WiFI"), m_trayIconMenu);
+  m_wifiAction->setChecked (false);
+  m_wifiAction->setCheckable (true);
+  connect (m_wifiAction, SIGNAL (toggled(bool)), this, SLOT(onAdHocChange(bool)));
+#endif
 
   // create the "quit program" action
   m_quitProgram = new QAction(tr("&Quit"), this);
@@ -197,16 +224,59 @@ void ChronoShareGui::createTrayIcon()
   m_trayIconMenu->addAction(m_viewSettings);
   m_trayIconMenu->addAction(m_changeFolder);
   m_trayIconMenu->addSeparator();
+  m_trayIconMenu->addAction(m_wifiAction);
+  m_trayIconMenu->addSeparator();
   m_trayIconMenu->addAction(m_quitProgram);
 
   // create new tray icon
   m_trayIcon = new QSystemTrayIcon(this);
 
+#ifdef ADHOC_SUPPORTED
   // associate the menu with the tray icon
   m_trayIcon->setContextMenu(m_trayIconMenu);
+#endif
 
   // handle left click of icon
   connect(m_trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)), this, SLOT(trayIconClicked(QSystemTrayIcon::ActivationReason)));
+}
+
+void
+ChronoShareGui::onAdHocChange (bool state)
+{
+#ifdef ADHOC_SUPPORTED
+  if (m_wifiAction->isChecked ())
+    {
+      QMessageBox msgBox;
+      msgBox.setText ("WARNING: your WiFi will be disconnected");
+      msgBox.setIcon (QMessageBox::Warning);
+      msgBox.setInformativeText("AdHoc WiFi will disconnect your current WiFi.\n  Are you sure that you are OK with that?");
+      msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+      msgBox.setDefaultButton(QMessageBox::Cancel);
+      int ret = msgBox.exec();
+
+      if (ret == QMessageBox::Cancel)
+        {
+          m_wifiAction->setChecked (false);
+        }
+      else
+        {
+
+          m_wifiAction->setText (tr("Disable AdHoc WiFI"));
+
+          // create adhoc
+          m_executor.execute (Adhoc::CreateAdhoc);
+        }
+    }
+  else
+    {
+      m_wifiAction->setText (tr("Enable AdHoc WiFI"));
+
+      // disable adhoc
+      m_executor.execute (Adhoc::DestroyAdhoc);
+
+      // a trick in DestroyAdhoc ensures that WiFi will be reconnected to a default WiFi
+    }
+#endif
 }
 
 void ChronoShareGui::setIcon()

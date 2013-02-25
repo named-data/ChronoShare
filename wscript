@@ -142,7 +142,7 @@ def build (bld):
         features = "qt4 cxx cxxprogram",
         defines = "WAF",
         source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.cc', 'gui/*.qrc']),
-        includes = "ccnx scheduler executor fs-watcher gui src . ",
+        includes = "ccnx scheduler executor fs-watcher gui src adhoc . ",
         use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE QTGUI LOG4CXX fs_watcher ccnx database chronoshare"
         )
 
