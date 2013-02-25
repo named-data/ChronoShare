@@ -1,4 +1,5 @@
 # -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
+import os
 
 VERSION='0.1'
 APPNAME='chronoshare'
@@ -13,6 +14,35 @@ def options(opt):
 
     opt.load('compiler_c compiler_cxx boost ccnx protoc qt4')
 
+def check_framework(conf, name, **kwargs):
+  frameworkLocations = (os.environ.get('HOME') + '/Library/Frameworks'
+                        , '/opt/local/Library/Frameworks'
+                        , '/Library/Frameworks'
+                        , '/Network/Library/Frameworks'
+                        , '/System/Library/Frameworks'
+                        )
+  uselib = name.upper()
+  frameworkName = name + ".framework"
+  found = False
+  for frameworkLocation in frameworkLocations:
+    dynamicLib = os.path.join(frameworkLocation, frameworkName, name)
+    if os.path.exists(dynamicLib):
+      conf.env.append_unique('FRAMEWORK_' + uselib, name)
+      conf.msg('Checking for %s' % name, dynamicLib, 'GREEN')
+      conf.env.append_unique('INCLUDES_' + uselib, os.path.join(frameworkLocation, frameworkName, 'Headers'))
+      found = True
+      define_name = kwargs.get('define_name', None)
+      if define_name is not None:
+        conf.define(define_name, 1)
+      break
+
+  if not found:
+    mandatory = kwargs.get('mandatory', True)
+    if mandatory:
+      conf.fatal('Cannot find ' + frameworkName)
+    else:
+      conf.msg('Checking for %s' % name, False, 'YELLOW')
+
 def configure(conf):
     conf.load("compiler_c compiler_cxx")
 
@@ -25,6 +55,12 @@ def configure(conf):
     if Utils.unversioned_sys_platform () == "darwin":
         conf.check_cxx(framework_name='Foundation', uselib_store='OSX_FOUNDATION', cxxflags="-ObjC++", mandatory=False)
         conf.check_cxx(framework_name='CoreWLAN',   uselib_store='OSX_COREWLAN',   cxxflags="-ObjC++", define_name='HAVE_COREWLAN', mandatory=False)
+        conf.check_cxx(framework_name='Sparkle', uselib_store='SPARKLE', cxxflags='-ObjC++', define_name='HAVE_SPARKLE', mandatory=False)
+        #check_framework(conf, 'Sparkle', define_name='HAVE_SPARKLE', mandatory=False)
+        if conf.get_define('HAVE_SPARKLE'):
+          conf.env.SPARKLE = True
+        else:
+          conf.env.SPARKLE = False
 
     if not conf.check_cfg(package='openssl', args=['--cflags', '--libs'], uselib_store='SSL', mandatory=False):
         libcrypto = conf.check_cc(lib='crypto',
@@ -167,7 +203,12 @@ def build (bld):
 </plist>'''
         qt.mac_app = "ChronoShare.app"
         qt.mac_plist = app_plist % "ChronoShare"
-        qt.use += " OSX_FOUNDATION OSX_COREWLAN adhoc"
+        if not bld.env['SPARKLE']:
+          qt.use += " OSX_FOUNDATION OSX_COREWLAN adhoc"
+        else:
+          qt.use += " OSX_SPARKLE OSX_FOUNDATION OSX_COREWLAN adhoc"
+          qt.source.append("osx/auto-update/sparkle-auto-update.mm")
+          qt.includes += " osx/auto-update"
         # qt.use += " OSX_FOUNDATION OSX_COREWLAN adhoc"
 
 

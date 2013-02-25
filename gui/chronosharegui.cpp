@@ -41,6 +41,9 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
 #ifdef ADHOC_SUPPORTED
   , m_executor (1)
 #endif
+#ifdef SPARKLE_SUPPORTED
+  , m_autoUpdate(0)
+#endif
 {
   setWindowTitle("Settings");
 
@@ -147,6 +150,9 @@ ChronoShareGui::~ChronoShareGui()
 #ifdef ADHOC_SUPPORTED
   delete m_wifiAction;
 #endif
+#ifdef SPARKLE_SUPPORTED
+  delete m_autoUpdate;
+#endif
   delete m_openFolder;
   delete m_viewSettings;
   delete m_changeFolder;
@@ -206,6 +212,11 @@ void ChronoShareGui::createActions()
   m_wifiAction->setChecked (false);
   m_wifiAction->setCheckable (true);
   connect (m_wifiAction, SIGNAL (toggled(bool)), this, SLOT(onAdHocChange(bool)));
+#endif
+
+#ifdef SPARKLE_SUPPORTED
+  m_autoUpdate = new QAction (tr("Check For Updates"), this);
+  connect (m_autoUpdate, SIGNAL(triggered()), this, SLOT(onCheckForUpdates()));
 #endif
 
   // create the "quit program" action
@@ -278,6 +289,14 @@ ChronoShareGui::onAdHocChange (bool state)
     }
 #endif
 }
+
+#ifdef SPARKLE_SUPPORTED
+void
+ChronoShareGui::onCheckForUpdates()
+{
+  m_autoUpdate->checkForUpdates();
+}
+#endif
 
 void ChronoShareGui::setIcon()
 {
