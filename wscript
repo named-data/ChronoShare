@@ -106,7 +106,7 @@ def build (bld):
     if Utils.unversioned_sys_platform () == "darwin":
         adhoc.mac_app = True
         adhoc.source = 'adhoc/adhoc-osx.mm'
-        adhoc.use = "OSX_FOUNDATION OSX_COREWLAN"
+        adhoc.use = "LOG4CXX OSX_FOUNDATION OSX_COREWLAN"
 
     chornoshare = bld (
         target="chronoshare",
