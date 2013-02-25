@@ -66,13 +66,13 @@ public:
   sendInterest (const Name &interest, const Closure &closure, const Selectors &selector = Selectors());
 
   int
-  publishData (const Name &name, const unsigned char *buf, size_t len, int freshness = DEFAULT_FRESHNESS/* max value for ccnx*/);
+  publishData (const Name &name, const unsigned char *buf, size_t len, int freshness = DEFAULT_FRESHNESS, const Name &keyName=Name());
 
   inline int
-  publishData (const Name &name, const Bytes &content, int freshness = DEFAULT_FRESHNESS/* max value for ccnx*/);
+  publishData (const Name &name, const Bytes &content, int freshness = DEFAULT_FRESHNESS, const Name &keyName=Name());
 
   inline int
-  publishData (const Name &name, const std::string &content, int freshness = DEFAULT_FRESHNESS/* max value for ccnx*/);
+  publishData (const Name &name, const std::string &content, int freshness = DEFAULT_FRESHNESS, const Name &keyName=Name());
 
   int
   publishUnsignedData(const Name &name, const unsigned char *buf, size_t len, int freshness = DEFAULT_FRESHNESS);
@@ -87,7 +87,7 @@ public:
   getLocalPrefix ();
 
   Bytes
-  createContentObject(const Name &name, const void *buf, size_t len, int freshness = DEFAULT_FRESHNESS/* max value for ccnx*/);
+  createContentObject(const Name &name, const void *buf, size_t len, int freshness = DEFAULT_FRESHNESS, const Name &keyName=Name());
 
   int
   putToCcnd (const Bytes &contentObject);
@@ -128,15 +128,15 @@ protected:
 typedef boost::shared_ptr<CcnxWrapper> CcnxWrapperPtr;
 
 inline int
-CcnxWrapper::publishData (const Name &name, const Bytes &content, int freshness)
+CcnxWrapper::publishData (const Name &name, const Bytes &content, int freshness, const Name &keyName)
 {
-  return publishData(name, head(content), content.size(), freshness);
+  return publishData(name, head(content), content.size(), freshness, keyName);
 }
 
 inline int
-CcnxWrapper::publishData (const Name &name, const std::string &content, int freshness)
+CcnxWrapper::publishData (const Name &name, const std::string &content, int freshness, const Name &keyName)
 {
-  return publishData(name, reinterpret_cast<const unsigned char *> (content.c_str ()), content.size (), freshness);
+  return publishData(name, reinterpret_cast<const unsigned char *> (content.c_str ()), content.size (), freshness, keyName);
 }
 
 inline int
