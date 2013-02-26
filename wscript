@@ -139,18 +139,21 @@ def build (bld):
 
     http_server = bld (
           target = "http_server",
-          features = "cxx",
+          features = "qt4 cxx",
           source = bld.path.ant_glob(['server/*.cpp']),
-          includes = "server .",
-          use = "BOOST"
+          includes = "server src .",
+          use = "BOOST QTCORE"
           )
 
     qt = bld (
         target = "ChronoShare",
         features = "qt4 cxx cxxprogram",
         defines = "WAF",
-        source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.cc', 'gui/*.qrc']),
-        includes = "ccnx scheduler executor fs-watcher gui src adhoc . ",
+        # do not include html.qrc as we don't want it to be compiled into binary
+        # qt seems to adopt a pattern of compiling every resource file into the
+        # executable; if things don't work, we can use that as last resort
+        source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.cc', 'gui/images.qrc']),
+        includes = "ccnx scheduler executor fs-watcher gui src adhoc server . ",
         use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE QTGUI LOG4CXX fs_watcher ccnx database chronoshare http_server"
         )
 

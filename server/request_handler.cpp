@@ -16,12 +16,19 @@
 #include "mime_types.hpp"
 #include "reply.hpp"
 #include "request.hpp"
+#include <QIODevice>
+#include <QFile>
+#include <QDataStream>
+#include <QString>
+#include "logging.h"
+
+INIT_LOGGER("HttpServer")
 
 namespace http {
 namespace server {
 
 request_handler::request_handler(const std::string& doc_root)
-  : doc_root_(doc_root)
+  : doc_root_(doc_root.c_str())
 {
 }
 
@@ -59,19 +66,36 @@ void request_handler::handle_request(const request& req, reply& rep)
   }
 
   // Open the file to send back.
-  std::string full_path = doc_root_ + request_path;
-  std::ifstream is(full_path.c_str(), std::ios::in | std::ios::binary);
-  if (!is)
+  // The following is a hack to make the server understands Qt's
+  // resource system, so that the html resources can be managed using Qt's
+  // resource system (e.g. no need to worry about the location of html)
+  // in Mac OS, it will be inside the bundle, in Linux, perhaps somewhere
+  // in /usr/local/share
+  QString full_path = doc_root_.absolutePath() + QString(request_path.c_str());
+  QFile file(full_path);
+  if (!file.exists() || !file.open(QIODevice::ReadOnly))
   {
     rep = reply::stock_reply(reply::not_found);
     return;
   }
 
+  _LOG_DEBUG("Serving file: " << request_path);
   // Fill out the reply to be sent to the client.
   rep.status = reply::ok;
   char buf[512];
-  while (is.read(buf, sizeof(buf)).gcount() > 0)
-    rep.content.append(buf, is.gcount());
+  QDataStream in(&file);
+  while (true)
+  {
+    int bytes = in.readRawData(buf, sizeof(buf));
+    if (bytes > 0)
+    {
+      rep.content.append(buf, bytes);
+    }
+    else
+    {
+      break;
+    }
+  }
   rep.headers.resize(2);
   rep.headers[0].name = "Content-Length";
   rep.headers[0].value = boost::lexical_cast<std::string>(rep.content.size());

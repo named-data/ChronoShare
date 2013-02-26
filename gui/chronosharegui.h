@@ -40,6 +40,8 @@
 
 #include "fs-watcher.h"
 #include "dispatcher.h"
+#include "server.hpp"
+#include <boost/thread/thread.hpp>
 
 class ChronoShareGui : public QDialog
 {
@@ -118,6 +120,8 @@ private:
 
   FsWatcher  *m_watcher;
   Dispatcher *m_dispatcher;
+  http::server::server *m_httpServer;
+  boost::thread m_httpServerThread;
 
   QLabel* labelUsername;
   QPushButton* button;

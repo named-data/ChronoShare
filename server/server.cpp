@@ -11,7 +11,9 @@
 #include "server.hpp"
 #include <boost/bind.hpp>
 #include <signal.h>
+#include "logging.h"
 
+INIT_LOGGER ("HttpServer");
 namespace http {
 namespace server {
 
@@ -44,6 +46,8 @@ server::server(const std::string& address, const std::string& port,
   acceptor_.listen();
 
   start_accept();
+
+  _LOG_DEBUG("Listen on [" << address << ": " << port << "] with doc_root = " << doc_root);
 }
 
 void server::run()

@@ -13,6 +13,7 @@
 
 #include <string>
 #include <boost/noncopyable.hpp>
+#include <QDir>
 
 namespace http {
 namespace server {
@@ -33,7 +34,7 @@ public:
 
 private:
   /// The directory containing the files to be served.
-  std::string doc_root_;
+  QDir doc_root_;
 
   /// Perform URL-decoding on a string. Returns false if the encoding was
   /// invalid.

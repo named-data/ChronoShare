@@ -34,12 +34,18 @@
 using namespace boost;
 using namespace Ccnx;
 
+static const string HTTP_SERVER_ADDRESS = "localhost";
+static const string HTTP_SERVER_PORT = "9001";
+static const string DOC_ROOT = ":/html";
+static const QString ICON_PICTURE_QSTRING(":/images/friends-group-icon.png");
+
 INIT_LOGGER ("Gui");
 
 ChronoShareGui::ChronoShareGui(QWidget *parent)
   : QDialog(parent)
   , m_watcher(0)
   , m_dispatcher(0)
+  , m_httpServer(0)
 #ifdef ADHOC_SUPPORTED
   , m_executor (1)
 #endif
@@ -132,6 +138,17 @@ ChronoShareGui::startBackend()
   m_watcher = new FsWatcher (m_dirPath,
                              bind (&Dispatcher::Did_LocalFile_AddOrModify, m_dispatcher, _1),
                              bind (&Dispatcher::Did_LocalFile_Delete,      m_dispatcher, _1));
+  QFileInfo indexHtmlInfo(":/html/index.html");
+  if (indexHtmlInfo.exists())
+  {
+    m_httpServer = new http::server::server(HTTP_SERVER_ADDRESS, HTTP_SERVER_PORT, DOC_ROOT);
+    m_httpServerThread = boost::thread(&http::server::server::run, m_httpServer);
+  }
+  else
+  {
+    _LOG_ERROR ("Http server doc root dir does not exist!");
+    // shall we bail here?
+  }
 }
 
 ChronoShareGui::~ChronoShareGui()
@@ -142,6 +159,7 @@ ChronoShareGui::~ChronoShareGui()
 
   delete m_watcher; // stop filewatching ASAP
   delete m_dispatcher; // stop dispatcher ASAP, but after watcher (to prevent triggering callbacks on deleted object)
+  delete m_httpServer;
 
   // cleanup
   delete m_trayIcon;
@@ -169,7 +187,7 @@ void ChronoShareGui::openMessageBox(QString title, QString text)
   messageBox.setWindowTitle(title);
   messageBox.setText(text);
 
-  messageBox.setIconPixmap(QPixmap(":/images/friends-group-icon.png"));
+  messageBox.setIconPixmap(QPixmap(ICON_PICTURE_QSTRING));
 
   messageBox.exec();
 }
@@ -181,7 +199,7 @@ void ChronoShareGui::openMessageBox(QString title, QString text, QString infotex
   messageBox.setText(text);
   messageBox.setInformativeText(infotext);
 
-  messageBox.setIconPixmap(QPixmap(":/images/friends-group-icon.png"));
+  messageBox.setIconPixmap(QPixmap(ICON_PICTURE_QSTRING));
 
   messageBox.exec();
 }
@@ -284,7 +302,7 @@ ChronoShareGui::onAdHocChange (bool state)
 void ChronoShareGui::setIcon()
 {
   // set the icon image
-  m_trayIcon->setIcon(QIcon(":/images/friends-group-icon.png"));
+  m_trayIcon->setIcon(QIcon(ICON_PICTURE_QSTRING));
 }
 
 void ChronoShareGui::openSharedFolder()
