@@ -303,7 +303,7 @@ FileState::LookupFilesInFolderRecursively (const boost::function<void (const Fil
       sqlite3_prepare_v2 (m_db,
                           "SELECT filename,version,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
                           "   FROM FileState "
-                          "   WHERE type = 0 AND is_prefix (?, directory)=1 "
+                          "   WHERE type = 0 AND is_dir_prefix (?, directory)=1 "
                           "   ORDER BY filename "
                           "   LIMIT ? OFFSET ?", -1, &stmt, 0); // there is a small ambiguity with is_prefix matching, but should be ok for now
       _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));

@@ -663,7 +663,7 @@ ActionLog::LookupActionsInFolderRecursively (const boost::function<void (const C
                           "       file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num, "
                           "       parent_device_name,parent_seq_no "
                           "   FROM ActionLog "
-                          "   WHERE is_prefix (?, directory)=1 "
+                          "   WHERE is_dir_prefix (?, directory)=1 "
                           "   ORDER BY action_timestamp DESC "
                           "   LIMIT ? OFFSET ?", -1, &stmt, 0); // there is a small ambiguity with is_prefix matching, but should be ok for now
       _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));

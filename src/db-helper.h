@@ -51,6 +51,9 @@ private:
   static void
   directory_name_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
 
+  static void
+  is_dir_prefix_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
+
 protected:
   sqlite3 *m_db;
 };
