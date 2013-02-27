@@ -116,7 +116,7 @@ def configure(conf):
 
     if conf.options.debug:
         conf.define ('_DEBUG', 1)
-        conf.env.append_value('CXXFLAGS', ['-O0', '-Wall', '-Wno-unused-variable', '-g3'])
+        conf.env.append_value('CXXFLAGS', ['-O0', '-Wall', '-Wno-unused-variable', '-Wno-unused-private-field', '-g3'])
     else:
         conf.env.append_value('CXXFLAGS', ['-O3', '-g'])
 
