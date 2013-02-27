@@ -30,7 +30,7 @@
 #include <map>
 #include <boost/thread/shared_mutex.hpp>
 #include <boost/thread/locks.hpp>
-#include "scheduler.h"
+#include "executor.h"
 
 /**
  * @brief Class serving state information from ChronoShare
@@ -39,7 +39,7 @@
  *
  * Information available:
  *
- * For now serving only locally (using <PREFIX> = /localhost/<user's-device-name>/"chronoshare"/"info")
+ * For now serving only locally (using <PREFIX> = /localhost/<user's-device-name>/"chronoshare"/<FOLDER>/"info")
  *
  * - state: get list of SyncNodes, their sequence numbers, and forwarding hint (almost the same as RECOVERY interest)
  *
@@ -47,28 +47,38 @@
  *
  * - action
  *
- *   <PREFIX_INFO>/"actions"/"all"/<nonce>/<segment>      get list of all actions
- *   <PREFIX_INFO>/"actions"/"file"/<nonce>/<segment>     get list of actions for a file
+ *   Get list of actions for a folder (for all files under this folder)
+ *
+ *   <PREFIX_INFO>/"actions"/"folder"/<nonce>/<offset>   (all actions)
+ *   or
+ *   <PREFIX_INFO>/"actions"/"folder"/<one-component-relative-file-name>/<nonce>/<offset>
  *
  *   Actions are ordered in decreasing order (latest will go first).
- *   Each data packet contains up to 100 actions.  If there are more, they will be segmented. Data packet always
- *   contains a segment number (even if there are less than 100 actions available).
  *
- *   Number of segments is indicated in FinalBlockID of the first data packet (in <PREFIX>/"action"/"all"/<nonce>/%00)
+ *   Each data packet contains up to 100 actions.
+ *   If more items are available, application data will specify URL for the next packet
+ *
+ *   @todo SPECIFY FORMAT OF THIS FIELD
  *
  * - file
  *
- *   <PREFIX_INFO>/"filestate"/"all"/<nonce>/<segment>
+ *   <PREFIX_INFO>/"filestate"/"folder"/<nonce>/<offset>   (full filestate)
+ *   or
+ *   <PREFIX_INFO>/"filestate"/"folder"/<one-component-relative-folder-name>/<nonce>/<offset>
  *
- *   Each Data packets contains a list of up to 100 files, the rest is published in other segments.
- *   Number of segments is indicated in FinalBlockID of the first data packet (in <PREFIX>/"file"/"all"/<nonce>/%00).
+ *   Each Data packets contains a list of up to 100 files.
+ *   If more items are available, application data will specify URL for the next packet
+ *
+ *   @todo SPECIFY FORMAT OF THIS FIELD
  *
  * Commands available:
  *
- * For now serving only locally (using <PREFIX_CMD> = /localhost/<user's-device-name>/"chronoshare"/"cmd")
+ * For now serving only locally (using <PREFIX_CMD> = /localhost/<user's-device-name>/"chronoshare"/<FOLDER>/"cmd")
  *
  * - restore version of the file
  *
+ *   <PREFIX_CMD>/"restore"/"file"/<one-component-relative-file-name>/<version>
+ *   or
  *   <PREFIX_CMD>/"restore"/"file"/<one-component-relative-file-name>/<version>/<file-hash>
  *
  * - clean state log
@@ -86,10 +96,16 @@ public:
 
 private:
   void
-  info_actions_all (const Ccnx::Name &interest);
+  info_actions_folder (const Ccnx::Name &interest);
 
   void
-  info_actions_all_Execute (const Ccnx::Name &interest);
+  info_actions_folder_Execute (const Ccnx::Name &interest);
+
+  void
+  info_filestate_folder (const Ccnx::Name &interest);
+
+  void
+  info_filestate_folder_Execute (const Ccnx::Name &interest);
 
   void
   cmd_restore_file (const Ccnx::Name &interest);
@@ -115,7 +131,7 @@ private:
   boost::filesystem::path m_rootDir;
   int m_freshness;
 
-  SchedulerPtr     m_scheduler;
+  Executor    m_executor;
 
   Ccnx::Name  m_userName;
   std::string m_sharedFolderName;

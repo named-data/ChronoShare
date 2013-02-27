@@ -78,20 +78,28 @@ public:
   LookupFilesForHash (const Hash &hash);
 
   /**
-   * @brief Lookup all files in the specified folder
+   * @brief Lookup all files in the specified folder and call visitor(file) for each file
    */
-  FileItemsPtr
-  LookupFilesInFolder (const std::string &folder);
+  void
+  LookupFilesInFolder (const boost::function<void (const FileItem&)> &visitor, const std::string &folder, int offset=0, int limit=-1);
 
   /**
-   * @brief Recursively lookup all files in the specified folder
+   * @brief Lookup all files in the specified folder (wrapper around the overloaded version)
    */
   FileItemsPtr
-  LookupFilesInFolderRecursively (const std::string &folder);
+  LookupFilesInFolder (const std::string &folder, int offset=0, int limit=-1);
 
-private:
-  static void
-  directory_name_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
+  /**
+   * @brief Recursively lookup all files in the specified folder and call visitor(file) for each file
+   */
+  FileItemsPtr
+  LookupFilesInFolderRecursively (const boost::function<void (const FileItem&)> &visitor, const std::string &folder, int offset=0, int limit=-1);
+
+  /**
+   * @brief Recursively lookup all files in the specified folder (wrapper around the overloaded version)
+   */
+  FileItemsPtr
+  LookupFilesInFolderRecursively (const std::string &folder, int offset=0, int limit=-1);
 };
 
 typedef boost::shared_ptr<FileState> FileStatePtr;

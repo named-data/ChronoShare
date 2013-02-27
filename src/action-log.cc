@@ -37,6 +37,7 @@ CREATE TABLE ActionLog (                                                \n\
                                                                         \n\
     action      CHAR(1) NOT NULL, /* 0 for \"update\", 1 for \"delete\". */ \n\
     filename    TEXT NOT NULL,                                          \n\
+    directory   TEXT,                                                   \n\
                                                                         \n\
     version     INTEGER NOT NULL,                                       \n\
     action_timestamp TIMESTAMP NOT NULL,                                \n\
@@ -258,6 +259,17 @@ ActionLog::AddLocalActionUpdate (const std::string &filename,
 
   sqlite3_finalize (stmt);
 
+  // I had a problem including directory_name assignment as part of the initial insert.
+  sqlite3_prepare_v2 (m_db, "UPDATE ActionLog SET directory=directory_name(filename) WHERE device_name=? AND seq_no=?", -1, &stmt, 0);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
+  sqlite3_bind_blob  (stmt, 1, device_name->buf (), device_name->length (), SQLITE_STATIC);
+  sqlite3_bind_int64 (stmt, 2, seq_no);
+  sqlite3_step (stmt);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, sqlite3_errmsg (m_db));
+
+  sqlite3_finalize (stmt);
+
   sqlite3_exec (m_db, "END TRANSACTION;", 0,0,0);
 
   // set complete for local file
@@ -359,6 +371,17 @@ ActionLog::AddLocalActionDelete (const std::string &filename)
   // cout << Ccnx::Name (parent_device_name) << endl;
 
   // assign name to the action, serialize action, and create content object
+
+  sqlite3_finalize (stmt);
+
+  // I had a problem including directory_name assignment as part of the initial insert.
+  sqlite3_prepare_v2 (m_db, "UPDATE ActionLog SET directory=directory_name(filename) WHERE device_name=? AND seq_no=?", -1, &stmt, 0);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
+  sqlite3_bind_blob  (stmt, 1, device_name->buf (), device_name->length (), SQLITE_STATIC);
+  sqlite3_bind_int64 (stmt, 2, seq_no);
+  sqlite3_step (stmt);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, sqlite3_errmsg (m_db));
 
   sqlite3_finalize (stmt);
 
@@ -554,6 +577,17 @@ ActionLog::AddRemoteAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno, C
 
   sqlite3_finalize (stmt);
 
+  // I had a problem including directory_name assignment as part of the initial insert.
+  sqlite3_prepare_v2 (m_db, "UPDATE ActionLog SET directory=directory_name(filename) WHERE device_name=? AND seq_no=?", -1, &stmt, 0);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
+  sqlite3_bind_blob  (stmt, 1, device_name->buf (), device_name->length (), SQLITE_STATIC);
+  sqlite3_bind_int64 (stmt, 2, seqno);
+  sqlite3_step (stmt);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, sqlite3_errmsg (m_db));
+
+  sqlite3_finalize (stmt);
+
   return action;
 }
 
@@ -608,6 +642,82 @@ ActionLog::LogSize ()
 
   return retval;
 }
+
+
+void
+ActionLog::LookupActionsInFolderRecursively (const boost::function<void (const Ccnx::Name &name, sqlite3_int64 seq_no, const ActionItem &)> &visitor,
+                                             const std::string &folder, int offset/*=0*/, int limit/*=-1*/)
+{
+  _LOG_DEBUG ("LookupActionsInFolderRecursively: [" << folder << "]");
+
+  sqlite3_stmt *stmt;
+  if (folder != "")
+    {
+      /// @todo Do something to improve efficiency of this query. Right now it is basically scanning the whole database
+
+      sqlite3_prepare_v2 (m_db,
+                          "SELECT device_name,seq_no,action,filename,directory,version,action_timestamp, "
+                          "       file_hash,file_mtime,file_chmod,file_seg_num, "
+                          "       parent_device_name,parent_seq_no "
+                          "   FROM ActionLog "
+                          "   WHERE is_prefix (?, directory)=1 "
+                          "   ORDER BY action_timestamp DESC "
+                          "   LIMIT ? OFFSET ?", -1, &stmt, 0); // there is a small ambiguity with is_prefix matching, but should be ok for now
+      _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
+      sqlite3_bind_text (stmt, 1, folder.c_str (), folder.size (), SQLITE_STATIC);
+      _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
+      sqlite3_bind_int (stmt, 2, limit);
+      sqlite3_bind_int (stmt, 3, offset);
+    }
+  else
+    {
+      sqlite3_prepare_v2 (m_db,
+                          "SELECT device_name,seq_no,action,filename,directory,version,action_timestamp, "
+                          "       file_hash,file_mtime,file_chmod,file_seg_num, "
+                          "       parent_device_name,parent_seq_no "
+                          "   FROM ActionLog "
+                          "   ORDER BY action_timestamp DESC "
+                          "   LIMIT ? OFFSET ?", -1, &stmt, 0);
+      sqlite3_bind_int (stmt, 1, limit);
+      sqlite3_bind_int (stmt, 2, offset);
+    }
+
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
+  while (sqlite3_step (stmt) == SQLITE_ROW)
+    {
+      ActionItem action;
+
+      Ccnx::Name device_name (sqlite3_column_blob  (stmt, 0), sqlite3_column_bytes (stmt, 0));
+      sqlite3_int64 seq_no =  sqlite3_column_int64 (stmt, 1);
+      action.set_action      (static_cast<ActionItem_ActionType> (sqlite3_column_int   (stmt, 2)));
+      action.set_filename    (reinterpret_cast<const char *> (sqlite3_column_text  (stmt, 3)), sqlite3_column_bytes (stmt, 3));
+      std::string directory  (reinterpret_cast<const char *> (sqlite3_column_text  (stmt, 4)), sqlite3_column_bytes (stmt, 4));
+      if (action.action () == 0)
+        {
+          action.set_version     (sqlite3_column_int64 (stmt, 5));
+          action.set_timestamp   (sqlite3_column_int64 (stmt, 6));
+          action.set_file_hash   (sqlite3_column_blob  (stmt, 7), sqlite3_column_bytes (stmt, 7));
+          action.set_mtime       (sqlite3_column_int   (stmt, 8));
+          action.set_mode        (sqlite3_column_int   (stmt, 9));
+          action.set_seg_num     (sqlite3_column_int64 (stmt, 10));
+        }
+      if (sqlite3_column_bytes (stmt, 11) > 0)
+        {
+          action.set_parent_device_name (sqlite3_column_blob  (stmt, 11), sqlite3_column_bytes (stmt, 11));
+          action.set_parent_seq_no      (sqlite3_column_int64 (stmt, 12));
+        }
+
+      visitor (device_name, seq_no, action);
+    }
+
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, sqlite3_errmsg (m_db));
+
+  sqlite3_finalize (stmt);
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////

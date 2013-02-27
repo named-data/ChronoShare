@@ -45,7 +45,7 @@ StateServer::StateServer(CcnxWrapperPtr ccnx, ActionLogPtr actionLog,
   , m_objectManager (objectManager)
   , m_rootDir(rootDir)
   , m_freshness(freshness)
-  , m_scheduler (new Scheduler())
+  , m_executor (1)
   , m_userName (userName)
   , m_sharedFolderName (sharedFolderName)
   , m_appName (appName)
@@ -53,19 +53,19 @@ StateServer::StateServer(CcnxWrapperPtr ccnx, ActionLogPtr actionLog,
   // may be later /localhost should be replaced with /%C1.M.S.localhost
 
   // <PREFIX_INFO> = /localhost/<user's-device-name>/"chronoshare"/"info"
-  m_PREFIX_INFO = Name ("/localhost")(m_userName)("chronoshare")("info");
+  m_PREFIX_INFO = Name ("/localhost")(m_userName)("chronoshare")(m_sharedFolderName)("info");
 
   // <PREFIX_CMD> = /localhost/<user's-device-name>/"chronoshare"/"cmd"
-  m_PREFIX_CMD = Name ("/localhost")(m_userName)("chronoshare")("cmd");
+  m_PREFIX_CMD = Name ("/localhost")(m_userName)("chronoshare")(m_sharedFolderName)("cmd");
 
-  m_scheduler->start ();
+  m_executor.start ();
 
   registerPrefixes ();
 }
 
 StateServer::~StateServer()
 {
-  m_scheduler->shutdown ();
+  m_executor.shutdown ();
 
   deregisterPrefixes ();
 }
@@ -77,10 +77,10 @@ StateServer::registerPrefixes ()
   // will be extended to support all planned commands later
 
   // <PREFIX_INFO>/"actions"/"all"/<nonce>/<segment>  get list of all actions
-  m_ccnx->setInterestFilter (Name (m_PREFIX_INFO)("actions")("all"), bind(&StateServer::info_actions_all, this, _1));
+  m_ccnx->setInterestFilter (Name (m_PREFIX_INFO)("actions")("folder"), bind(&StateServer::info_actions_folder, this, _1));
 
-  // // <PREFIX_INFO>/"filestate"/"all"/<nonce>/<segment>
-  // m_ccnx->setInterestFilter (Name (m_PREFIX_INFO)("filestate")("all"), bind(&StateServer::info_filestate_all, this, _1));
+  // <PREFIX_INFO>/"filestate"/"all"/<nonce>/<segment>
+  m_ccnx->setInterestFilter (Name (m_PREFIX_INFO)("filestate")("folder"), bind(&StateServer::info_filestate_folder, this, _1));
 
   // <PREFIX_CMD>/"restore"/"file"/<one-component-relative-file-name>/<version>/<file-hash>
   m_ccnx->setInterestFilter (Name (m_PREFIX_CMD)("restore")("file"), bind(&StateServer::cmd_restore_file, this, _1));
@@ -89,34 +89,77 @@ StateServer::registerPrefixes ()
 void
 StateServer::deregisterPrefixes ()
 {
-  m_ccnx->clearInterestFilter (Name (m_PREFIX_INFO)("actions")("all"));
-  m_ccnx->clearInterestFilter (Name (m_PREFIX_INFO)("filestate")("all"));
+  m_ccnx->clearInterestFilter (Name (m_PREFIX_INFO)("actions")("folder"));
+  m_ccnx->clearInterestFilter (Name (m_PREFIX_INFO)("filestate")("folder"));
   m_ccnx->clearInterestFilter (Name (m_PREFIX_CMD) ("restore")("file"));
 }
 
-void
-StateServer::info_actions_all (const Name &interest)
+// void
+// StateServer::info_actions_all (const Name &interest)
+// {
+//   _LOG_DEBUG (">> info_actions_all: " << interest);
+//   m_executor.execute (bind (&StateServer::info_actions_all_Execute, this, interest));
+// }
+
+// void
+// StateServer::info_actions_all_Execute (const Name &interest)
+// {
+//   // <PREFIX_INFO>/"actions"/"all"/<nonce>/<offset>  get list of all actions
+
+//   try
+//     {
+//       int offset = interest.getCompFromBackAsInt (0);
+
+//       // LookupActionsInFolderRecursively
+//       /// @todo !!! add security checking
+//       m_ccnx->publishData (interest, "FAIL: Not implemented", 1);
+//     }
+//   catch (Ccnx::NameException &ne)
+//     {
+//       // ignore any unexpected interests and errors
+//       _LOG_ERROR (*boost::get_error_info<Ccnx::error_info_str>(ne));
+//     }
+// }
+
+void debugAction (const Ccnx::Name &name, sqlite3_int64 seq_no, const ActionItem &action)
 {
-  _LOG_DEBUG (">> info_actions_all: " << interest);
-  m_scheduler->scheduleOneTimeTask (m_scheduler, 0, bind (&StateServer::info_actions_all_Execute, this, interest), boost::lexical_cast<string>(interest));
+  std::cout << name << ", " << seq_no << ", " << action.filename () << std::endl;
 }
 
 void
-StateServer::info_actions_all_Execute (const Name &interest)
+StateServer::info_actions_folder (const Name &interest)
 {
-  // <PREFIX_INFO>/"actions"/"all"/<nonce>/<segment>  get list of all actions
+  if (interest.size () - m_PREFIX_INFO.size () != 4 &&
+      interest.size () - m_PREFIX_INFO.size () != 5)
+    {
+      _LOG_DEBUG ("Invalid interest: " << interest);
+      return;
+    }
+
+  _LOG_DEBUG (">> info_actions_all: " << interest);
+  m_executor.execute (bind (&StateServer::info_actions_folder_Execute, this, interest));
+}
+
+void
+StateServer::info_actions_folder_Execute (const Name &interest)
+{
+  // <PREFIX_INFO>/"actions"/"folder"/<folder>/<nonce>/<offset>  get list of all actions
 
   try
     {
-      int segment = interest.getCompFromBackAsInt (0);
-      if (segment != 0)
-        {
-          // ignore anything except segment 0, other stuff should be cached.. if not, then good luck
-          return;
-        }
+      int offset = interest.getCompFromBackAsInt (0);
 
       /// @todo !!! add security checking
-      m_ccnx->publishData (interest, "FAIL: Not implemented", 1);
+
+      string folder;
+      if (interest.size () - m_PREFIX_INFO.size () == 5)
+        folder = interest.getCompFromBackAsString (2);
+      else // == 4
+        folder = "";
+
+      m_actionLog->LookupActionsInFolderRecursively (debugAction, folder, offset*100, 100);
+
+      // m_ccnx->publishData (interest, "FAIL: Not implemented", 1);
     }
   catch (Ccnx::NameException &ne)
     {
@@ -125,11 +168,67 @@ StateServer::info_actions_all_Execute (const Name &interest)
     }
 }
 
+void debugFileState (const FileItem &file)
+{
+  std::cout << file.filename () << std::endl;
+}
+
+void
+StateServer::info_filestate_folder (const Ccnx::Name &interest)
+{
+  if (interest.size () - m_PREFIX_INFO.size () != 4 &&
+      interest.size () - m_PREFIX_INFO.size () != 5)
+    {
+      _LOG_DEBUG ("Invalid interest: " << interest << ", " << interest.size () - m_PREFIX_INFO.size ());
+      return;
+    }
+
+  _LOG_DEBUG (">> info_filestate_folder: " << interest);
+  m_executor.execute (bind (&StateServer::info_filestate_folder_Execute, this, interest));
+}
+
+
+void
+StateServer::info_filestate_folder_Execute (const Ccnx::Name &interest)
+{
+  // <PREFIX_INFO>/"filestate"/"folder"/<one-component-relative-folder-name>/<nonce>/<offset>
+  try
+    {
+      int offset = interest.getCompFromBackAsInt (0);
+
+      // /// @todo !!! add security checking
+
+      string folder;
+      if (interest.size () - m_PREFIX_INFO.size () == 5)
+        folder = interest.getCompFromBackAsString (2);
+      else // == 4
+        folder = "";
+
+      FileStatePtr fileState = m_actionLog->GetFileState ();
+      fileState->LookupFilesInFolderRecursively (debugFileState, folder, offset*100, 100);
+
+      // m_ccnx->publishData (interest, "FAIL: Not implemented", 1);
+    }
+  catch (Ccnx::NameException &ne)
+    {
+      // ignore any unexpected interests and errors
+      _LOG_ERROR (*boost::get_error_info<Ccnx::error_info_str>(ne));
+    }
+}
+
+
 void
 StateServer::cmd_restore_file (const Ccnx::Name &interest)
 {
+  if (interest.size () - m_PREFIX_CMD.size () != 4 &&
+      interest.size () - m_PREFIX_CMD.size () != 5)
+    {
+      _LOG_DEBUG ("Invalid interest: " << interest);
+      return;
+    }
+
   _LOG_DEBUG (">> cmd_restore_file: " << interest);
-  m_scheduler->scheduleOneTimeTask (m_scheduler, 0, bind (&StateServer::cmd_restore_file_Execute, this, interest), boost::lexical_cast<string>(interest));
+  m_executor.execute (bind (&StateServer::cmd_restore_file_Execute, this, interest));
 }
 
 void
@@ -141,25 +240,45 @@ StateServer::cmd_restore_file_Execute (const Ccnx::Name &interest)
 
   try
     {
-      Hash hash (head(interest.getCompFromBack (0)), interest.getCompFromBack (0).size());
-      int64_t version = interest.getCompFromBackAsInt (1);
-      string  filename = interest.getCompFromBackAsString (2); // should be safe even with full relative path
+      FileItemPtr file;
 
-      FileItemPtr file = m_actionLog->LookupAction (filename, version, hash);
+      if (interest.size () - m_PREFIX_CMD.size () == 5)
+        {
+          Hash hash (head(interest.getCompFromBack (0)), interest.getCompFromBack (0).size());
+          int64_t version = interest.getCompFromBackAsInt (1);
+          string  filename = interest.getCompFromBackAsString (2); // should be safe even with full relative path
+
+          file = m_actionLog->LookupAction (filename, version, hash);
+          if (!file)
+            {
+              _LOG_ERROR ("Requested file is not found: [" << filename << "] version [" << version << "] hash [" << hash.shortHash () << "]");
+            }
+        }
+      else
+        {
+          int64_t version = interest.getCompFromBackAsInt (0);
+          string  filename = interest.getCompFromBackAsString (1); // should be safe even with full relative path
+
+          file = m_actionLog->LookupAction (filename, version, Hash (0,0));
+          if (!file)
+            {
+              _LOG_ERROR ("Requested file is not found: [" << filename << "] version [" << version << "]");
+            }
+        }
+
       if (!file)
         {
           m_ccnx->publishData (interest, "FAIL: Requested file is not found", 1);
-          _LOG_ERROR ("Requested file is not found: [" << filename << "] version [" << version << "] hash [" << hash.shortHash () << "]");
           return;
         }
 
-      hash = Hash (file->file_hash ().c_str (), file->file_hash ().size ());
+      Hash hash = Hash (file->file_hash ().c_str (), file->file_hash ().size ());
 
       ///////////////////
       // now the magic //
       ///////////////////
 
-      boost::filesystem::path filePath = m_rootDir / filename;
+      boost::filesystem::path filePath = m_rootDir / file->filename ();
       Name deviceName (file->device_name ().c_str (), file->device_name ().size ());
 
       try

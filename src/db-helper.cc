@@ -61,6 +61,13 @@ DbHelper::DbHelper (const fs::path &path, const std::string &dbname)
                              << errmsg_info_str ("Cannot create function ``is_prefix''"));
     }
 
+  res = sqlite3_create_function (m_db, "directory_name", -1, SQLITE_ANY, 0, DbHelper::directory_name_xFun, 0, 0);
+  if (res != SQLITE_OK)
+    {
+      BOOST_THROW_EXCEPTION (Error::Db ()
+                             << errmsg_info_str ("Cannot create function ``directory_name''"));
+    }
+
   // Alex: determine if tables initialized. if not, initialize... not sure what is the best way to go...
   // for now, just attempt to create everything
   sqlite3_exec (m_db, INIT_DATABASE.c_str (), NULL, NULL, NULL);
@@ -173,3 +180,31 @@ DbHelper::is_prefix_xFun (sqlite3_context *context, int argc, sqlite3_value **ar
     }
 }
 
+void
+DbHelper::directory_name_xFun (sqlite3_context *context, int argc, sqlite3_value **argv)
+{
+  if (argc != 1)
+    {
+      sqlite3_result_error (context, "``directory_name'' expects 1 text argument", -1);
+      sqlite3_result_null (context);
+      return;
+    }
+
+  if (sqlite3_value_bytes (argv[0]) == 0)
+    {
+      sqlite3_result_null (context);
+      return;
+    }
+
+  boost::filesystem::path filePath (std::string (reinterpret_cast<const char*> (sqlite3_value_text (argv[0])), sqlite3_value_bytes (argv[0])));
+  std::string dirPath = filePath.parent_path ().generic_string ();
+  // _LOG_DEBUG ("directory_name FUN: " << dirPath);
+  if (dirPath.size () == 0)
+    {
+      sqlite3_result_null (context);
+    }
+  else
+    {
+      sqlite3_result_text (context, dirPath.c_str (), dirPath.size (), SQLITE_TRANSIENT);
+    }
+}

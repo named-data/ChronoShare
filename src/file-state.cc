@@ -21,6 +21,7 @@
 
 #include "file-state.h"
 #include "logging.h"
+#include <boost/bind.hpp>
 
 INIT_LOGGER ("FileState");
 
@@ -55,15 +56,6 @@ FileState::FileState (const boost::filesystem::path &path)
 {
   sqlite3_exec (m_db, INIT_DATABASE.c_str (), NULL, NULL, NULL);
   _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
-
-  int res = sqlite3_create_function (m_db, "directory_name", -1, SQLITE_ANY, 0,
-                                     FileState::directory_name_xFun,
-                                     0, 0);
-  if (res != SQLITE_OK)
-    {
-      BOOST_THROW_EXCEPTION (Error::Db ()
-                             << errmsg_info_str ("Cannot create function ``directory_name''"));
-    }
 }
 
 FileState::~FileState ()
@@ -242,21 +234,23 @@ FileState::LookupFilesForHash (const Hash &hash)
   return retval;
 }
 
-
-FileItemsPtr
-FileState::LookupFilesInFolder (const std::string &folder)
+void
+FileState::LookupFilesInFolder (const boost::function<void (const FileItem&)> &visitor, const std::string &folder, int offset/*=0*/, int limit/*=-1*/)
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db,
                       "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
                       "   FROM FileState "
-                      "   WHERE type = 0 AND directory = ?", -1, &stmt, 0);
+                      "   WHERE type = 0 AND directory = ?"
+                      "   LIMIT ? OFFSET ?", -1, &stmt, 0);
   if (folder.size () == 0)
     sqlite3_bind_null (stmt, 1);
   else
     sqlite3_bind_text (stmt, 1, folder.c_str (), folder.size (), SQLITE_STATIC);
 
-  FileItemsPtr retval = make_shared<FileItems> ();
+  sqlite3_bind_int (stmt, 2, limit);
+  sqlite3_bind_int (stmt, 3, offset);
+
   while (sqlite3_step (stmt) == SQLITE_ROW)
     {
       FileItem file;
@@ -269,58 +263,59 @@ FileState::LookupFilesInFolder (const std::string &folder)
       file.set_seg_num     (sqlite3_column_int64 (stmt, 6));
       file.set_is_complete (sqlite3_column_int   (stmt, 7));
 
-      retval->push_back (file);
+      visitor (file);
     }
 
   _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, sqlite3_errmsg (m_db));
 
   sqlite3_finalize (stmt);
+}
+
+FileItemsPtr
+FileState::LookupFilesInFolder (const std::string &folder, int offset/*=0*/, int limit/*=-1*/)
+{
+  FileItemsPtr retval = make_shared<FileItems> ();
+  LookupFilesInFolder (boost::bind (&FileItems::push_back, retval.get (), _1), folder, offset, limit);
 
   return retval;
 }
 
 FileItemsPtr
-FileState::LookupFilesInFolderRecursively (const std::string &folder)
+FileState::LookupFilesInFolderRecursively (const boost::function<void (const FileItem&)> &visitor, const std::string &folder, int offset/*=0*/, int limit/*=-1*/)
 {
   _LOG_DEBUG ("LookupFilesInFolderRecursively: [" << folder << "]");
 
   sqlite3_stmt *stmt;
   if (folder != "")
     {
+      /// @todo Do something to improve efficiency of this query. Right now it is basically scanning the whole database
+
       sqlite3_prepare_v2 (m_db,
                           "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
                           "   FROM FileState "
-                          "   WHERE type = 0 AND (directory = ? OR directory LIKE ?)", -1, &stmt, 0);
+                          "   WHERE type = 0 AND is_prefix (?, directory)=1 "
+                          "   LIMIT ? OFFSET ?", -1, &stmt, 0); // there is a small ambiguity with is_prefix matching, but should be ok for now
       _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
 
       sqlite3_bind_text (stmt, 1, folder.c_str (), folder.size (), SQLITE_STATIC);
       _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
 
-      ostringstream escapedFolder;
-      for (string::const_iterator ch = folder.begin (); ch != folder.end (); ch ++)
-        {
-          if (*ch == '%')
-            escapedFolder << "\\%";
-          else
-            escapedFolder << *ch;
-        }
-      escapedFolder << "/" << "%";
-      string escapedFolderStr = escapedFolder.str ();
-
-      sqlite3_bind_text (stmt, 2, escapedFolderStr.c_str (), escapedFolderStr.size (), SQLITE_STATIC);
-      _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+      sqlite3_bind_int (stmt, 2, limit);
+      sqlite3_bind_int (stmt, 3, offset);
     }
   else
     {
       sqlite3_prepare_v2 (m_db,
                           "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
                           "   FROM FileState "
-                          "   WHERE type = 0", -1, &stmt, 0);
+                          "   WHERE type = 0"
+                          "   LIMIT ? OFFSET ?", -1, &stmt, 0);
+      sqlite3_bind_int (stmt, 1, limit);
+      sqlite3_bind_int (stmt, 2, offset);
     }
 
   _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
 
-  FileItemsPtr retval = make_shared<FileItems> ();
   while (sqlite3_step (stmt) == SQLITE_ROW)
     {
       FileItem file;
@@ -333,41 +328,19 @@ FileState::LookupFilesInFolderRecursively (const std::string &folder)
       file.set_seg_num     (sqlite3_column_int64 (stmt, 6));
       file.set_is_complete (sqlite3_column_int   (stmt, 7));
 
-      retval->push_back (file);
+      visitor (file);
     }
 
   _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, sqlite3_errmsg (m_db));
 
   sqlite3_finalize (stmt);
-
-  return retval;
 }
 
-void
-FileState::directory_name_xFun (sqlite3_context *context, int argc, sqlite3_value **argv)
+FileItemsPtr
+FileState::LookupFilesInFolderRecursively (const std::string &folder, int offset/*=0*/, int limit/*=-1*/)
 {
-  if (argc != 1)
-    {
-      sqlite3_result_error (context, "``directory_name'' expects 1 text argument", -1);
-      sqlite3_result_null (context);
-      return;
-    }
+  FileItemsPtr retval = make_shared<FileItems> ();
+  LookupFilesInFolder (boost::bind (&FileItems::push_back, retval.get (), _1), folder, offset, limit);
 
-  if (sqlite3_value_bytes (argv[0]) == 0)
-    {
-      sqlite3_result_null (context);
-      return;
-    }
-
-  filesystem::path filePath (string (reinterpret_cast<const char*> (sqlite3_value_text (argv[0])), sqlite3_value_bytes (argv[0])));
-  string dirPath = filePath.parent_path ().generic_string ();
-  // _LOG_DEBUG ("directory_name FUN: " << dirPath);
-  if (dirPath.size () == 0)
-    {
-      sqlite3_result_null (context);
-    }
-  else
-    {
-      sqlite3_result_text (context, dirPath.c_str (), dirPath.size (), SQLITE_TRANSIENT);
-    }
+  return retval;
 }

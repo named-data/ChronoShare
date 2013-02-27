@@ -102,6 +102,13 @@ public:
   FileItemPtr
   LookupAction (const std::string &filename, sqlite3_int64 version, const Hash &filehash);
 
+  /**
+   * @brief Lookup up to [limit] actions starting [offset] in decreasing order (by timestamp) and calling visitor(device_name,seqno,action) for each action
+   */
+  void
+  LookupActionsInFolderRecursively (const boost::function<void (const Ccnx::Name &name, sqlite3_int64 seq_no, const ActionItem &)> &visitor,
+                                    const std::string &folder, int offset=0, int limit=-1);
+
   //
   inline FileStatePtr
   GetFileState ();
