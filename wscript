@@ -53,8 +53,9 @@ def configure(conf):
                 try:
                     # Try local path
                     Logs.info ("Check local version of Sparkle framework")
-                    check_sparkle(cxxflags="-F%s/osx/Frameworks" % conf.path.abspath(),
-                                  linkflags="-F%s/osx/Frameworks" % conf.path.abspath())
+                    check_sparkle(cxxflags="-F%s/osx/Frameworks/" % conf.path.abspath(),
+                                  linkflags="-F%s/osx/Frameworks/" % conf.path.abspath())
+                    conf.env.HAVE_LOCAL_SPARKLE = 1
                 except:
                     # Download to local path and retry
                     Logs.info ("Sparkle framework not found, trying to download it to 'build/'")
@@ -70,8 +71,9 @@ def configure(conf):
                             os.rename ("build/Sparkle/Sparkle.framework", "osx/Frameworks/Sparkle.framework")
                             shutil.rmtree("build/Sparkle", ignore_errors=True)
 
-                            check_sparkle(cxxflags="-F%s/osx/Frameworks" % conf.path.abspath(),
-                                          linkflags="-F%s/osx/Frameworks" % conf.path.abspath())
+                            check_sparkle(cxxflags="-F%s/osx/Frameworks/" % conf.path.abspath(),
+                                          linkflags="-F%s/osx/Frameworks/" % conf.path.abspath())
+                            conf.env.HAVE_LOCAL_SPARKLE = 1
                         except subprocess.CalledProcessError as e:
                             conf.fatal("Cannot find Sparkle framework. Auto download failed: '%s' returned %s" % (' '.join(e.cmd), e.returncode))
                         except:
@@ -238,6 +240,8 @@ def build (bld):
             qt.use += " OSX_SPARKLE"
             qt.source += ["osx/auto-update/sparkle-auto-update.mm"]
             qt.includes += " osx/auto-update"
+            if bld.env['HAVE_LOCAL_SPARKLE']:
+                qt.mac_frameworks = "osx/Frameworks/Sparkle.framework"
 
     cmdline = bld (
         target = "csd",
