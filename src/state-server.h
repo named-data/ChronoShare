@@ -65,10 +65,10 @@
  *   Each data packet contains up to 100 actions.
  *
  *   TEMPORARILY LIMIT IS REDUCED TO 10 ! (for debug purposes)
+ *   (may be even not temporarily...)
  *
  *   If more items are available, application data will specify URL for the next packet
  *
- *   @todo SPECIFY FORMAT OF THIS FIELD
  *   Format of returned data (JSON):
  *   {
  *      "actions": [
@@ -104,14 +104,36 @@
  *
  * - file
  *
- *   <PREFIX_INFO>/"filestate"/"folder"/<nonce>/<offset>   (full filestate)
+ *   <PREFIX_INFO>/"files"/"folder"/<nonce>/<offset>   (full filestate)
  *   or
- *   <PREFIX_INFO>/"filestate"/"folder"/<one-component-relative-folder-name>/<nonce>/<offset>
+ *   <PREFIX_INFO>/"files"/"folder"/<one-component-relative-folder-name>/<nonce>/<offset>
  *
  *   Each Data packets contains a list of up to 100 files.
  *   If more items are available, application data will specify URL for the next packet
  *
- *   @todo SPECIFY FORMAT OF THIS FIELD
+ *   TEMPORARILY LIMIT IS REDUCED TO 10 ! (for debug purposes)
+ *   (may be even not temporarily...)
+ *
+ *   Format of returned data (JSON):
+ *   {
+ *      "files": [
+ *      {
+ *          "filename": "<FILENAME>",
+ *          "owner": {
+ *              "userName": "<NDN-NAME-OF-THE-USER>",
+ *              "seqNo": "<SEQ_NO_OF_THE_ACTION>"
+ *          },
+ *
+ *          "hash": "<FILE-HASH>",
+ *          "timestamp": "<FILE-TIMESTAMP>",
+ *          "chmod": "<FILE-MODE>",
+ *          "segNum": "<NUMBER-OF-SEGMENTS (~file size)>"
+ *      }, ...,
+ *      ]
+ *
+ *      // only if there are more actions available
+ *      "more": "<NDN-NAME-OF-NEXT-SEGMENT-OF-FILESTATE>"
+ *   }
  *
  * Commands available:
  *
@@ -144,10 +166,10 @@ private:
   info_actions_folder_Execute (const Ccnx::Name &interest);
 
   void
-  info_filestate_folder (const Ccnx::Name &interest);
+  info_files_folder (const Ccnx::Name &interest);
 
   void
-  info_filestate_folder_Execute (const Ccnx::Name &interest);
+  info_files_folder_Execute (const Ccnx::Name &interest);
 
   void
   cmd_restore_file (const Ccnx::Name &interest);
@@ -164,6 +186,9 @@ private:
 
   static void
   formatActionJson (json_spirit::Array &actions, const Ccnx::Name &name, sqlite3_int64 seq_no, const ActionItem &action);
+
+  static void
+  formatFilestateJson (json_spirit::Array &files, const FileItem &file);
 
 private:
   Ccnx::CcnxWrapperPtr m_ccnx;

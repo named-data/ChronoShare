@@ -81,7 +81,7 @@ StateServer::registerPrefixes ()
   m_ccnx->setInterestFilter (Name (m_PREFIX_INFO)("actions")("folder"), bind(&StateServer::info_actions_folder, this, _1));
 
   // <PREFIX_INFO>/"filestate"/"all"/<nonce>/<segment>
-  m_ccnx->setInterestFilter (Name (m_PREFIX_INFO)("filestate")("folder"), bind(&StateServer::info_filestate_folder, this, _1));
+  m_ccnx->setInterestFilter (Name (m_PREFIX_INFO)("files")("folder"), bind(&StateServer::info_files_folder, this, _1));
 
   // <PREFIX_CMD>/"restore"/"file"/<one-component-relative-file-name>/<version>/<file-hash>
   m_ccnx->setInterestFilter (Name (m_PREFIX_CMD)("restore")("file"), bind(&StateServer::cmd_restore_file, this, _1));
@@ -91,7 +91,7 @@ void
 StateServer::deregisterPrefixes ()
 {
   m_ccnx->clearInterestFilter (Name (m_PREFIX_INFO)("actions")("folder"));
-  m_ccnx->clearInterestFilter (Name (m_PREFIX_INFO)("filestate")("folder"));
+  m_ccnx->clearInterestFilter (Name (m_PREFIX_INFO)("files")("folder"));
   m_ccnx->clearInterestFilter (Name (m_PREFIX_CMD) ("restore")("file"));
 }
 
@@ -263,13 +263,65 @@ StateServer::info_actions_folder_Execute (const Name &interest)
     }
 }
 
+void
+StateServer::formatFilestateJson (json_spirit::Array &files, const FileItem &file)
+{
+/**
+ *   {
+ *      "filestate": [
+ *      {
+ *          "filename": "<FILENAME>",
+ *          "owner": {
+ *              "userName": "<NDN-NAME-OF-THE-USER>",
+ *              "seqNo": "<SEQ_NO_OF_THE_ACTION>"
+ *          },
+ *
+ *          "hash": "<FILE-HASH>",
+ *          "timestamp": "<FILE-TIMESTAMP>",
+ *          "chmod": "<FILE-MODE>",
+ *          "segNum": "<NUMBER-OF-SEGMENTS (~file size)>"
+ *      }, ...,
+ *      ]
+ *
+ *      // only if there are more actions available
+ *      "more": "<NDN-NAME-OF-NEXT-SEGMENT-OF-FILESTATE>"
+ *   }
+ */
+  using namespace json_spirit;
+  using namespace boost::posix_time;
+
+  Object json;
+
+  json.push_back (Pair ("filename",  file.filename ()));
+  json.push_back (Pair ("version",   file.version ()));
+  {
+    Object owner;
+    Ccnx::Name device_name (file.device_name ().c_str (), file.device_name ().size ());
+    owner.push_back (Pair ("userName", boost::lexical_cast<string> (device_name)));
+    owner.push_back (Pair ("seqNo",    file.seq_no ()));
+
+    json.push_back (Pair ("owner", owner));
+  }
+
+  json.push_back (Pair ("hash", boost::lexical_cast<string> (Hash (file.file_hash ().c_str (), file.file_hash ().size ()))));
+  json.push_back (Pair ("timestamp", to_iso_string (from_time_t (file.mtime ()))));
+
+  ostringstream chmod;
+  chmod << setbase (8) << setfill ('0') << setw (4) << file.mode ();
+  json.push_back (Pair ("chmod", chmod.str ()));
+
+  json.push_back (Pair ("segNum", file.seg_num ()));
+
+  files.push_back (json);
+}
+
 void debugFileState (const FileItem &file)
 {
   std::cout << file.filename () << std::endl;
 }
 
 void
-StateServer::info_filestate_folder (const Ccnx::Name &interest)
+StateServer::info_files_folder (const Ccnx::Name &interest)
 {
   if (interest.size () - m_PREFIX_INFO.size () != 4 &&
       interest.size () - m_PREFIX_INFO.size () != 5)
@@ -279,12 +331,12 @@ StateServer::info_filestate_folder (const Ccnx::Name &interest)
     }
 
   _LOG_DEBUG (">> info_filestate_folder: " << interest);
-  m_executor.execute (bind (&StateServer::info_filestate_folder_Execute, this, interest));
+  m_executor.execute (bind (&StateServer::info_files_folder_Execute, this, interest));
 }
 
 
 void
-StateServer::info_filestate_folder_Execute (const Ccnx::Name &interest)
+StateServer::info_files_folder_Execute (const Ccnx::Name &interest)
 {
   // <PREFIX_INFO>/"filestate"/"folder"/<one-component-relative-folder-name>/<nonce>/<offset>
   try
@@ -299,10 +351,38 @@ StateServer::info_filestate_folder_Execute (const Ccnx::Name &interest)
       else // == 4
         folder = "";
 
-      FileStatePtr fileState = m_actionLog->GetFileState ();
-      fileState->LookupFilesInFolderRecursively (debugFileState, folder, offset*100, 100);
+/*
+ *   {
+ *      "files": [
+ *           ...
+ *      ],
+ *
+ *      // only if there are more actions available
+ *      "more": "<NDN-NAME-OF-NEXT-SEGMENT-OF-ACTION>"
+ *   }
+ */
 
-      // m_ccnx->publishData (interest, "FAIL: Not implemented", 1);
+      using namespace json_spirit;
+      Object json;
+
+      Array files;
+      bool more = m_actionLog
+        ->GetFileState ()
+        ->LookupFilesInFolderRecursively
+        (boost::bind (StateServer::formatFilestateJson, boost::ref (files), _1),
+         folder, offset*10, 10);
+
+      json.push_back (Pair ("files", files));
+
+      if (more)
+        {
+          Ccnx::Name more = Name (interest.getPartialName (0, interest.size () - 1))(offset + 1);
+          json.push_back (Pair ("more", lexical_cast<string> (more)));
+        }
+
+      ostringstream os;
+      write_stream (Value (json), os, pretty_print | raw_utf8);
+      m_ccnx->publishData (interest, os.str (), 1);
     }
   catch (Ccnx::NameException &ne)
     {
