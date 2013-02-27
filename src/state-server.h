@@ -32,6 +32,13 @@
 #include <boost/thread/locks.hpp>
 #include "executor.h"
 
+#include "../contrib/json_spirit/json_spirit_writer_template.h"
+#include "../contrib/json_spirit/json_spirit_value.h"
+
+#ifndef JSON_SPIRIT_VALUE_ENABLED
+#error Please define JSON_SPIRIT_VALUE_ENABLED for the Value type to be enabled
+#endif
+
 /**
  * @brief Class serving state information from ChronoShare
  *
@@ -56,9 +63,44 @@
  *   Actions are ordered in decreasing order (latest will go first).
  *
  *   Each data packet contains up to 100 actions.
+ *
+ *   TEMPORARILY LIMIT IS REDUCED TO 10 ! (for debug purposes)
+ *
  *   If more items are available, application data will specify URL for the next packet
  *
  *   @todo SPECIFY FORMAT OF THIS FIELD
+ *   Format of returned data (JSON):
+ *   {
+ *      "actions": [
+ *      {
+ *          "id": {
+ *              "userName": "<NDN-NAME-OF-THE-USER>",
+ *              "seqNo": "<SEQ_NO_OF_THE_ACTION>"
+ *          },
+ *          "timestamp": "<ACTION-TIMESTAMP>",
+ *          "filename": "<FILENAME>",
+ *
+ *          "action": "UPDATE | DELETE",
+ *
+ *          // only if update
+ *          "update": {
+ *              "hash": "<FILE-HASH>",
+ *              "timestamp": "<FILE-TIMESTAMP>",
+ *              "chmod": "<FILE-MODE>",
+ *              "segNum": "<NUMBER-OF-SEGMENTS (~file size)>"
+ *          },
+ *
+ *          // if parent_device_name is set
+ *          "parentId": {
+ *              "userName": "<NDN-NAME-OF-THE-USER>",
+ *              "seqNo": "<SEQ_NO_OF_THE_ACTION>"
+ *          };
+ *      },
+ *
+ *      // only if there are more actions available
+ *      "more": "<NDN-NAME-OF-NEXT-SEGMENT-OF-ACTION>"
+ *   }
+ *
  *
  * - file
  *
@@ -119,6 +161,9 @@ private:
 
   void
   deregisterPrefixes ();
+
+  static void
+  formatActionJson (json_spirit::Array &actions, const Ccnx::Name &name, sqlite3_int64 seq_no, const ActionItem &action);
 
 private:
   Ccnx::CcnxWrapperPtr m_ccnx;

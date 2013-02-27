@@ -474,7 +474,7 @@ ActionLog::LookupAction (const std::string &filename, sqlite3_int64 version, con
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db,
-                      "SELECT device_name, seq_no, file_mtime, file_chmod, file_seg_num, file_hash "
+                      "SELECT device_name, seq_no, strftime('%s', file_mtime), file_chmod, file_seg_num, file_hash "
                       " FROM ActionLog "
                       " WHERE action = 0 AND "
                       "       filename=? AND "
@@ -644,11 +644,14 @@ ActionLog::LogSize ()
 }
 
 
-void
+bool
 ActionLog::LookupActionsInFolderRecursively (const boost::function<void (const Ccnx::Name &name, sqlite3_int64 seq_no, const ActionItem &)> &visitor,
                                              const std::string &folder, int offset/*=0*/, int limit/*=-1*/)
 {
   _LOG_DEBUG ("LookupActionsInFolderRecursively: [" << folder << "]");
+
+  if (limit >= 0)
+    limit += 1; // to check if there is more data
 
   sqlite3_stmt *stmt;
   if (folder != "")
@@ -656,8 +659,8 @@ ActionLog::LookupActionsInFolderRecursively (const boost::function<void (const C
       /// @todo Do something to improve efficiency of this query. Right now it is basically scanning the whole database
 
       sqlite3_prepare_v2 (m_db,
-                          "SELECT device_name,seq_no,action,filename,directory,version,action_timestamp, "
-                          "       file_hash,file_mtime,file_chmod,file_seg_num, "
+                          "SELECT device_name,seq_no,action,filename,directory,version,strftime('%s', action_timestamp), "
+                          "       file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num, "
                           "       parent_device_name,parent_seq_no "
                           "   FROM ActionLog "
                           "   WHERE is_prefix (?, directory)=1 "
@@ -674,8 +677,8 @@ ActionLog::LookupActionsInFolderRecursively (const boost::function<void (const C
   else
     {
       sqlite3_prepare_v2 (m_db,
-                          "SELECT device_name,seq_no,action,filename,directory,version,action_timestamp, "
-                          "       file_hash,file_mtime,file_chmod,file_seg_num, "
+                          "SELECT device_name,seq_no,action,filename,directory,version,strftime('%s', action_timestamp), "
+                          "       file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num, "
                           "       parent_device_name,parent_seq_no "
                           "   FROM ActionLog "
                           "   ORDER BY action_timestamp DESC "
@@ -688,6 +691,9 @@ ActionLog::LookupActionsInFolderRecursively (const boost::function<void (const C
 
   while (sqlite3_step (stmt) == SQLITE_ROW)
     {
+      if (limit == 1)
+        break;
+
       ActionItem action;
 
       Ccnx::Name device_name (sqlite3_column_blob  (stmt, 0), sqlite3_column_bytes (stmt, 0));
@@ -711,11 +717,14 @@ ActionLog::LookupActionsInFolderRecursively (const boost::function<void (const C
         }
 
       visitor (device_name, seq_no, action);
+      limit --;
     }
 
   _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, sqlite3_errmsg (m_db));
 
   sqlite3_finalize (stmt);
+
+  return (limit == 1); // more data is available
 }
 
 

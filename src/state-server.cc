@@ -27,6 +27,7 @@
 #include "periodic-task.h"
 #include "simple-interval-generator.h"
 #include <boost/lexical_cast.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 INIT_LOGGER ("StateServer");
 
@@ -121,9 +122,77 @@ StateServer::deregisterPrefixes ()
 //     }
 // }
 
-void debugAction (const Ccnx::Name &name, sqlite3_int64 seq_no, const ActionItem &action)
+void
+StateServer::formatActionJson (json_spirit::Array &actions,
+                               const Ccnx::Name &name, sqlite3_int64 seq_no, const ActionItem &action)
 {
-  std::cout << name << ", " << seq_no << ", " << action.filename () << std::endl;
+/*
+ *      {
+ *          "id": {
+ *              "userName": "<NDN-NAME-OF-THE-USER>",
+ *              "seqNo": "<SEQ_NO_OF_THE_ACTION>"
+ *          },
+ *          "timestamp": "<ACTION-TIMESTAMP>",
+ *          "filename": "<FILENAME>",
+ *
+ *          "action": "UPDATE | DELETE",
+ *
+ *          // only if update
+ *          "update": {
+ *              "hash": "<FILE-HASH>",
+ *              "timestamp": "<FILE-TIMESTAMP>",
+ *              "chmod": "<FILE-MODE>",
+ *              "segNum": "<NUMBER-OF-SEGMENTS (~file size)>"
+ *          },
+ *
+ *          // if parent_device_name is set
+ *          "parentId": {
+ *              "userName": "<NDN-NAME-OF-THE-USER>",
+ *              "seqNo": "<SEQ_NO_OF_THE_ACTION>"
+ *          }
+ *      }
+ */
+
+  using namespace json_spirit;
+  using namespace boost::posix_time;
+
+  Object json;
+  Object id;
+
+  id.push_back (Pair ("userName", boost::lexical_cast<string> (name)));
+  id.push_back (Pair ("seqNo",    seq_no));
+
+  json.push_back (Pair ("id", id));
+
+  json.push_back (Pair ("timestamp", to_iso_string (from_time_t (action.timestamp ()))));
+  json.push_back (Pair ("filename",  action.filename ()));
+  json.push_back (Pair ("action", (action.action () == 0) ? "UPDATE" : "DELETE"));
+
+  if (action.action () == 0)
+    {
+      Object update;
+      update.push_back (Pair ("hash", boost::lexical_cast<string> (Hash (action.file_hash ().c_str (), action.file_hash ().size ()))));
+      update.push_back (Pair ("timestamp", to_iso_string (from_time_t (action.mtime ()))));
+
+      ostringstream chmod;
+      chmod << setbase (8) << setfill ('0') << setw (4) << action.mode ();
+      update.push_back (Pair ("chmod", chmod.str ()));
+
+      update.push_back (Pair ("segNum", action.seg_num ()));
+      json.push_back (Pair ("update", update));
+    }
+
+  if (action.has_parent_device_name ())
+    {
+      Object parentId;
+      Ccnx::Name parent_device_name (action.parent_device_name ().c_str (), action.parent_device_name ().size ());
+      id.push_back (Pair ("userName", boost::lexical_cast<string> (parent_device_name)));
+      id.push_back (Pair ("seqNo",    action.parent_seq_no ()));
+
+      json.push_back (Pair ("parentId", parentId));
+    }
+
+  actions.push_back (json);
 }
 
 void
@@ -156,10 +225,36 @@ StateServer::info_actions_folder_Execute (const Name &interest)
         folder = interest.getCompFromBackAsString (2);
       else // == 4
         folder = "";
+/*
+ *   {
+ *      "actions": [
+ *           ...
+ *      ],
+ *
+ *      // only if there are more actions available
+ *      "more": "<NDN-NAME-OF-NEXT-SEGMENT-OF-ACTION>"
+ *   }
+ */
 
-      m_actionLog->LookupActionsInFolderRecursively (debugAction, folder, offset*100, 100);
+      using namespace json_spirit;
+      Object json;
 
-      // m_ccnx->publishData (interest, "FAIL: Not implemented", 1);
+      Array actions;
+      bool more = m_actionLog->LookupActionsInFolderRecursively
+        (boost::bind (StateServer::formatActionJson, boost::ref(actions), _1, _2, _3),
+         folder, offset*10, 10);
+
+      json.push_back (Pair ("actions", actions));
+
+      if (more)
+        {
+          Ccnx::Name more = Name (interest.getPartialName (0, interest.size () - 1))(offset + 1);
+          json.push_back (Pair ("more", lexical_cast<string> (more)));
+        }
+
+      ostringstream os;
+      write_stream (Value (json), os, pretty_print | raw_utf8);
+      m_ccnx->publishData (interest, os.str (), 1);
     }
   catch (Ccnx::NameException &ne)
     {

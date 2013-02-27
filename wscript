@@ -104,7 +104,7 @@ def configure(conf):
 
     conf.load('boost')
 
-    conf.check_boost(lib='system test iostreams filesystem regex thread')
+    conf.check_boost(lib='system test iostreams filesystem regex thread date_time')
 
     boost_version = conf.env.BOOST_VERSION.split('_')
     if int(boost_version[0]) < 1 or int(boost_version[1]) < 46:
@@ -168,7 +168,7 @@ def build (bld):
         target="chronoshare",
         features=['cxx'],
         source = bld.path.ant_glob(['src/**/*.cc', 'src/**/*.cpp', 'src/**/*.proto']),
-        use = "BOOST BOOST_FILESYSTEM SQLITE3 LOG4CXX scheduler ccnx",
+        use = "BOOST BOOST_FILESYSTEM BOOST_DATE_TIME SQLITE3 LOG4CXX scheduler ccnx",
         includes = "ccnx scheduler src executor",
         )
 
@@ -188,7 +188,7 @@ def build (bld):
           features = "qt4 cxx cxxprogram",
           defines = "WAF",
           source = bld.path.ant_glob(['test/*.cc']),
-          use = 'BOOST_TEST BOOST_FILESYSTEM LOG4CXX SQLITE3 QTCORE QTGUI ccnx database fs_watcher chronoshare',
+          use = 'BOOST_TEST BOOST_FILESYSTEM BOOST_DATE_TIME LOG4CXX SQLITE3 QTCORE QTGUI ccnx database fs_watcher chronoshare',
           includes = "ccnx scheduler src executor gui fs-watcher",
           install_prefix = None,
           )
@@ -207,7 +207,7 @@ def build (bld):
         defines = "WAF",
         source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.cc', 'gui/*.qrc']),
         includes = "ccnx scheduler executor fs-watcher gui src adhoc server . ",
-        use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE QTGUI LOG4CXX fs_watcher ccnx database chronoshare http_server"
+        use = "BOOST BOOST_FILESYSTEM BOOST_DATE_TIME SQLITE3 QTCORE QTGUI LOG4CXX fs_watcher ccnx database chronoshare http_server"
         )
 
     if Utils.unversioned_sys_platform () == "darwin":
@@ -246,7 +246,7 @@ def build (bld):
 	defines = "WAF",
 	source = "cmd/csd.cc",
 	includes = "ccnx scheduler executor gui fs-watcher src . ",
-	use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE QTGUI LOG4CXX fs_watcher ccnx database chronoshare"
+	use = "BOOST BOOST_FILESYSTEM BOOST_DATE_TIME SQLITE3 QTCORE QTGUI LOG4CXX fs_watcher ccnx database chronoshare"
 	)
 
     dump_db = bld (
@@ -254,7 +254,7 @@ def build (bld):
         features = "cxx cxxprogram",
 	source = "cmd/dump-db.cc",
 	includes = "ccnx scheduler executor gui fs-watcher src . ",
-	use = "BOOST BOOST_FILESYSTEM SQLITE3 QTCORE LOG4CXX fs_watcher ccnx database chronoshare"
+	use = "BOOST BOOST_FILESYSTEM BOOST_DATE_TIME SQLITE3 QTCORE LOG4CXX fs_watcher ccnx database chronoshare"
         )
 
 from waflib import TaskGen

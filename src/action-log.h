@@ -105,7 +105,7 @@ public:
   /**
    * @brief Lookup up to [limit] actions starting [offset] in decreasing order (by timestamp) and calling visitor(device_name,seqno,action) for each action
    */
-  void
+  bool
   LookupActionsInFolderRecursively (const boost::function<void (const Ccnx::Name &name, sqlite3_int64 seq_no, const ActionItem &)> &visitor,
                                     const std::string &folder, int offset=0, int limit=-1);
 
