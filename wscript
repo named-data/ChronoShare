@@ -18,6 +18,17 @@ def options(opt):
 def configure(conf):
     conf.load("compiler_c compiler_cxx")
 
+    # I wish I could use it, but there is some weirdness with boost tests. Give up for now
+    # try:
+    #     conf.check(features='cxx cxxprogram', cxxflags="-std=c++11")
+    #     conf.env.append_value ('CXXFLAGS', ["-std=c++11"])
+    # except:
+    #     try:
+    #         conf.check(features='cxx cxxprogram', cxxflags="-std=c++0x")
+    #         conf.env.append_value ('CXXFLAGS', ["-std=c++0x"])
+    #     except:
+    #         conf.fatal ("You compiler doesn't support C++11. You can try GCC >= 4.4 or recent version of Clang.")
+
     conf.define ("CHRONOSHARE_VERSION", VERSION)
 
     conf.check_cfg(package='sqlite3', args=['--cflags', '--libs'], uselib_store='SQLITE3', mandatory=True)
@@ -42,24 +53,29 @@ def configure(conf):
                 try:
                     # Try local path
                     Logs.info ("Check local version of Sparkle framework")
-                    check_sparkle(cxxflags="-F%s/build/Sparkle" % conf.path.abspath(),
-                              linkflags="-F%s/build/Sparkle" % conf.path.abspath())
+                    check_sparkle(cxxflags="-F%s/osx/Frameworks" % conf.path.abspath(),
+                                  linkflags="-F%s/osx/Frameworks" % conf.path.abspath())
                 except:
                     # Download to local path and retry
                     Logs.info ("Sparkle framework not found, trying to download it to 'build/'")
 
-                    import urllib, subprocess, os
+                    import urllib, subprocess, os, shutil
                     urllib.urlretrieve ("http://sparkle.andymatuschak.org/files/Sparkle%201.5b6.zip", "build/Sparkle.zip")
                     if os.path.exists('build/Sparkle.zip'):
-                      try:
-                        subprocess.check_call (['unzip', '-qq', 'build/Sparkle.zip', '-d', 'build/Sparkle'])
-                        os.remove ("build/Sparkle.zip")
-                        check_sparkle(cxxflags="-F%s/build/Sparkle" % conf.path.abspath(),
-                              linkflags="-F%s/build/Sparkle" % conf.path.abspath())
-                      except subprocess.CalledProcessError as e:
-                        conf.fatal("Cannot find Sparkle framework. Auto download failed: '%s' returned %s" % (' '.join(e.cmd), e.returncode))
-                      except:
-                        conf.fatal("Unknown Error happened when auto downloading Sparkle framework")
+                        try:
+                            subprocess.check_call (['unzip', '-qq', 'build/Sparkle.zip', '-d', 'build/Sparkle'])
+                            os.remove ("build/Sparkle.zip")
+                            if not os.path.exists("osx/Frameworks"):
+                                os.mkdir ("osx/Frameworks")
+                            os.rename ("build/Sparkle/Sparkle.framework", "osx/Frameworks/Sparkle.framework")
+                            shutil.rmtree("build/Sparkle", ignore_errors=True)
+
+                            check_sparkle(cxxflags="-F%s/osx/Frameworks" % conf.path.abspath(),
+                                          linkflags="-F%s/osx/Frameworks" % conf.path.abspath())
+                        except subprocess.CalledProcessError as e:
+                            conf.fatal("Cannot find Sparkle framework. Auto download failed: '%s' returned %s" % (' '.join(e.cmd), e.returncode))
+                        except:
+                            conf.fatal("Unknown Error happened when auto downloading Sparkle framework")
 
             if conf.is_defined('HAVE_SPARKLE'):
                 conf.env.HAVE_SPARKLE = 1 # small cheat for wscript

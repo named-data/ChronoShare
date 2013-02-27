@@ -9,3 +9,4 @@ moc_*
 ui_*
 *.app
 *.DS_Store
+osx/Frameworks/Sparkle.framework
