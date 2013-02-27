@@ -63,6 +63,12 @@ private slots:
   // open the shared folder
   void openSharedFolder();
 
+  void openFile();
+
+  void openInWebBrowser();
+
+  void updateRecentFilesMenu();
+
   // open file dialog
   void openFileDialog();
 
@@ -82,8 +88,9 @@ private slots:
 #endif
 
 private:
+  void checkFileAction(const std::string &, int, int);
   // create actions that result from clicking a menu option
-  void createActions();
+  void createActionsAndMenu();
 
   // create tray icon
   void createTrayIcon();
@@ -119,6 +126,9 @@ private:
   QAction* m_changeFolder; // change the shared folder action
   QAction* m_quitProgram; // quit program action
   QAction *m_checkForUpdates;
+  QAction *m_openWeb;
+  QMenu *m_recentFilesMenu;
+  QAction *m_fileActions[5];
 
   QAction *m_wifiAction;
 

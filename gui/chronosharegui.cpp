@@ -27,6 +27,7 @@
 #include "ccnx-wrapper.h"
 #include <QValidator>
 #include <QDir>
+#include <QFileInfo>
 #include <QDesktopServices>
 
 #include <boost/make_shared.hpp>
@@ -92,7 +93,7 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
   setLayout(mainLayout);
 
   // create actions that result from clicking a menu option
-  createActions();
+  createActionsAndMenu();
 
   // create tray icon
   createTrayIcon();
@@ -211,13 +212,26 @@ void ChronoShareGui::openMessageBox(QString title, QString text, QString infotex
   messageBox.exec();
 }
 
-void ChronoShareGui::createActions()
+void ChronoShareGui::createActionsAndMenu()
 {
   _LOG_DEBUG ("Create actions");
 
   // create the "open folder" action
   m_openFolder = new QAction(tr("&Open Folder"), this);
   connect(m_openFolder, SIGNAL(triggered()), this, SLOT(openSharedFolder()));
+
+  m_openWeb = new QAction(tr("Open in &Browser"), this);
+  connect(m_openWeb, SIGNAL(triggered()), this, SLOT(openInWebBrowser()));
+
+  m_recentFilesMenu = new QMenu(tr("Recently Changed Files"), this);
+  for (int i = 0; i < 5; i++)
+  {
+    m_fileActions[i] = new QAction(this);
+    m_fileActions[i]->setVisible(false);
+    connect(m_fileActions[i], SIGNAL(triggered()), this, SLOT(openFile()));
+    m_recentFilesMenu->addAction(m_fileActions[i]);
+  }
+  connect(m_recentFilesMenu, SIGNAL(aboutToShow()), this, SLOT(updateRecentFilesMenu()));
 
   // create the "view settings" action
   m_viewSettings = new QAction(tr("&View Settings"), this);
@@ -252,6 +266,8 @@ void ChronoShareGui::createTrayIcon()
 
   // add actions to the menu
   m_trayIconMenu->addAction(m_openFolder);
+  m_trayIconMenu->addAction(m_openWeb);
+  m_trayIconMenu->addMenu(m_recentFilesMenu);
   m_trayIconMenu->addSeparator();
   m_trayIconMenu->addAction(m_viewSettings);
   m_trayIconMenu->addAction(m_changeFolder);
@@ -329,6 +345,90 @@ void ChronoShareGui::openSharedFolder()
 {
   QString path = QDir::toNativeSeparators(m_dirPath);
   QDesktopServices::openUrl(QUrl("file:///" + path));
+}
+
+void ChronoShareGui::openInWebBrowser()
+{
+  QDesktopServices::openUrl(QUrl("http://localhost:9001"));
+}
+
+void ChronoShareGui::openFile()
+{
+  // figure out who sent the signal
+  QAction *pAction = qobject_cast<QAction*>(sender());
+  if (pAction->isEnabled())
+  {
+    // we stored full path of the file in this toolTip field
+#ifdef Q_WS_MAC
+    // we do some hack so we could show the file in Finder highlighted
+    QStringList args;
+    args << "-e";
+    args << "tell application \"Finder\"";
+    args << "-e";
+    args << "activate";
+    args << "-e";
+    args << "select POSIX file \"" + pAction->toolTip() + "/" + pAction->text() + "\"";
+    args << "-e";
+    args << "end tell";
+    QProcess::startDetached("osascript", args);
+#else
+    // too bad qt couldn't do highlighting for Linux (or Mac)
+    QDesktopServices::openUrl(QUrl("file:///" + pAction->toolTip()));
+#endif
+  }
+}
+
+void ChronoShareGui::updateRecentFilesMenu()
+{
+  for (int i = 0; i < 5; i++)
+  {
+    m_fileActions[i]->setVisible(false);
+  }
+  m_dispatcher->LookupRecentFileActions(boost::bind(&ChronoShareGui::checkFileAction, this, _1, _2, _3), 5);
+}
+
+void ChronoShareGui::checkFileAction (const std::string &filename, int action, int index)
+{
+  QString fullPath = m_dirPath + "/" + filename.c_str();
+  QFileInfo fileInfo(fullPath);
+  if (fileInfo.exists())
+  {
+    // This is a hack, we just use some field to store the path
+    m_fileActions[index]->setToolTip(fileInfo.absolutePath());
+    m_fileActions[index]->setEnabled(true);
+  }
+  else
+  {
+    // after half an hour frustrating test and search around,
+    // I think it's the problem of Qt.
+    // According to the Qt doc, the action cannot be clicked
+    // and the area would be grey, but it didn't happen
+    // User can still trigger the action, and not greyed
+    // added check in SLOT to see if the action is "enalbed"
+    // as a remedy
+    // Give up at least for now
+    m_fileActions[index]->setEnabled(false);
+    // UPDATE, file not fetched yet
+    if (action == 0)
+    {
+      QFont font;
+      // supposed by change the font, didn't happen
+      font.setWeight(QFont::Light);
+      m_fileActions[index]->setFont(font);
+      m_fileActions[index]->setToolTip(tr("Fetching..."));
+    }
+    // DELETE
+    else
+    {
+      QFont font;
+      // supposed by change the font, didn't happen
+      font.setStrikeOut(true);
+      m_fileActions[index]->setFont(font);
+      m_fileActions[index]->setToolTip(tr("Deleted..."));
+    }
+  }
+  m_fileActions[index]->setText(fileInfo.fileName());
+  m_fileActions[index]->setVisible(true);
 }
 
 void ChronoShareGui::changeSettings()
