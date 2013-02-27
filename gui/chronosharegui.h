@@ -25,6 +25,11 @@
 
 #include "adhoc.h"
 
+#if __APPLE__ && HAVE_SPARKLE
+#define SPARKLE_SUPPORTED 1
+#include "sparkle-auto-update.h"
+#endif
+
 #include <QtGui>
 #include <QWidget>
 #include <QSystemTrayIcon>
@@ -72,7 +77,9 @@ private slots:
 
   // click on adhoc button
   void onAdHocChange (bool state); // cannot be protected with #ifdef. otherwise something fishy with QT
-
+#ifdef SPARKLE_SUPPORTED
+  void onCheckForUpdates();
+#endif
 
 private:
   // create actions that result from clicking a menu option
@@ -111,6 +118,7 @@ private:
   QAction* m_viewSettings; // chronoShare settings
   QAction* m_changeFolder; // change the shared folder action
   QAction* m_quitProgram; // quit program action
+  QAction *m_checkForUpdates;
 
   QAction *m_wifiAction;
 
@@ -137,6 +145,9 @@ private:
   Executor m_executor;
 #endif
 
+#ifdef SPARKLE_SUPPORTED
+  AutoUpdate *m_autoUpdate;
+#endif
   // QString m_settingsFilePath; // settings file path
   // QString m_settings;
 };

@@ -1,5 +1,4 @@
 # -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
-
 VERSION='0.1'
 APPNAME='chronoshare'
 
@@ -10,6 +9,9 @@ def options(opt):
     opt.add_option('--test', action='store_true',default=False,dest='_test',help='''build unit tests''')
     opt.add_option('--yes',action='store_true',default=False) # for autoconf/automake/make compatibility
     opt.add_option('--log4cxx', action='store_true',default=False,dest='log4cxx',help='''Compile with log4cxx logging support''')
+
+    if Utils.unversioned_sys_platform () == "darwin":
+        opt.add_option('--auto-update', action='store_true',default=False,dest='autoupdate',help='''(OSX) Download sparkle framework and enable autoupdate feature''')
 
     opt.load('compiler_c compiler_cxx boost ccnx protoc qt4')
 
@@ -23,8 +25,44 @@ def configure(conf):
     conf.check_cfg(package='libevent_pthreads', args=['--cflags', '--libs'], uselib_store='LIBEVENT_PTHREADS', mandatory=True)
 
     if Utils.unversioned_sys_platform () == "darwin":
-        conf.check_cxx(framework_name='Foundation', uselib_store='OSX_FOUNDATION', cxxflags="-ObjC++", mandatory=False)
-        conf.check_cxx(framework_name='CoreWLAN',   uselib_store='OSX_COREWLAN',   cxxflags="-ObjC++", define_name='HAVE_COREWLAN', mandatory=False)
+        conf.check_cxx(framework_name='Foundation', uselib_store='OSX_FOUNDATION', mandatory=False, compile_filename='test.mm')
+        conf.check_cxx(framework_name='CoreWLAN',   uselib_store='OSX_COREWLAN',   define_name='HAVE_COREWLAN', mandatory=False, compile_filename='test.mm')
+
+        if conf.options.autoupdate:
+            def check_sparkle(**kwargs):
+              conf.check_cxx (framework_name='Sparkle', header_name="Foundation/Foundation.h",
+                              uselib_store='OSX_SPARKLE', define_name='HAVE_SPARKLE', mandatory=True,
+                              compile_filename='test.mm',
+                              **kwargs
+                              )
+            try:
+                # Try standard paths first
+                check_sparkle()
+            except:
+                try:
+                    # Try local path
+                    Logs.info ("Check local version of Sparkle framework")
+                    check_sparkle(cxxflags="-F%s/build/Sparkle" % conf.path.abspath(),
+                              linkflags="-F%s/build/Sparkle" % conf.path.abspath())
+                except:
+                    # Download to local path and retry
+                    Logs.info ("Sparkle framework not found, trying to download it to 'build/'")
+
+                    import urllib, subprocess, os
+                    urllib.urlretrieve ("http://sparkle.andymatuschak.org/files/Sparkle%201.5b6.zip", "build/Sparkle.zip")
+                    if os.path.exists('build/Sparkle.zip'):
+                      try:
+                        subprocess.check_call (['unzip', '-qq', 'build/Sparkle.zip', '-d', 'build/Sparkle'])
+                        os.remove ("build/Sparkle.zip")
+                        check_sparkle(cxxflags="-F%s/build/Sparkle" % conf.path.abspath(),
+                              linkflags="-F%s/build/Sparkle" % conf.path.abspath())
+                      except subprocess.CalledProcessError as e:
+                        conf.fatal("Cannot find Sparkle framework. Auto download failed: '%s' returned %s" % (' '.join(e.cmd), e.returncode))
+                      except:
+                        conf.fatal("Unknown Error happened when auto downloading Sparkle framework")
+
+            if conf.is_defined('HAVE_SPARKLE'):
+                conf.env.HAVE_SPARKLE = 1 # small cheat for wscript
 
     if not conf.check_cfg(package='openssl', args=['--cflags', '--libs'], uselib_store='SSL', mandatory=False):
         libcrypto = conf.check_cc(lib='crypto',
@@ -179,8 +217,11 @@ def build (bld):
         qt.mac_app = "ChronoShare.app"
         qt.mac_plist = app_plist % "ChronoShare"
         qt.use += " OSX_FOUNDATION OSX_COREWLAN adhoc"
-        # qt.use += " OSX_FOUNDATION OSX_COREWLAN adhoc"
 
+        if bld.env['HAVE_SPARKLE']:
+            qt.use += " OSX_SPARKLE"
+            qt.source += ["osx/auto-update/sparkle-auto-update.mm"]
+            qt.includes += " osx/auto-update"
 
     cmdline = bld (
         target = "csd",
