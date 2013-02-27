@@ -77,7 +77,7 @@ CREATE TRIGGER ActionLogInsert_trigger                                  \n\
                   device_name > NEW.device_name) IS NULL                \n\
     BEGIN                                                               \n\
         SELECT apply_action (NEW.device_name, NEW.seq_no,               \
-                             NEW.action,NEW.filename,NEW.file_hash,     \
+                             NEW.action,NEW.filename,NEW.version,NEW.file_hash,     \
                              strftime('%s', NEW.file_atime),strftime('%s', NEW.file_mtime),strftime('%s', NEW.file_ctime), \
                              NEW.file_chmod, NEW.file_seg_num); /* function that applies action and adds record the FileState */  \n \
     END;                                                                \n\
@@ -737,7 +737,7 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
 {
   ActionLog *the = reinterpret_cast<ActionLog*> (sqlite3_user_data (context));
 
-  if (argc != 10)
+  if (argc != 11)
     {
       sqlite3_result_error (context, "``apply_action'' expects 10 arguments", -1);
       return;
@@ -747,6 +747,7 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
   sqlite3_int64 seq_no    = sqlite3_value_int64 (argv[1]);
   int action         = sqlite3_value_int  (argv[2]);
   string filename    = reinterpret_cast<const char*> (sqlite3_value_text (argv[3]));
+  sqlite3_int64 version = sqlite3_value_int64 (argv[4]);
 
   _LOG_TRACE ("apply_function called with " << argc);
   _LOG_TRACE ("device_name: " << Name (device_name)
@@ -755,16 +756,16 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
 
   if (action == 0) // update
     {
-      Hash hash (sqlite3_value_blob (argv[4]), sqlite3_value_bytes (argv[4]));
-      time_t atime = static_cast<time_t> (sqlite3_value_int64 (argv[5]));
-      time_t mtime = static_cast<time_t> (sqlite3_value_int64 (argv[6]));
-      time_t ctime = static_cast<time_t> (sqlite3_value_int64 (argv[7]));
-      int mode = sqlite3_value_int (argv[8]);
-      int seg_num = sqlite3_value_int (argv[9]);
+      Hash hash (sqlite3_value_blob (argv[5]), sqlite3_value_bytes (argv[5]));
+      time_t atime = static_cast<time_t> (sqlite3_value_int64 (argv[6]));
+      time_t mtime = static_cast<time_t> (sqlite3_value_int64 (argv[7]));
+      time_t ctime = static_cast<time_t> (sqlite3_value_int64 (argv[8]));
+      int mode = sqlite3_value_int (argv[9]);
+      int seg_num = sqlite3_value_int (argv[10]);
 
       _LOG_DEBUG ("Update " << filename << " " << atime << " " << mtime << " " << ctime << " " << hash);
 
-      the->m_fileState->UpdateFile (filename, hash, device_name, seq_no, atime, mtime, ctime, mode, seg_num);
+      the->m_fileState->UpdateFile (filename, version, hash, device_name, seq_no, atime, mtime, ctime, mode, seg_num);
 
       // no callback here
     }

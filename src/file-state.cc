@@ -33,6 +33,7 @@ const std::string INIT_DATABASE = "\
 CREATE TABLE FileState (                                                \n\
     type        INTEGER NOT NULL, /* 0 - newest, 1 - oldest */          \n\
     filename    TEXT NOT NULL,                                          \n\
+    version     INTEGER,                                                \n\
     directory   TEXT,                                                   \n\
     device_name BLOB NOT NULL,                                          \n\
     seq_no      INTEGER NOT NULL,                                       \n\
@@ -63,13 +64,15 @@ FileState::~FileState ()
 }
 
 void
-FileState::UpdateFile (const std::string &filename, const Hash &hash, const Ccnx::CcnxCharbuf &device_name, sqlite3_int64 seq_no,
+FileState::UpdateFile (const std::string &filename, sqlite3_int64 version,
+                       const Hash &hash, const Ccnx::CcnxCharbuf &device_name, sqlite3_int64 seq_no,
                        time_t atime, time_t mtime, time_t ctime, int mode, int seg_num)
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "UPDATE FileState "
                       "SET "
                       "device_name=?, seq_no=?, "
+                      "version=?,"
                       "file_hash=?,"
                       "file_atime=datetime(?, 'unixepoch'),"
                       "file_mtime=datetime(?, 'unixepoch'),"
@@ -80,13 +83,14 @@ FileState::UpdateFile (const std::string &filename, const Hash &hash, const Ccnx
 
   sqlite3_bind_blob  (stmt, 1, device_name.buf (), device_name.length (), SQLITE_STATIC);
   sqlite3_bind_int64 (stmt, 2, seq_no);
-  sqlite3_bind_blob  (stmt, 3, hash.GetHash (), hash.GetHashBytes (), SQLITE_STATIC);
-  sqlite3_bind_int64 (stmt, 4, atime);
-  sqlite3_bind_int64 (stmt, 5, mtime);
-  sqlite3_bind_int64 (stmt, 6, ctime);
-  sqlite3_bind_int   (stmt, 7, mode);
-  sqlite3_bind_int   (stmt, 8, seg_num);
-  sqlite3_bind_text  (stmt, 9, filename.c_str (), -1, SQLITE_STATIC);
+  sqlite3_bind_int64 (stmt, 3, version);
+  sqlite3_bind_blob  (stmt, 4, hash.GetHash (), hash.GetHashBytes (), SQLITE_STATIC);
+  sqlite3_bind_int64 (stmt, 5, atime);
+  sqlite3_bind_int64 (stmt, 6, mtime);
+  sqlite3_bind_int64 (stmt, 7, ctime);
+  sqlite3_bind_int   (stmt, 8, mode);
+  sqlite3_bind_int   (stmt, 9, seg_num);
+  sqlite3_bind_text  (stmt, 10, filename.c_str (), -1, SQLITE_STATIC);
 
   sqlite3_step (stmt);
 
@@ -100,22 +104,22 @@ FileState::UpdateFile (const std::string &filename, const Hash &hash, const Ccnx
     {
       sqlite3_stmt *stmt;
       sqlite3_prepare_v2 (m_db, "INSERT INTO FileState "
-                          "(type,filename,device_name,seq_no,file_hash,file_atime,file_mtime,file_ctime,file_chmod,file_seg_num) "
-                          "VALUES (0, ?, ?, ?, ?, "
+                          "(type,filename,version,device_name,seq_no,file_hash,file_atime,file_mtime,file_ctime,file_chmod,file_seg_num) "
+                          "VALUES (0, ?, ?, ?, ?, ?, "
                           "datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), ?, ?)", -1, &stmt, 0);
 
       _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
 
       sqlite3_bind_text  (stmt, 1, filename.c_str (), -1, SQLITE_STATIC);
-      sqlite3_bind_blob  (stmt, 2, device_name.buf (), device_name.length (), SQLITE_STATIC);
-      sqlite3_bind_int64 (stmt, 3, seq_no);
-      sqlite3_bind_blob  (stmt, 4, hash.GetHash (), hash.GetHashBytes (), SQLITE_STATIC);
-      sqlite3_bind_int64 (stmt, 5, atime);
-      sqlite3_bind_int64 (stmt, 6, mtime);
-      sqlite3_bind_int64 (stmt, 7, ctime);
-      sqlite3_bind_int   (stmt, 8, mode);
-      sqlite3_bind_int   (stmt, 9, seg_num);
-      // sqlite3_bind_text  (stmt, 10, filename.c_str (), -1, SQLITE_STATIC);
+      sqlite3_bind_int64 (stmt, 2, version);
+      sqlite3_bind_blob  (stmt, 3, device_name.buf (), device_name.length (), SQLITE_STATIC);
+      sqlite3_bind_int64 (stmt, 4, seq_no);
+      sqlite3_bind_blob  (stmt, 5, hash.GetHash (), hash.GetHashBytes (), SQLITE_STATIC);
+      sqlite3_bind_int64 (stmt, 6, atime);
+      sqlite3_bind_int64 (stmt, 7, mtime);
+      sqlite3_bind_int64 (stmt, 8, ctime);
+      sqlite3_bind_int   (stmt, 9, mode);
+      sqlite3_bind_int   (stmt, 10, seg_num);
 
       sqlite3_step (stmt);
       _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE,
@@ -175,7 +179,7 @@ FileState::LookupFile (const std::string &filename)
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db,
-                      "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
+                      "SELECT filename,version,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
                       "       FROM FileState "
                       "       WHERE type = 0 AND filename = ?", -1, &stmt, 0);
   _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
@@ -186,13 +190,14 @@ FileState::LookupFile (const std::string &filename)
   {
     retval = make_shared<FileItem> ();
     retval->set_filename    (reinterpret_cast<const char *> (sqlite3_column_text  (stmt, 0)), sqlite3_column_bytes (stmt, 0));
-    retval->set_device_name (sqlite3_column_blob  (stmt, 1), sqlite3_column_bytes (stmt, 1));
-    retval->set_seq_no      (sqlite3_column_int64 (stmt, 2));
-    retval->set_file_hash   (sqlite3_column_blob  (stmt, 3), sqlite3_column_bytes (stmt, 3));
-    retval->set_mtime       (sqlite3_column_int   (stmt, 4));
-    retval->set_mode        (sqlite3_column_int   (stmt, 5));
-    retval->set_seg_num     (sqlite3_column_int64 (stmt, 6));
-    retval->set_is_complete (sqlite3_column_int   (stmt, 7));
+    retval->set_version     (sqlite3_column_int64 (stmt, 1));
+    retval->set_device_name (sqlite3_column_blob  (stmt, 2), sqlite3_column_bytes (stmt, 2));
+    retval->set_seq_no      (sqlite3_column_int64 (stmt, 3));
+    retval->set_file_hash   (sqlite3_column_blob  (stmt, 4), sqlite3_column_bytes (stmt, 4));
+    retval->set_mtime       (sqlite3_column_int   (stmt, 5));
+    retval->set_mode        (sqlite3_column_int   (stmt, 6));
+    retval->set_seg_num     (sqlite3_column_int64 (stmt, 7));
+    retval->set_is_complete (sqlite3_column_int   (stmt, 8));
   }
   _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, sqlite3_errmsg (m_db));
   sqlite3_finalize (stmt);
@@ -205,7 +210,7 @@ FileState::LookupFilesForHash (const Hash &hash)
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db,
-                      "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
+                      "SELECT filename,version,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
                       "   FROM FileState "
                       "   WHERE type = 0 AND file_hash = ?", -1, &stmt, 0);
   _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
@@ -217,13 +222,14 @@ FileState::LookupFilesForHash (const Hash &hash)
     {
       FileItem file;
       file.set_filename    (reinterpret_cast<const char *> (sqlite3_column_text  (stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      file.set_device_name (sqlite3_column_blob  (stmt, 1), sqlite3_column_bytes (stmt, 1));
-      file.set_seq_no      (sqlite3_column_int64 (stmt, 2));
-      file.set_file_hash   (sqlite3_column_blob  (stmt, 3), sqlite3_column_bytes (stmt, 3));
-      file.set_mtime       (sqlite3_column_int   (stmt, 4));
-      file.set_mode        (sqlite3_column_int   (stmt, 5));
-      file.set_seg_num     (sqlite3_column_int64 (stmt, 6));
-      file.set_is_complete (sqlite3_column_int   (stmt, 7));
+      file.set_version     (sqlite3_column_int64 (stmt, 1));
+      file.set_device_name (sqlite3_column_blob  (stmt, 2), sqlite3_column_bytes (stmt, 2));
+      file.set_seq_no      (sqlite3_column_int64 (stmt, 3));
+      file.set_file_hash   (sqlite3_column_blob  (stmt, 4), sqlite3_column_bytes (stmt, 4));
+      file.set_mtime       (sqlite3_column_int   (stmt, 5));
+      file.set_mode        (sqlite3_column_int   (stmt, 6));
+      file.set_seg_num     (sqlite3_column_int64 (stmt, 7));
+      file.set_is_complete (sqlite3_column_int   (stmt, 8));
 
       retval->push_back (file);
     }
@@ -239,7 +245,7 @@ FileState::LookupFilesInFolder (const boost::function<void (const FileItem&)> &v
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db,
-                      "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
+                      "SELECT filename,version,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
                       "   FROM FileState "
                       "   WHERE type = 0 AND directory = ?"
                       "   LIMIT ? OFFSET ?", -1, &stmt, 0);
@@ -255,13 +261,14 @@ FileState::LookupFilesInFolder (const boost::function<void (const FileItem&)> &v
     {
       FileItem file;
       file.set_filename    (reinterpret_cast<const char *> (sqlite3_column_text  (stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      file.set_device_name (sqlite3_column_blob  (stmt, 1), sqlite3_column_bytes (stmt, 1));
-      file.set_seq_no      (sqlite3_column_int64 (stmt, 2));
-      file.set_file_hash   (sqlite3_column_blob  (stmt, 3), sqlite3_column_bytes (stmt, 3));
-      file.set_mtime       (sqlite3_column_int   (stmt, 4));
-      file.set_mode        (sqlite3_column_int   (stmt, 5));
-      file.set_seg_num     (sqlite3_column_int64 (stmt, 6));
-      file.set_is_complete (sqlite3_column_int   (stmt, 7));
+      file.set_version     (sqlite3_column_int64 (stmt, 1));
+      file.set_device_name (sqlite3_column_blob  (stmt, 2), sqlite3_column_bytes (stmt, 2));
+      file.set_seq_no      (sqlite3_column_int64 (stmt, 3));
+      file.set_file_hash   (sqlite3_column_blob  (stmt, 4), sqlite3_column_bytes (stmt, 4));
+      file.set_mtime       (sqlite3_column_int   (stmt, 5));
+      file.set_mode        (sqlite3_column_int   (stmt, 6));
+      file.set_seg_num     (sqlite3_column_int64 (stmt, 7));
+      file.set_is_complete (sqlite3_column_int   (stmt, 8));
 
       visitor (file);
     }
@@ -280,10 +287,13 @@ FileState::LookupFilesInFolder (const std::string &folder, int offset/*=0*/, int
   return retval;
 }
 
-FileItemsPtr
+bool
 FileState::LookupFilesInFolderRecursively (const boost::function<void (const FileItem&)> &visitor, const std::string &folder, int offset/*=0*/, int limit/*=-1*/)
 {
   _LOG_DEBUG ("LookupFilesInFolderRecursively: [" << folder << "]");
+
+  if (limit >= 0)
+    limit ++;
 
   sqlite3_stmt *stmt;
   if (folder != "")
@@ -291,9 +301,10 @@ FileState::LookupFilesInFolderRecursively (const boost::function<void (const Fil
       /// @todo Do something to improve efficiency of this query. Right now it is basically scanning the whole database
 
       sqlite3_prepare_v2 (m_db,
-                          "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
+                          "SELECT filename,version,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
                           "   FROM FileState "
                           "   WHERE type = 0 AND is_prefix (?, directory)=1 "
+                          "   ORDER BY filename "
                           "   LIMIT ? OFFSET ?", -1, &stmt, 0); // there is a small ambiguity with is_prefix matching, but should be ok for now
       _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
 
@@ -306,9 +317,10 @@ FileState::LookupFilesInFolderRecursively (const boost::function<void (const Fil
   else
     {
       sqlite3_prepare_v2 (m_db,
-                          "SELECT filename,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
+                          "SELECT filename,version,device_name,seq_no,file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num,is_complete "
                           "   FROM FileState "
                           "   WHERE type = 0"
+                          "   ORDER BY filename "
                           "   LIMIT ? OFFSET ?", -1, &stmt, 0);
       sqlite3_bind_int (stmt, 1, limit);
       sqlite3_bind_int (stmt, 2, offset);
@@ -318,22 +330,29 @@ FileState::LookupFilesInFolderRecursively (const boost::function<void (const Fil
 
   while (sqlite3_step (stmt) == SQLITE_ROW)
     {
+      if (limit == 1)
+        break;
+
       FileItem file;
       file.set_filename    (reinterpret_cast<const char *> (sqlite3_column_text  (stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      file.set_device_name (sqlite3_column_blob  (stmt, 1), sqlite3_column_bytes (stmt, 1));
-      file.set_seq_no      (sqlite3_column_int64 (stmt, 2));
-      file.set_file_hash   (sqlite3_column_blob  (stmt, 3), sqlite3_column_bytes (stmt, 3));
-      file.set_mtime       (sqlite3_column_int   (stmt, 4));
-      file.set_mode        (sqlite3_column_int   (stmt, 5));
-      file.set_seg_num     (sqlite3_column_int64 (stmt, 6));
-      file.set_is_complete (sqlite3_column_int   (stmt, 7));
+      file.set_version     (sqlite3_column_int64 (stmt, 1));
+      file.set_device_name (sqlite3_column_blob  (stmt, 2), sqlite3_column_bytes (stmt, 2));
+      file.set_seq_no      (sqlite3_column_int64 (stmt, 3));
+      file.set_file_hash   (sqlite3_column_blob  (stmt, 4), sqlite3_column_bytes (stmt, 4));
+      file.set_mtime       (sqlite3_column_int   (stmt, 5));
+      file.set_mode        (sqlite3_column_int   (stmt, 6));
+      file.set_seg_num     (sqlite3_column_int64 (stmt, 7));
+      file.set_is_complete (sqlite3_column_int   (stmt, 8));
 
       visitor (file);
+      limit --;
     }
 
   _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, sqlite3_errmsg (m_db));
 
   sqlite3_finalize (stmt);
+
+  return (limit == 1);
 }
 
 FileItemsPtr

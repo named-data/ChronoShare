@@ -48,7 +48,8 @@ public:
    * @brief Update or add a file
    */
   void
-  UpdateFile (const std::string &filename, const Hash &hash, const Ccnx::CcnxCharbuf &device_name, sqlite3_int64 seqno,
+  UpdateFile (const std::string &filename, sqlite3_int64 version,
+              const Hash &hash, const Ccnx::CcnxCharbuf &device_name, sqlite3_int64 seqno,
               time_t atime, time_t mtime, time_t ctime, int mode, int seg_num);
 
   /**
@@ -92,7 +93,7 @@ public:
   /**
    * @brief Recursively lookup all files in the specified folder and call visitor(file) for each file
    */
-  FileItemsPtr
+  bool
   LookupFilesInFolderRecursively (const boost::function<void (const FileItem&)> &visitor, const std::string &folder, int offset=0, int limit=-1);
 
   /**
