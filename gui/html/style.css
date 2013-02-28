@@ -181,6 +181,11 @@ tfoot {
     background-color: #eeeeee;
 }
 
+.highlighted {
+    background-color: #cccccc;
+    cursor: pointer;
+}
+
 .filename {
     width: 50%;
 }
@@ -206,4 +211,14 @@ pre {
     height: 128px;
     margin-top: -64px; /* Half the height */
     margin-left: -64px; /* Half the width */
+}
+
+userName {
+    display: inline-block;
+    /* ? how format user name? */
+}
+
+seqNo {
+    display: inline-block;
+    margin-left: 5px;
 }

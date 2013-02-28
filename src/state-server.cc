@@ -164,7 +164,7 @@ StateServer::formatActionJson (json_spirit::Array &actions,
 
   json.push_back (Pair ("id", id));
 
-  json.push_back (Pair ("timestamp", to_iso_string (from_time_t (action.timestamp ()))));
+  json.push_back (Pair ("timestamp", to_iso_extended_string (from_time_t (action.timestamp ()))));
   json.push_back (Pair ("filename",  action.filename ()));
   json.push_back (Pair ("action", (action.action () == 0) ? "UPDATE" : "DELETE"));
 
@@ -172,7 +172,7 @@ StateServer::formatActionJson (json_spirit::Array &actions,
     {
       Object update;
       update.push_back (Pair ("hash", boost::lexical_cast<string> (Hash (action.file_hash ().c_str (), action.file_hash ().size ()))));
-      update.push_back (Pair ("timestamp", to_iso_string (from_time_t (action.mtime ()))));
+      update.push_back (Pair ("timestamp", to_iso_extended_string (from_time_t (action.mtime ()))));
 
       ostringstream chmod;
       chmod << setbase (8) << setfill ('0') << setw (4) << action.mode ();
@@ -304,7 +304,7 @@ StateServer::formatFilestateJson (json_spirit::Array &files, const FileItem &fil
   }
 
   json.push_back (Pair ("hash", boost::lexical_cast<string> (Hash (file.file_hash ().c_str (), file.file_hash ().size ()))));
-  json.push_back (Pair ("timestamp", to_iso_string (from_time_t (file.mtime ()))));
+  json.push_back (Pair ("timestamp", to_iso_extended_string (from_time_t (file.mtime ()))));
 
   ostringstream chmod;
   chmod << setbase (8) << setfill ('0') << setw (4) << file.mode ();
