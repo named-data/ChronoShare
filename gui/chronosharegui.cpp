@@ -327,13 +327,13 @@ ChronoShareGui::onAdHocChange (bool state)
 #endif
 }
 
-#ifdef SPARKLE_SUPPORTED
 void
 ChronoShareGui::onCheckForUpdates()
 {
+#ifdef SPARKLE_SUPPORTED
   m_autoUpdate->checkForUpdates();
-}
 #endif
+}
 
 void ChronoShareGui::setIcon()
 {

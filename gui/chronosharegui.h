@@ -83,9 +83,8 @@ private slots:
 
   // click on adhoc button
   void onAdHocChange (bool state); // cannot be protected with #ifdef. otherwise something fishy with QT
-#ifdef SPARKLE_SUPPORTED
+
   void onCheckForUpdates();
-#endif
 
 private:
   void checkFileAction(const std::string &, int, int);
