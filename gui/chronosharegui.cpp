@@ -163,6 +163,7 @@ ChronoShareGui::~ChronoShareGui()
 
   delete m_watcher; // stop filewatching ASAP
   delete m_dispatcher; // stop dispatcher ASAP, but after watcher (to prevent triggering callbacks on deleted object)
+  m_httpServer->handle_stop();
   delete m_httpServer;
 
   // cleanup
