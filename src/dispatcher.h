@@ -75,6 +75,9 @@ public:
   HashPtr
   SyncRoot() { return m_core->root(); }
 
+  inline void
+  LookupRecentFileActions(const boost::function<void(const std::string &, int, int)> &visitor, int limit) { m_actionLog->LookupRecentFileActions(visitor, limit); }
+
 private:
   void
   Did_LocalFile_AddOrModify_Execute (boost::filesystem::path relativeFilepath); // cannot be const & for Execute event!!! otherwise there will be segfault

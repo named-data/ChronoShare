@@ -219,6 +219,8 @@ def build (bld):
     <string>APPL</string>
     <key>CFBundleGetInfoString</key>
     <string>Created by Waf</string>
+    <key>CFBundleIdentifier</key>
+    <string>edu.ucla.cs.irl.Chronoshare</string>
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>NOTE</key>

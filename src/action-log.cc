@@ -727,6 +727,38 @@ ActionLog::LookupActionsInFolderRecursively (const boost::function<void (const C
   return (limit == 1); // more data is available
 }
 
+void
+ActionLog::LookupRecentFileActions(const boost::function<void (const string &, int, int)> &visitor, int limit)
+{
+  sqlite3_stmt *stmt;
+
+  sqlite3_prepare_v2 (m_db,
+                          "SELECT AL.filename, AL.action"
+                          "   FROM ActionLog AL"
+                          "   JOIN "
+                          "   (SELECT filename, MAX(action_timestamp) AS action_timestamp "
+                          "       FROM ActionLog "
+                          "       GROUP BY filename ) AS GAL"
+                          "   ON AL.filename = GAL.filename AND AL.action_timestamp = GAL.action_timestamp "
+                          "   ORDER BY AL.action_timestamp DESC "
+                          "   LIMIT ?;",
+                           -1, &stmt, 0);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+  sqlite3_bind_int(stmt, 1, limit);
+  int index = 0;
+  while (sqlite3_step(stmt) == SQLITE_ROW)
+  {
+    std::string filename(reinterpret_cast<const char *> (sqlite3_column_text  (stmt, 0)), sqlite3_column_bytes (stmt, 0));
+    int action = sqlite3_column_int (stmt, 1);
+    visitor(filename, action, index);
+    index++;
+  }
+
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, sqlite3_errmsg (m_db));
+
+  sqlite3_finalize (stmt);
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////

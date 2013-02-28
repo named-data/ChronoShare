@@ -22,6 +22,7 @@
 #include "sparkle-auto-update.h"
 #import <Foundation/Foundation.h>
 #import <Sparkle/Sparkle.h>
+#include <stdio.h>
 
 class SparkleAutoUpdate::Private
 {
@@ -32,14 +33,15 @@ class SparkleAutoUpdate::Private
 SparkleAutoUpdate::SparkleAutoUpdate(const QString &updateUrl)
 {
   d = new Private;
-  d->updater = [SUUpdater sharedUpdater];
-  [d->updater setAutomaticallyChecksForUpdates:YES];
+  d->updater = [[SUUpdater sharedUpdater] retain];
+  // [d->updater setAutomaticallyChecksForUpdates:YES];
   NSURL *url = [NSURL URLWithString: [NSString stringWithUTF8String: updateUrl.toUtf8().data()]];
   [d->updater setFeedURL: url];
 }
 
 SparkleAutoUpdate::~SparkleAutoUpdate()
 {
+  [d->updater release];
   delete d;
   // presummably SUUpdater handles garbage collection
 }
@@ -47,4 +49,5 @@ SparkleAutoUpdate::~SparkleAutoUpdate()
 void SparkleAutoUpdate::checkForUpdates()
 {
   [d->updater checkForUpdatesInBackground];
+  printf("++++++++ checking update ++++++\n");
 }
