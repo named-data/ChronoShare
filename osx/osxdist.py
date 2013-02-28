@@ -21,7 +21,8 @@ def codesign(path):
   if hasattr(path, 'isalpha'):
     path = (path,)
   for p in path:
-    p = Popen(('codesign', '--keychain', options.codesign_keychain, '--signature-size', '6400', '-vvvv', '-s', options.codesign, p))
+    #p = Popen(('codesign', '--keychain', options.codesign_keychain, '--signature-size', '6400', '-vvvv', '-s', options.codesign, p))
+    p = Popen(('codesign', '-vvvv', '-s', options.codesign, p))
     retval = p.wait()
     if retval != 0:
       return retval
@@ -132,6 +133,9 @@ class AppBundle(object):
         basename = os.path.basename(fw_path)
         name = basename.split('.framework')[0]
         rel = basename + '/' + name
+
+        if fw_path.startswith('@loader_path') or fw_path.startswith('@executable_path'):
+          continue
 
         abs = self.framework_path + '/' + rel
 
@@ -346,6 +350,8 @@ if __name__ == '__main__':
   parser.add_option('', '--git', dest='git', help='Build a snapshot release. Use the git revision number as the \'snapshot version\'.', action='store_true', default=False)
   parser.add_option('', '--codesign', dest='codesign', help='Identity to use for code signing. (If not set, no code signing will occur)')
   parser.add_option('', '--codesign-keychain', dest='codesign_keychain', help='The keychain to use when invoking the codesign utility.')
+  parser.add_option('', '--build-dir', dest='build_dir', help='specify build directory', default='build')
+  parser.add_option('', '--dmg', dest='dmg', help='create dmg image', action='store_true', default=False)
 
   options, args = parser.parse_args()
 
@@ -363,12 +369,14 @@ if __name__ == '__main__':
     print 'Neither snapshot or release selected. Bailing.'
     sys.exit(1)
 
+  if options.build_dir:
+    os.chdir(options.build_dir)
 
   # Do the finishing touches to our Application bundle before release
   a = AppBundle('ChronoShare.app', ver)
   a.copy_qt_plugins()
   a.handle_libs()
-  a.copy_resources(['friends-group-icon.png', 'qt.conf'])
+  a.copy_resources(['../gui/images', '../gui/html', '../osx/qt.conf'])
   a.update_plist()
   a.set_min_macosx_version('10.8.0')
   a.done()
@@ -384,10 +392,11 @@ if __name__ == '__main__':
     print ''
 
   # Create diskimage
-  title = "ChronoShare-%s" % ver
-  fn = "%s.dmg" % title
-  d = DiskImage(fn, title)
-  d.symlink('/Applications', '/Applications')
-  d.copy('ChronoShare.app', '/ChronoShare.app')
-  d.create()
+  if options.dmg:
+    title = "ChronoShare-%s" % ver
+    fn = "%s.dmg" % title
+    d = DiskImage(fn, title)
+    d.symlink('/Applications', '/Applications')
+    d.copy('ChronoShare.app', '/ChronoShare.app')
+    d.create()
 
