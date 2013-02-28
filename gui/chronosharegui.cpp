@@ -51,7 +51,7 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
   , m_executor (1)
 #endif
 #ifdef SPARKLE_SUPPORTED
-  , m_autoUpdate(new SparkleAutoUpdate(tr("http://no-url.org")))
+  , m_autoUpdate(new SparkleAutoUpdate(tr("http://irl.cs.ucla.edu")))
 #endif
 {
   setWindowTitle("Settings");
@@ -273,6 +273,8 @@ void ChronoShareGui::createTrayIcon()
   m_trayIconMenu->addAction(m_viewSettings);
   m_trayIconMenu->addAction(m_changeFolder);
   m_trayIconMenu->addSeparator();
+  m_trayIconMenu->addAction(m_checkForUpdates);
+  m_trayIconMenu->addSeparator();
   m_trayIconMenu->addAction(m_wifiAction);
   m_trayIconMenu->addSeparator();
   m_trayIconMenu->addAction(m_quitProgram);
@@ -332,7 +334,9 @@ void
 ChronoShareGui::onCheckForUpdates()
 {
 #ifdef SPARKLE_SUPPORTED
+  cout << "+++++++++++ trying to update +++++++ " << endl;
   m_autoUpdate->checkForUpdates();
+  cout << "+++++++++++ end trying to update +++++++ " << endl;
 #endif
 }
 
