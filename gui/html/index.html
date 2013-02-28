@@ -22,8 +22,8 @@
 
       <nav>
         <ul>
-          <li><a href="#fileList">File list</a></li>
-          <li><a href="#fileHistory?x=1">History</a></li>
+          <li><a class="needs-get-url" href="#fileList">File list</a></li>
+          <li><a class="needs-get-url" href="#folderHistory">Folder history</a></li>
         </ul>
       </nav>
     </header>
@@ -31,34 +31,17 @@
     <article>
       <!-- <img id="loader" src="load.gif" /> -->
       <div id="content" class="hidden">
-
-        <table class="file-list">
-          <thead>
-            <tr>
-              <th class="filename border-left" scope="col">Filename</th>
-              <th class="version" scope="col">Version</th>
-              <th class="modified" scope="col">Modified</th>
-              <th class="modified-by border-right" scope="col">Modified By</th>
-            </tr>
-          </thead>
-
-          <tbody id="files">
-          </tbody>
-
-          <tfoot><tr><td colspan="4" class="border-right border-left"></td></tr></tfoot>
-        </table>
-
-        <div class="hidden" id="loader">
-          <img src="load.gif" />
-        </div>
-
-
-        <red class="hidden" id="error">
-        </red>
-
-        <pre class="hidden" id="json">
-        </pre>
       </div>
+
+      <div class="hidden" id="loader">
+        <img src="load.gif" />
+      </div>
+
+      <red class="hidden" id="error">
+      </red>
+
+      <pre class="hidden" id="json">
+      </pre>
 
 
 
@@ -80,9 +63,6 @@
          if (detect ()) {
              $("#no-support").remove ();
              $("#content").removeClass ("hidden");
-
-             folder=new ChronoShare ("/ndn/ucla.edu/alex/macbook", "testing7");
-             folder.run ();
          }
       });
     </script>

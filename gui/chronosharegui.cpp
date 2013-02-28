@@ -355,7 +355,13 @@ void ChronoShareGui::openSharedFolder()
 
 void ChronoShareGui::openInWebBrowser()
 {
-  QDesktopServices::openUrl(QUrl("http://localhost:9001"));
+  QUrl url ("http://localhost:9001/");
+  url.setFragment ("fileList&"
+                   "user=" + QUrl::toPercentEncoding (m_username) + "&"
+                   "folder=" + QUrl::toPercentEncoding (m_sharedFolderName));
+
+  // i give up. there is double encoding and I have no idea how to fight it...
+  QDesktopServices::openUrl (url);
 }
 
 void ChronoShareGui::openFile()

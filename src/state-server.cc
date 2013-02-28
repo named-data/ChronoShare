@@ -166,6 +166,7 @@ StateServer::formatActionJson (json_spirit::Array &actions,
 
   json.push_back (Pair ("timestamp", to_iso_extended_string (from_time_t (action.timestamp ()))));
   json.push_back (Pair ("filename",  action.filename ()));
+  json.push_back (Pair ("version",  action.version ()));
   json.push_back (Pair ("action", (action.action () == 0) ? "UPDATE" : "DELETE"));
 
   if (action.action () == 0)
