@@ -23,6 +23,7 @@ struct mapping
   { "gif", "image/gif" },
   { "htm", "text/html" },
   { "html", "text/html" },
+  { "css", "text/css" },
   { "jpg", "image/jpeg" },
   { "png", "image/png" },
   { 0, 0 } // Marks end of list.

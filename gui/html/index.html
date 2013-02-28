@@ -1,97 +1,90 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1" />
 
-<html>  
-<head>
-  <meta charset="utf-8">
-  <title>ChronoShare</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>ChronoShare</title>
 
-  <!-- Load styles -->
-  <link href="http://fonts.googleapis.com/css?family=Rambla:400,700|Istok+Web:400,700" rel="stylesheet" type="text/css">
-  <link rel="stylesheet" type="text/css" href="style.css" />
+    <!-- Load styles -->
+    <link rel="stylesheet" href="style.css" type="text/css" />
+    <script type="text/javascript" src="jquery.min.js"></script>
+    <script type="text/javascript" src="jquery.class.min.js"></script>
+    <script type="text/javascript" src="ndn-js-uncomp.js"></script>
+  </head>
 
-  <style type="text/css">
-    #prefixcontent, #linkcontent, #status, #nosupport { display: none; }
-    
-    #nosupport h1 {
-      font-size: 300%;
-    }
-  
-    #nosupport {
-      text-align: center;
-      display: none;
-    }
+  <body>
+    <header>
+      <h1>ChronoShare</h1>
+      <h2 id="folderName"></h2>
 
-    #continue {
-      cursor: pointer;
-    }
-  </style>
-</head>
-
-<body>
-  <script type="text/javascript">document.write('<div id="all">');</script>
-  
-  <div id="contentwrapper">
-    <div id="header">
-      <div id="title">
-        <h1>NDN ·</span> <span id="grey">routing</span> <span id="green">status</span></h1>
-      </div>
-      <div id="navbar">
+      <nav>
         <ul>
-          <li>Shared Folder</li>
-          <li>History</li>
+          <li><a href="#files">File list</a></li>
+          <li><a href="#history">History</a></li>
         </ul>
+      </nav>
+    </header>
+
+    <article>
+      <!-- <img id="loader" src="load.gif" /> -->
+      <div id="content" class="hidden">
+
+        <table class="file-list">
+          <thead>
+            <tr>
+              <th class="filename border-left" scope="col">Filename</th>
+              <th class="version" scope="col">Version</th>
+              <th class="modified" scope="col">Modified</th>
+              <th class="modified-by border-right" scope="col">Modified By</th>
+            </tr>
+          </thead>
+
+          <tbody id="files">
+          </tbody>
+
+          <tfoot><tr><td colspan="4" class="border-right border-left"></td></tr></tfoot>
+        </table>
+
+        <div class="hidden" id="loader">
+          <img src="load.gif" />
+        </div>
+
+
+        <red class="hidden" id="error">
+        </red>
+
+        <pre class="hidden" id="json">
+        </pre>
       </div>
-    </div>
 
-    <div id="wrap">
-      <div class="titles2"><p>Advertised Prefixes:</p></div>
-      <table id="box-table-a" class="one">
-        <thead>
-          <tr>
-            <th class="border_left" scope="col">Router</th>
-            <th scope="col">Timestamp</th>
-            <th scope="col">Prefix</th>
-            <th class="border_right" scope="col">Status</th>
-          </tr>
-        </thead>
 
-        <tbody>
-        </tbody>
-    
-        <tfoot><tr><td colspan="4"></td></td></tfoot>
-      </table>
 
-    </div> <!-- "wrap" -->
+      <div id="no-support">
+        <!-- This block will be removed if jQuery has been loaded -->
+        <h1><green>Oops!</green></h1>
+        <h3><grey>It looks like you're using a browser that is <green>not supported</green>.</grey></h3>
+      </div>
+    </article>
 
-  </div> <!-- "contentwrapper" -->
+    <footer>
+      <grey>Powered by</grey><green> NDN.JS</green><grey>.<grey>
+    </footer>
 
-  <div id="leftcolumn"></div>
-  <div id="rightcolumn"></div>
+    <script src="detect.js"></script>
+    <script type="text/javascript" src="chronoshare.js"></script>
+    <script type="text/javascript">
+      $(window).ready (function () {
+         if (detect ()) {
+             $("#no-support").remove ();
+             $("#content").removeClass ("hidden");
 
-  <div id="prefixcontent"></div>
-  <div id="linkcontent"></div>
-
-  <div id="base">
-    <h3><span id="green">Generating</span><span id="grey"> & </span><span id="green">Retrieving</span><span id="grey"> Content</span></h3>
-    <img id="loader" src="load.gif" />
-    <h3><span id="grey">Powered by</span><span id="green"> NDN.JS</span><span id="grey">.</span></h3>
-  </div>
-
-  <div id="nosupport">
-    <h1><span id="green">Oops!</span></h1>
-    <h3><span id="grey">It looks like you're using a browser that is not <span id="green">supported</span>.</span></h3>
-  </div>
-
-  <script type="text/javascript">document.write('</div>');</script>
-
-  <!-- Load scripts at the bottom for efficiency -->
-  <script type="text/javascript" src="jquery.min.js"></script>
-  <script type="text/javascript" src="ndn-js.js"></script>
-  <script src="content.js"></script>
-  <script src="detect.js"></script>
-  <script type="text/javascript" src="chronoshare.js"></script>
-
-</body>
-
+             folder=new ChronoShare ("/ndn/ucla.edu/alex/macbook", "testing7");
+             folder.run ();
+         }
+      });
+    </script>
+  </body>
 </html>
-
-

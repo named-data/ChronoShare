@@ -50,7 +50,7 @@
  *
  * - state: get list of SyncNodes, their sequence numbers, and forwarding hint (almost the same as RECOVERY interest)
  *
- *   <PREFIX_INFO>/"state"/<nonce>   (nonce should probably be the authentification code or authentication code should in addition somewhere)
+ *   <PREFIX_INFO>/"state"   (nonce should probably be the authentification code or authentication code should in addition somewhere)
  *
  * - action
  *
