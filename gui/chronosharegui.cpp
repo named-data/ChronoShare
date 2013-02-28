@@ -52,7 +52,7 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
   , m_executor (1)
 #endif
 #ifdef SPARKLE_SUPPORTED
-  , m_autoUpdate(new SparkleAutoUpdate(tr("http://irl.cs.ucla.edu")))
+  , m_autoUpdate(new SparkleAutoUpdate(tr("http://irl.cs.ucla.edu/~zhenkai/chronoshare_dist/chronoshare.xml")))
 #endif
 {
   setWindowTitle("Settings");
@@ -164,7 +164,6 @@ ChronoShareGui::~ChronoShareGui()
 
   delete m_watcher; // stop filewatching ASAP
   delete m_dispatcher; // stop dispatcher ASAP, but after watcher (to prevent triggering callbacks on deleted object)
-  m_httpServer->handle_stop();
   delete m_httpServer;
 
   // cleanup

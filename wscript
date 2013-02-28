@@ -229,6 +229,8 @@ def build (bld):
     <string>%s</string>
     <key>LSUIElement</key>
     <string>1</string>
+    <key>SUPublicDSAKeyFile</key>
+    <string>dsa_pub.pem</string>
 </dict>
 </plist>'''
         qt.mac_app = "ChronoShare.app"

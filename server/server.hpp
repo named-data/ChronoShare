@@ -34,10 +34,12 @@ public:
   /// Run the server's io_service loop.
   void run();
 
+  ~server();
+
+private:
   /// Handle a request to stop the server.
   void handle_stop();
 
-private:
   /// Initiate an asynchronous accept operation.
   void start_accept();
 
