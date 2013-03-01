@@ -36,6 +36,8 @@ SparkleAutoUpdate::SparkleAutoUpdate(const QString &updateUrl)
   d->updater = [[SUUpdater sharedUpdater] retain];
   NSURL *url = [NSURL URLWithString: [NSString stringWithUTF8String: updateUrl.toUtf8().data()]];
   [d->updater setFeedURL: url];
+  [d->updater setAutomaticallyChecksForUpdates: YES];
+  [d->updater setUpdateCheckInterval: 86400];
 }
 
 SparkleAutoUpdate::~SparkleAutoUpdate()
