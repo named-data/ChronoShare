@@ -691,4 +691,72 @@ CcnxWrapper::verifyPco(PcoPtr &pco)
   return verified;
 }
 
+// This is needed just for get function implementation
+struct GetState
+{
+  GetState (double maxWait)
+  {
+    double intPart, fraction;
+    fraction = modf (std::abs(maxWait), &intPart);
+
+    m_maxWait = date_time::second_clock<boost::posix_time::ptime>::universal_time()
+      + boost::posix_time::seconds (intPart)
+      + boost::posix_time::microseconds (fraction * 1000000);
+  }
+
+  PcoPtr
+  WaitForResult ()
+  {
+    boost::unique_lock<boost::mutex> lock (m_mutex);
+    m_cond.timed_wait (lock, m_maxWait);
+
+    return m_retval;
+  }
+
+  void
+  DataCallback (Name name, PcoPtr pco)
+  {
+    m_retval = pco;
+
+    boost::unique_lock<boost::mutex> lock (m_mutex);
+    m_cond.notify_one ();
+  }
+
+  void
+  TimeoutCallback (Name name)
+  {
+    boost::unique_lock<boost::mutex> lock (m_mutex);
+    m_cond.notify_one ();
+  }
+
+private:
+  boost::posix_time::ptime m_maxWait;
+
+  boost::mutex m_mutex;
+  boost::condition_variable    m_cond;
+
+  PcoPtr  m_retval;
+};
+
+
+PcoPtr
+CcnxWrapper::get(const Name &interest, const Selectors &selectors, double maxWait/* = 4.0*/)
+{
+  _LOG_TRACE (">> get: " << interest);
+  {
+    UniqueRecLock lock(m_mutex);
+    if (!m_running || !m_connected)
+      {
+        _LOG_ERROR ("<< get: not running or connected");
+        return PcoPtr ();
+      }
+  }
+
+  GetState state (maxWait);
+  this->sendInterest (interest, Closure (boost::bind (&GetState::DataCallback, &state, _1, _2),
+                                         boost::bind (&GetState::TimeoutCallback, &state, _1)),
+                      selectors);
+  return state.WaitForResult ();
+}
+
 }
