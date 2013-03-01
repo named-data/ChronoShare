@@ -79,6 +79,7 @@ StateServer::registerPrefixes ()
 
   // <PREFIX_INFO>/"actions"/"all"/<nonce>/<segment>  get list of all actions
   m_ccnx->setInterestFilter (Name (m_PREFIX_INFO)("actions")("folder"), bind(&StateServer::info_actions_folder, this, _1));
+  m_ccnx->setInterestFilter (Name (m_PREFIX_INFO)("actions")("file"),   bind(&StateServer::info_actions_file, this, _1));
 
   // <PREFIX_INFO>/"filestate"/"all"/<nonce>/<segment>
   m_ccnx->setInterestFilter (Name (m_PREFIX_INFO)("files")("folder"), bind(&StateServer::info_files_folder, this, _1));
@@ -91,36 +92,10 @@ void
 StateServer::deregisterPrefixes ()
 {
   m_ccnx->clearInterestFilter (Name (m_PREFIX_INFO)("actions")("folder"));
+  m_ccnx->clearInterestFilter (Name (m_PREFIX_INFO)("actions")("file"));
   m_ccnx->clearInterestFilter (Name (m_PREFIX_INFO)("files")("folder"));
   m_ccnx->clearInterestFilter (Name (m_PREFIX_CMD) ("restore")("file"));
 }
-
-// void
-// StateServer::info_actions_all (const Name &interest)
-// {
-//   _LOG_DEBUG (">> info_actions_all: " << interest);
-//   m_executor.execute (bind (&StateServer::info_actions_all_Execute, this, interest));
-// }
-
-// void
-// StateServer::info_actions_all_Execute (const Name &interest)
-// {
-//   // <PREFIX_INFO>/"actions"/"all"/<nonce>/<offset>  get list of all actions
-
-//   try
-//     {
-//       int offset = interest.getCompFromBackAsInt (0);
-
-//       // LookupActionsInFolderRecursively
-//       /// @todo !!! add security checking
-//       m_ccnx->publishData (interest, "FAIL: Not implemented", 1);
-//     }
-//   catch (Ccnx::NameException &ne)
-//     {
-//       // ignore any unexpected interests and errors
-//       _LOG_ERROR (*boost::get_error_info<Ccnx::error_info_str>(ne));
-//     }
-// }
 
 void
 StateServer::formatActionJson (json_spirit::Array &actions,
@@ -206,14 +181,29 @@ StateServer::info_actions_folder (const Name &interest)
       return;
     }
 
-  _LOG_DEBUG (">> info_actions_all: " << interest);
-  m_executor.execute (bind (&StateServer::info_actions_folder_Execute, this, interest));
+  _LOG_DEBUG (">> info_actions_folder: " << interest);
+  m_executor.execute (bind (&StateServer::info_actions_fileOrFolder_Execute, this, interest, true));
 }
 
 void
-StateServer::info_actions_folder_Execute (const Name &interest)
+StateServer::info_actions_file (const Name &interest)
 {
-  // <PREFIX_INFO>/"actions"/"folder"/<folder>/<nonce>/<offset>  get list of all actions
+  if (interest.size () - m_PREFIX_INFO.size () != 4 &&
+      interest.size () - m_PREFIX_INFO.size () != 5)
+    {
+      _LOG_DEBUG ("Invalid interest: " << interest);
+      return;
+    }
+
+  _LOG_DEBUG (">> info_actions_file: " << interest);
+  m_executor.execute (bind (&StateServer::info_actions_fileOrFolder_Execute, this, interest, false));
+}
+
+
+void
+StateServer::info_actions_fileOrFolder_Execute (const Ccnx::Name &interest, bool isFolder/* = true*/)
+{
+  // <PREFIX_INFO>/"actions"/"folder|file"/<folder|file>/<nonce>/<offset>  get list of all actions
 
   try
     {
@@ -221,11 +211,11 @@ StateServer::info_actions_folder_Execute (const Name &interest)
 
       /// @todo !!! add security checking
 
-      string folder;
+      string fileOrFolderName;
       if (interest.size () - m_PREFIX_INFO.size () == 5)
-        folder = interest.getCompFromBackAsString (2);
+        fileOrFolderName = interest.getCompFromBackAsString (2);
       else // == 4
-        folder = "";
+        fileOrFolderName = "";
 /*
  *   {
  *      "actions": [
@@ -241,9 +231,19 @@ StateServer::info_actions_folder_Execute (const Name &interest)
       Object json;
 
       Array actions;
-      bool more = m_actionLog->LookupActionsInFolderRecursively
-        (boost::bind (StateServer::formatActionJson, boost::ref(actions), _1, _2, _3),
-         folder, offset*10, 10);
+      bool more;
+      if (isFolder)
+        {
+          m_actionLog->LookupActionsInFolderRecursively
+            (boost::bind (StateServer::formatActionJson, boost::ref(actions), _1, _2, _3),
+             fileOrFolderName, offset*10, 10);
+        }
+      else
+        {
+          m_actionLog->LookupActionsForFile
+            (boost::bind (StateServer::formatActionJson, boost::ref(actions), _1, _2, _3),
+             fileOrFolderName, offset*10, 10);
+        }
 
       json.push_back (Pair ("actions", actions));
 
@@ -331,7 +331,7 @@ StateServer::info_files_folder (const Ccnx::Name &interest)
       return;
     }
 
-  _LOG_DEBUG (">> info_filestate_folder: " << interest);
+  _LOG_DEBUG (">> info_files_folder: " << interest);
   m_executor.execute (bind (&StateServer::info_files_folder_Execute, this, interest));
 }
 

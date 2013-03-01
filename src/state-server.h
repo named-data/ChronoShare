@@ -163,7 +163,10 @@ private:
   info_actions_folder (const Ccnx::Name &interest);
 
   void
-  info_actions_folder_Execute (const Ccnx::Name &interest);
+  info_actions_file (const Ccnx::Name &interest);
+
+  void
+  info_actions_fileOrFolder_Execute (const Ccnx::Name &interest, bool isFolder = true);
 
   void
   info_files_folder (const Ccnx::Name &interest);

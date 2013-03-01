@@ -109,6 +109,10 @@ public:
   LookupActionsInFolderRecursively (const boost::function<void (const Ccnx::Name &name, sqlite3_int64 seq_no, const ActionItem &)> &visitor,
                                     const std::string &folder, int offset=0, int limit=-1);
 
+  bool
+  LookupActionsForFile (const boost::function<void (const Ccnx::Name &name, sqlite3_int64 seq_no, const ActionItem &)> &visitor,
+                        const std::string &file, int offset=0, int limit=-1);
+
   void
   LookupRecentFileActions(const boost::function<void (const std::string &, int, int)> &visitor, int limit = 5);
 

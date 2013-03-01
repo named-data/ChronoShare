@@ -130,15 +130,11 @@ $.Class ("FilesClosure", {}, {
                     $(this).toggleClass('highlighted');
                 });
 
-                // fileHistoryUrl = new Name ()
-                //     .add (this.chronoshare.actions)
-                //     .add (file.filename)
-                //     .add ("nonce")
-                //     .addSegment (0);
-                // row.attr ("history", fileHistoryUrl.to_uri ());
-                row.bind('click', function () {
+                row.attr ("filename", encodeURIComponent(encodeURIComponent(file.filename)));
+
+                row.bind('click', function (e) {
                     url = "#fileHistory";
-                    url += "&item=" + encodeURIComponent(encodeURIComponent(file.filename));
+                    url += "&item=" + $(this).attr ("filename");
                     pos = URIPARAMS.indexOf ("&");
                     if (pos >= 0) {
                         url += URIPARAMS.substring (pos)
@@ -209,14 +205,17 @@ $.Class ("HistoryClosure", {}, {
                     $(this).toggleClass('highlighted');
                 });
 
-                fileHistoryUrl = new Name ()
-                    .add (this.chronoshare.actions)
-                    .add (action.filename)
-                    .add ("nonce")
-                    .addSegment (0);
-                // row.attr ("history", fileHistoryUrl.to_uri ());
-                row.bind('click', function () {
-                    // alert (fileHistoryUrl.to_uri ());
+                row.attr ("filename", encodeURIComponent(encodeURIComponent(action.filename)));
+
+                row.bind('click', function (e) {
+                    url = "#fileHistory";
+                    url += "&item=" + $(this).attr ("filename");
+                    pos = URIPARAMS.indexOf ("&");
+                    if (pos >= 0) {
+                        url += URIPARAMS.substring (pos)
+                    }
+
+                    document.location = url;
                 });
 
 	        row.append ($("<td />", {"class": "border-left"}).text (action.filename));
@@ -247,7 +246,7 @@ $.Class ("ChronoShare", { },
          this.username = new Name (username);
          this.files = new Name ("/localhost").add (this.username).add ("chronoshare").add (foldername).add ("info").add ("files").add ("folder");
 
-         this.actions = new Name ("/localhost").add (this.username).add ("chronoshare").add (foldername).add ("info").add ("actions").add ("folder");
+         this.actions = new Name ("/localhost").add (this.username).add ("chronoshare").add (foldername).add ("info").add ("actions");
 
          this.restore = new Name ("/localhost").add (this.username).add ("chronoshare").add (foldername).add ("cmd").add ("restore").add ("file");
 
@@ -267,7 +266,7 @@ $.Class ("ChronoShare", { },
              this.ndn.expressInterest (request, new FilesClosure (this));
          }
          else if (PAGE == "folderHistory") {
-             request = new Name ().add (this.actions)./*add (folder_in_question).*/add ("nonce").addSegment (0);
+             request = new Name ().add (this.actions).add ("folder")./*add (folder_in_question).*/add ("nonce").addSegment (0);
              console.log (request.to_uri ());
              this.ndn.expressInterest (request, new HistoryClosure (this));
          }
@@ -278,7 +277,7 @@ $.Class ("ChronoShare", { },
                  $("#error").removeClass ("hidden");
                  return;
              }
-             request = new Name ().add (this.actions).add (PARAMS.item).add ("nonce").addSegment (0);
+             request = new Name ().add (this.actions).add ("file").add (PARAMS.item).add ("nonce").addSegment (0);
              console.log (request.to_uri ());
              this.ndn.expressInterest (request, new HistoryClosure (this));
          }

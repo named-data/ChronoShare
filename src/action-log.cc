@@ -727,6 +727,78 @@ ActionLog::LookupActionsInFolderRecursively (const boost::function<void (const C
   return (limit == 1); // more data is available
 }
 
+/**
+ * @todo Figure out the way to minimize code duplication
+ */
+bool
+ActionLog::LookupActionsForFile (const boost::function<void (const Ccnx::Name &name, sqlite3_int64 seq_no, const ActionItem &)> &visitor,
+                                 const std::string &file, int offset/*=0*/, int limit/*=-1*/)
+{
+  _LOG_DEBUG ("LookupActionsInFolderRecursively: [" << file << "]");
+  if (file.empty ())
+    return false;
+
+  if (limit >= 0)
+    limit += 1; // to check if there is more data
+
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (m_db,
+                      "SELECT device_name,seq_no,action,filename,directory,version,strftime('%s', action_timestamp), "
+                      "       file_hash,strftime('%s', file_mtime),file_chmod,file_seg_num, "
+                      "       parent_device_name,parent_seq_no "
+                      "   FROM ActionLog "
+                      "   WHERE filename=? "
+                      "   ORDER BY action_timestamp DESC "
+                      "   LIMIT ? OFFSET ?", -1, &stmt, 0); // there is a small ambiguity with is_prefix matching, but should be ok for now
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
+  sqlite3_bind_text (stmt, 1, file.c_str (), file.size (), SQLITE_STATIC);
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
+  sqlite3_bind_int (stmt, 2, limit);
+  sqlite3_bind_int (stmt, 3, offset);
+
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
+
+  while (sqlite3_step (stmt) == SQLITE_ROW)
+    {
+      if (limit == 1)
+        break;
+
+      ActionItem action;
+
+      Ccnx::Name device_name (sqlite3_column_blob  (stmt, 0), sqlite3_column_bytes (stmt, 0));
+      sqlite3_int64 seq_no =  sqlite3_column_int64 (stmt, 1);
+      action.set_action      (static_cast<ActionItem_ActionType> (sqlite3_column_int   (stmt, 2)));
+      action.set_filename    (reinterpret_cast<const char *> (sqlite3_column_text  (stmt, 3)), sqlite3_column_bytes (stmt, 3));
+      std::string directory  (reinterpret_cast<const char *> (sqlite3_column_text  (stmt, 4)), sqlite3_column_bytes (stmt, 4));
+      if (action.action () == 0)
+        {
+          action.set_version     (sqlite3_column_int64 (stmt, 5));
+          action.set_timestamp   (sqlite3_column_int64 (stmt, 6));
+          action.set_file_hash   (sqlite3_column_blob  (stmt, 7), sqlite3_column_bytes (stmt, 7));
+          action.set_mtime       (sqlite3_column_int   (stmt, 8));
+          action.set_mode        (sqlite3_column_int   (stmt, 9));
+          action.set_seg_num     (sqlite3_column_int64 (stmt, 10));
+        }
+      if (sqlite3_column_bytes (stmt, 11) > 0)
+        {
+          action.set_parent_device_name (sqlite3_column_blob  (stmt, 11), sqlite3_column_bytes (stmt, 11));
+          action.set_parent_seq_no      (sqlite3_column_int64 (stmt, 12));
+        }
+
+      visitor (device_name, seq_no, action);
+      limit --;
+    }
+
+  _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, sqlite3_errmsg (m_db));
+
+  sqlite3_finalize (stmt);
+
+  return (limit == 1); // more data is available
+}
+
+
 void
 ActionLog::LookupRecentFileActions(const boost::function<void (const string &, int, int)> &visitor, int limit)
 {
