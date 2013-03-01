@@ -78,7 +78,9 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
   pal.setColor(QPalette::Active, QPalette::Base, pal.color(QPalette::Disabled, QPalette::Base));
   editSharedFolderPath->setPalette(pal);
   button = new QPushButton("Submit");
-  label = new QLabel();
+
+  QString versionString = QString("Version: ChronoShare v%1").arg(CHRONOSHARE_VERSION);
+  label = new QLabel(versionString, this);
 
   connect(button, SIGNAL(clicked()), this, SLOT(changeSettings()));
 
