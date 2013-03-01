@@ -63,10 +63,6 @@ $(document).ready (function () {
     CHRONOSHARE = new ChronoShare (PARAMS.user, PARAMS.folder);
     CHRONOSHARE.run ();
 
-    $("a").click (function () {
-        nav_anchor (this.href)
-    });
-
     $(window).on('hashchange', function() {
         nav_anchor (window.location.href);
     });
@@ -103,8 +99,10 @@ $.Class ("FilesClosure", {}, {
         $("#loader").fadeOut (500); // ("hidden");
         if (kind == Closure.UPCALL_CONTENT) {
             convertedData = DataUtils.toString (upcallInfo.contentObject.content);
-            $("#json").text (convertedData);
-            $("#json").removeClass ("hidden");
+	    if (PARAMS.debug) {
+		$("#json").text (convertedData);
+		$("#json").removeClass ("hidden");
+	    }
             data = JSON.parse (convertedData);
 
             // error handling?
@@ -147,13 +145,12 @@ $.Class ("FilesClosure", {}, {
                     }
 
                     document.location = url;
-                    nav_anchor (document.location.href);
                 });
 
 		row.append ($("<td />", {"class": "border-left"}).text (file.filename));
 		row.append ($("<td />").text (file.version));
 		row.append ($("<td />").text (new Date (file.timestamp)));
-		row.append ($("<td />")
+		row.append ($("<td />", {"class": "border-right"})
 			    .append ($("<userName />").text (file.owner.userName))
 			    .append ($("<seqNo> /").text (file.owner.seqNo)));
 
@@ -181,8 +178,10 @@ $.Class ("HistoryClosure", {}, {
         $("#loader").fadeOut (500); // ("hidden");
         if (kind == Closure.UPCALL_CONTENT) {
             convertedData = DataUtils.toString (upcallInfo.contentObject.content);
-            $("#json").text (convertedData);
-            $("#json").removeClass ("hidden");
+	    if (PARAMS.debug) {
+		$("#json").text (convertedData);
+		$("#json").removeClass ("hidden");
+	    }
             data = JSON.parse (convertedData);
 
             // error handling?
