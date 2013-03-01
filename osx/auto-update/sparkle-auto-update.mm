@@ -34,7 +34,6 @@ SparkleAutoUpdate::SparkleAutoUpdate(const QString &updateUrl)
 {
   d = new Private;
   d->updater = [[SUUpdater sharedUpdater] retain];
-  // [d->updater setAutomaticallyChecksForUpdates:YES];
   NSURL *url = [NSURL URLWithString: [NSString stringWithUTF8String: updateUrl.toUtf8().data()]];
   [d->updater setFeedURL: url];
 }
@@ -48,6 +47,7 @@ SparkleAutoUpdate::~SparkleAutoUpdate()
 
 void SparkleAutoUpdate::checkForUpdates()
 {
-  [d->updater checkForUpdatesInBackground];
+  //[d->updater checkForUpdatesInBackground];
+  [d->updater checkForUpdates : nil];
   printf("++++++++ checking update ++++++\n");
 }

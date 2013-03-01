@@ -231,6 +231,10 @@ def build (bld):
     <string>1</string>
     <key>SUPublicDSAKeyFile</key>
     <string>dsa_pub.pem</string>
+    <key>SUEnableAutomaticChecks</key>
+    <Boolean>YES</Boolean>
+    <key>SUScheduledCheckInterval</key>
+    <Number>86400</Number>
 </dict>
 </plist>'''
         qt.mac_app = "ChronoShare.app"
