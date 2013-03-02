@@ -1,0 +1,3 @@
+If new extensions are added to this folder, these extensions 
+need also be added to chronoshare-helper.js::fileExtension funnction.
+

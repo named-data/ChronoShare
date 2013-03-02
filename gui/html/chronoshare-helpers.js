@@ -56,3 +56,33 @@ StringHashToUint8Array = function (str) {
 
     return buf;
 };
+
+imgFullPath = function (imgName) {
+    return "images/" + imgName + ".png";
+}
+
+fileExtension = function (fileName) {
+    defaultExtension = "file";
+    knownExtensions = ["ai", "aiff", "bib", "bz2", "c", "chm", "conf", "cpp", "css", "csv", "deb", "divx", "doc", "file", "gif", "gz", "hlp", "htm", "html", "iso", "jpeg", "jpg", "js", "mov", "mp3", "mpg", "odc", "odf", "odg", "odi", "odp", "ods", "odt", "ogg", "pdf", "pgp", "php", "pl", "png", "ppt", "pptx", "ps", "py", "ram", "rar", "rb", "rm", "rpm", "rtf", "sql", "swf", "sxc", "sxd", "sxi", "sxw", "tar", "tex", "tgz", "txt", "vcf", "wav", "wma", "wmv", "xls", "xml", "xpi", "xvid", "zip"];
+
+    extStart = fileName.lastIndexOf('.');
+    if (extStart < 0) {
+	return imgFullPath (defaultExtension);
+    }
+
+    extension = fileName.substr (extStart+1);
+    // return imgFullPath (extension);
+    if ($.inArray(extension, knownExtensions) >= 0) {
+    	return imgFullPath (extension);
+    }
+    else {
+    	return imgFullPath (defaultExtension);
+    }
+};
+
+
+openHistoryForItem = function (fileName) {
+    url = new HistoryClosure (null).base_url ("fileHistory")
+    url += "&item=" + encodeURIComponent (encodeURIComponent (fileName));
+    document.location = url;
+};

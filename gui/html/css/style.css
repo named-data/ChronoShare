@@ -9,6 +9,10 @@ body {
     font-family: sans-serif;
 }
 
+li {
+    margin: 0;
+}
+
 header, nav, article, footer, address {
     display: block;
 }
@@ -187,6 +191,10 @@ tfoot {
 
 .filename {
     width: 50%;
+}
+
+.filename img {
+    margin-right: 5px;
 }
 
 .highlighted .filename {

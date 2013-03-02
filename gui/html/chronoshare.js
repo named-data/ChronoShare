@@ -93,6 +93,7 @@ $.Class ("FilesClosure", {}, {
 
             // error handling?
             newcontent = $("<div />", { "id": "content" }).append (
+		$("<h2 />").append ($(document.createTextNode("List of files ")), $("<green />").text (PARAMS.item)),
                 $("<table />", { "class": "item-list" })
                     .append ($("<thead />")
                              .append ($("<tr />")
@@ -110,7 +111,7 @@ $.Class ("FilesClosure", {}, {
             for (var i = 0; i < data.files.length; i++) {
                 file = data.files[i];
 
-		row = $("<tr />");
+		row = $("<tr />", { "class": "with-context-menu" } );
 		if (i%2) { row.addClass ("odd"); }
 
                 row.bind('mouseenter mouseleave', function() {
@@ -118,16 +119,11 @@ $.Class ("FilesClosure", {}, {
                 });
 
                 row.attr ("filename", file.filename); //encodeURIComponent(encodeURIComponent(file.filename)));
+                row.bind('click', function (e) { openHistoryForItem ($(this).attr ("filename")) });
 
-
-                row.bind('click', function (e) {
-                    url = new HistoryClosure (null).base_url ("fileHistory")
-                    url += "&item=" + encodeURIComponent (encodeURIComponent ($(this).attr ("filename")));
-
-                    document.location = url;
-                });
-
-		row.append ($("<td />", { "class": "filename border-left" }).text (file.filename));
+		row.append ($("<td />", { "class": "filename border-left" })
+			    .text (file.filename)
+			    .prepend ($("<img />", { "src": fileExtension(file.filename) })));
 		row.append ($("<td />", { "class": "version" }).text (file.version));
 		row.append ($("<td />", { "class": "size" }).text (SegNumToFileSize (file.segNum)));
 		row.append ($("<td />", { "class": "modified" }).text (new Date (file.timestamp)));
@@ -182,6 +178,28 @@ $.Class ("FilesClosure", {}, {
             //         $("#history-list-actions").append (row);
             //     });
             // }
+
+	    $.contextMenu({
+		selector: ".with-context-menu",
+		events: {
+		    show: function (opt) {
+			console.log(opt.$trigger.attr ("filename"));
+			opt.items.info.name = opt.$trigger.attr ("filename");
+			console.log (opt.items.info.name);
+		    },
+		},
+		items: {
+		    "info": {name: "x", type: "html", html: "<b>File operations</b>"},
+		    "sep1": "---------",
+		    history: {name: "View file history",
+			      icon: "quit", // need a better icon
+			      callback: function(key, opt) {
+				  openHistoryForItem (opt.$trigger.attr ("filename"));
+			      }},
+		    // bar: {name: "Bar", callback: function(key, opt){ alert("Bar!") }}
+		}
+		// there's more, have a look at the demos and docs...
+	    });
         }
         else if (kind == Closure.UPCALL_INTEREST_TIMED_OUT) {
             $("#error").html ("Interest timed out");
@@ -223,6 +241,7 @@ $.Class ("HistoryClosure", {}, {
             tbody = $("<tbody />", { "id": "history-list-actions" });
 
             newcontent = $("<div />", { "id": "content" }).append (
+		$("<h2 />").append ($(document.createTextNode("Recent actions ")), $("<green />").text (PARAMS.item)),
                 $("<table />", { "class": "item-list" })
                     .append ($("<thead />")
                              .append ($("<tr />")
@@ -246,8 +265,9 @@ $.Class ("HistoryClosure", {}, {
                     $(this).toggleClass('highlighted');
                 });
 
-                // row.attr ("filename", );//encodeURIComponent(encodeURIComponent(action.filename)));
-                // row.attr ("version",
+                row.attr ("filename", action.filename);
+                row.attr ("file_version", action.version);
+		row.attr ("file_hash", action.hash);
 
                 // row.bind('click', function (e) {
                 //     url = "#fileHistory";
@@ -260,7 +280,9 @@ $.Class ("HistoryClosure", {}, {
                 //     document.location = url;
                 // });
 
-	        row.append ($("<td />", { "class": "filename border-left" }).text (action.filename));
+		row.append ($("<td />", { "class": "filename border-left" })
+			    .text (action.filename)
+			    .prepend ($("<img />", { "src": fileExtension(action.filename) })));
 	        row.append ($("<td />", { "class": "version" }).text (action.version));
 	        row.append ($("<td />", { "class": "timestamp" }).text (new Date (action.timestamp)));
 	        row.append ($("<td />", { "class": "modified-by border-right" })
