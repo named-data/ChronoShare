@@ -1,6 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file>html/index.html</file>
+<!--
         <file>html/jquery.min.js</file>
         <file>html/load.gif</file>
         <file>html/ndn-js.js</file>
@@ -8,5 +9,6 @@
         <file>html/detect.js</file>
         <file>html/style.css</file>
         <file>html/chronoshare.js</file>
+-->
     </qresource>
 </RCC>

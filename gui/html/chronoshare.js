@@ -65,14 +65,34 @@ $.Class ("ChronoShare", { },
          return { request: request, callback: new HistoryClosure (this) };
      },
 
-     cmd_restore_file: function (filename, version, hash) {
+     cmd_restore_file: function (filename, version, hash, callback/*function (bool <- data received, status <- returned status)*/) {
          request = new Name ().add (this.restore)
              .add (filename)
              .addSegment (version)
              .add (hash);
          console.log (request.to_uri ());
+	 this.ndn.expressInterest (request, new CmdRestoreFileClosure (this, callback));
      }
  });
+
+$.Class ("CmdRestoreFileClosure", {}, {
+    init: function (chronoshare, callback) {
+        this.chronoshare = chronoshare;
+	this.callback = callback;
+    },
+    upcall: function(kind, upcallInfo) {
+        if (kind == Closure.UPCALL_CONTENT) {
+            convertedData = DataUtils.toString (upcallInfo.contentObject.content);
+	    this.callback (true, convertedData);
+	}
+        else if (kind == Closure.UPCALL_INTEREST_TIMED_OUT) {
+	    this.callback (false, "Interest timed out");
+        }
+        else {
+	    this.callback (false, "Unknown error happened");
+        }
+    }
+});
 
 $.Class ("FilesClosure", {}, {
     init: function (chronoshare) {
@@ -90,6 +110,9 @@ $.Class ("FilesClosure", {}, {
             data = JSON.parse (convertedData);
 
             tbody = $("<tbody />", { "id": "file-list-files" });
+
+            /// @todo Eventually set title for other pages
+            $("title").text ("ChronoShare - List of files" + (PARAMS.item?" - "+PARAMS.item:""));
 
             // error handling?
             newcontent = $("<div />", { "id": "content" }).append (
@@ -126,7 +149,7 @@ $.Class ("FilesClosure", {}, {
 			    .prepend ($("<img />", { "src": fileExtension(file.filename) })));
 		row.append ($("<td />", { "class": "version" }).text (file.version));
 		row.append ($("<td />", { "class": "size" }).text (SegNumToFileSize (file.segNum)));
-		row.append ($("<td />", { "class": "modified" }).text (new Date (file.timestamp)));
+		row.append ($("<td />", { "class": "modified" }).text (new Date (file.timestamp+"+00:00"))); // convert from UTC
 		row.append ($("<td />", { "class": "modified-by border-right"})
 			    .append ($("<userName />").text (file.owner.userName))
 			    .append ($("<seqNo> /").text (file.owner.seqNo)));
@@ -134,60 +157,11 @@ $.Class ("FilesClosure", {}, {
 		tbody = tbody.append (row);
             }
 
-            // if (!PARAMS.offset || PARAMS.offset==0)
-            // {
-            $("#content").fadeOut ("fast", function () {
-                $(this).replaceWith (newcontent);
-                $("#content").fadeIn ("fast");
-            });
+	    displayContent (newcontent, data.more, this.base_url ());
 
-            self = this; // small "cheat"
-            $("#content-nav").fadeOut ("fast", function () {
-                $("#content-nav a").hide ();
-
-                if (PARAMS.offset !== undefined || data.more !== undefined) {
-                    $("#content-nav").fadeIn ("fast");
-
-                    if (data.more !== undefined) {
-                        $("#get-more").show ();
-
-                        $("#get-more").unbind ('click').click (function () {
-                            url = self.base_url ();
-                            url += "&offset="+data.more;
-
-                            document.location = url;
-                        });
-                    }
-                    if (PARAMS.offset > 0) {
-                        $("#get-less").show ();
-
-                        $("#get-less").unbind ('click').click (function () {
-                            url = self.base_url ();
-                            if (PARAMS.offset > 1) {
-                                url += "&offset="+(PARAMS.offset - 1);
-                            }
-
-                            document.location = url;
-                        });
-                    }
-                }
-            });
-            // }
-            // else {
-            //     tbody.children ().each (function (index, row) {
-            //         $("#history-list-actions").append (row);
-            //     });
-            // }
-
+	    $.contextMenu( 'destroy',  ".with-context-menu" ); // cleanup
 	    $.contextMenu({
 		selector: ".with-context-menu",
-		events: {
-		    show: function (opt) {
-			console.log(opt.$trigger.attr ("filename"));
-			opt.items.info.name = opt.$trigger.attr ("filename");
-			console.log (opt.items.info.name);
-		    },
-		},
 		items: {
 		    "info": {name: "x", type: "html", html: "<b>File operations</b>"},
 		    "sep1": "---------",
@@ -196,9 +170,7 @@ $.Class ("FilesClosure", {}, {
 			      callback: function(key, opt) {
 				  openHistoryForItem (opt.$trigger.attr ("filename"));
 			      }},
-		    // bar: {name: "Bar", callback: function(key, opt){ alert("Bar!") }}
 		}
-		// there's more, have a look at the demos and docs...
 	    });
         }
         else if (kind == Closure.UPCALL_INTEREST_TIMED_OUT) {
@@ -240,6 +212,9 @@ $.Class ("HistoryClosure", {}, {
 
             tbody = $("<tbody />", { "id": "history-list-actions" });
 
+            /// @todo Eventually set title for other pages
+            $("title").text ("ChronoShare - Recent actions" + (PARAMS.item?" - "+PARAMS.item:""));
+
             newcontent = $("<div />", { "id": "content" }).append (
 		$("<h2 />").append ($(document.createTextNode("Recent actions ")), $("<green />").text (PARAMS.item)),
                 $("<table />", { "class": "item-list" })
@@ -247,44 +222,42 @@ $.Class ("HistoryClosure", {}, {
                              .append ($("<tr />")
                                       .append ($("<th />", { "class": "filename border-left", "scope": "col" }).text ("Filename"))
                                       .append ($("<th />", { "class": "version", "scope": "col" }).text ("Version"))
+                                      .append ($("<th />", { "class": "size", "scope": "col" }).text ("Size"))
                                       .append ($("<th />", { "class": "modified", "scope": "col" }).text ("Modified"))
                                       .append ($("<th />", { "class": "modified-by border-right", "scope": "col" }).text ("Modified By"))))
                     .append (tbody)
                     .append ($("<tfoot />")
                              .append ($("<tr />")
-                                      .append ($("<td />", { "colspan": "4", "class": "border-right border-left" })))));
+                                      .append ($("<td />", { "colspan": "5", "class": "border-right border-left" })))));
 
             for (var i = 0; i < data.actions.length; i++) {
                 action = data.actions[i];
 
-	        row = $("<tr />");
+		row = $("<tr />");
 	        if (i%2) { row.addClass ("odd"); }
-                if (action.action=="DELETE") { row.addClass ("delete"); }
+                if (action.action=="DELETE") {
+		    row.addClass ("delete");
+		}
+		else {
+		    row.addClass ("with-context-menu");
+                    row.attr ("file_version", action.version);
+		    row.attr ("file_hash", action.update.hash);
+		    row.attr ("file_modified_by", action.id.userName);
+		}
+
+                row.attr ("filename", action.filename);
+                row.bind('click', function (e) { openHistoryForItem ($(this).attr ("filename")) });
 
                 row.bind('mouseenter mouseleave', function() {
                     $(this).toggleClass('highlighted');
                 });
 
-                row.attr ("filename", action.filename);
-                row.attr ("file_version", action.version);
-		row.attr ("file_hash", action.hash);
-
-                // row.bind('click', function (e) {
-                //     url = "#fileHistory";
-                //     url += "&item=" + $(this).attr ("filename");
-                //     pos = URIPARAMS.indexOf ("&");
-                //     if (pos >= 0) {
-                //         url += URIPARAMS.substring (pos)
-                //     }
-
-                //     document.location = url;
-                // });
-
 		row.append ($("<td />", { "class": "filename border-left" })
 			    .text (action.filename)
 			    .prepend ($("<img />", { "src": fileExtension(action.filename) })));
 	        row.append ($("<td />", { "class": "version" }).text (action.version));
-	        row.append ($("<td />", { "class": "timestamp" }).text (new Date (action.timestamp)));
+		row.append ($("<td />", { "class": "size" }).text (action.update?SegNumToFileSize (action.update.segNum):""));
+	        row.append ($("<td />", { "class": "timestamp" }).text (new Date (action.timestamp+"+00:00"))); // conversion from UTC timezone (we store action time in UTC)
 	        row.append ($("<td />", { "class": "modified-by border-right" })
 	        	    .append ($("<userName />").text (action.id.userName))
 	        	    .append ($("<seqNo> /").text (action.id.seqNo)));
@@ -292,50 +265,58 @@ $.Class ("HistoryClosure", {}, {
 	        tbody = tbody.append (row);
             }
 
-            // if (!PARAMS.offset || PARAMS.offset==0)
-            // {
-            $("#content").fadeOut ("fast", function () {
-                $(this).replaceWith (newcontent);
-                $("#content").fadeIn ("fast");
-            });
+	    displayContent (newcontent, data.more, this.base_url (PAGE));
 
-            self = this; // small "cheat"
-            $("#content-nav").fadeOut ("fast", function () {
-                $("#content-nav a").hide ();
+	    $.contextMenu( 'destroy',  ".with-context-menu" ); // cleanup
+	    $.contextMenu({
+		selector: ".with-context-menu",
+		items: {
+		    "sep1": "---------",
+		    restore: {name: "Restore this revision",
+			      icon: "cut", // need a better icon
+			      callback: function(key, opt) {
+				  filename = opt.$trigger.attr ("filename");
+				  version = opt.$trigger.attr ("file_version");
+				  hash = DataUtils.toNumbers (opt.$trigger.attr ("file_hash"));
+				  console.log (hash);
+				  modified_by = opt.$trigger.attr ("file_modified_by");
 
-                if (PARAMS.offset !== undefined || data.more !== undefined) {
-                    $("#content-nav").fadeIn ("fast");
+				  $("<div />", { "title": "Restore version " + version + "?" })
+				      .append ($("<p />")
+					       .append ($("<span />", { "class": "ui-icon ui-icon-alert",
+								        "style": "float: left; margin: 0 7px 50px 0;" }),
+							$(document.createTextNode ("Are you sure you want restore version ")),
+							$("<green/>").text (version),
+							$(document.createTextNode (" by ")),
+							$("<green/>").text (modified_by)))
+				      .dialog ({
+					  resizable: true,
+					  height:200,
+					  width:300,
+					  modal: true,
+					  buttons: {
+					      "Restore": function() {
+						  self = $(this);
+						  CHRONOSHARE.cmd_restore_file (filename, version, hash, function(didGetData, response) {
+						      if (!didGetData || response != "OK") {
+							  custom_alert (response);
+						      }
+						      console.log (response);
+						      self.dialog ("close");
 
-                    if (data.more !== undefined) {
-                        $("#get-more").show ();
-
-                        $("#get-more").unbind ('click').click (function () {
-                            url = self.base_url (PAGE);
-                            url += "&offset="+data.more;
-
-                            document.location = url;
-                        });
-                    }
-                    if (PARAMS.offset > 0) {
-                        $("#get-less").show ();
-
-                        $("#get-less").unbind ('click').click (function () {
-                            url = self.base_url (PAGE);
-                            if (PARAMS.offset > 1) {
-                                url += "&offset="+(PARAMS.offset - 1);
-                            }
-
-                            document.location = url;
-                        });
-                    }
-                }
-            });
-            // }
-            // else {
-            //     tbody.children ().each (function (index, row) {
-            //         $("#history-list-actions").append (row);
-            //     });
-            // }
+						      $.timer (function() {CHRONOSHARE.run ();}).once (1000);
+						  });
+					      },
+					      Cancel: function() {
+						  $(this).dialog ("close");
+					      }
+					  }
+				      });
+				  // openHistoryForItem (opt.$trigger.attr ("filename"));
+			      }},
+		    "sep2": "---------",
+		}
+	    });
         }
         else if (kind == Closure.UPCALL_INTEREST_TIMED_OUT) {
             $("#error").html ("Interest timed out");

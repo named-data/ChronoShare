@@ -702,10 +702,10 @@ ActionLog::LookupActionsInFolderRecursively (const boost::function<void (const C
       action.set_filename    (reinterpret_cast<const char *> (sqlite3_column_text  (stmt, 3)), sqlite3_column_bytes (stmt, 3));
       std::string directory  (reinterpret_cast<const char *> (sqlite3_column_text  (stmt, 4)), sqlite3_column_bytes (stmt, 4));
       action.set_version     (sqlite3_column_int64 (stmt, 5));
+      action.set_timestamp   (sqlite3_column_int64 (stmt, 6));
 
       if (action.action () == 0)
         {
-          action.set_timestamp   (sqlite3_column_int64 (stmt, 6));
           action.set_file_hash   (sqlite3_column_blob  (stmt, 7), sqlite3_column_bytes (stmt, 7));
           action.set_mtime       (sqlite3_column_int   (stmt, 8));
           action.set_mode        (sqlite3_column_int   (stmt, 9));
@@ -774,10 +774,10 @@ ActionLog::LookupActionsForFile (const boost::function<void (const Ccnx::Name &n
       action.set_filename    (reinterpret_cast<const char *> (sqlite3_column_text  (stmt, 3)), sqlite3_column_bytes (stmt, 3));
       std::string directory  (reinterpret_cast<const char *> (sqlite3_column_text  (stmt, 4)), sqlite3_column_bytes (stmt, 4));
       action.set_version     (sqlite3_column_int64 (stmt, 5));
+      action.set_timestamp   (sqlite3_column_int64 (stmt, 6));
 
       if (action.action () == 0)
         {
-          action.set_timestamp   (sqlite3_column_int64 (stmt, 6));
           action.set_file_hash   (sqlite3_column_blob  (stmt, 7), sqlite3_column_bytes (stmt, 7));
           action.set_mtime       (sqlite3_column_int   (stmt, 8));
           action.set_mode        (sqlite3_column_int   (stmt, 9));

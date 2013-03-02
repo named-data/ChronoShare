@@ -86,3 +86,73 @@ openHistoryForItem = function (fileName) {
     url += "&item=" + encodeURIComponent (encodeURIComponent (fileName));
     document.location = url;
 };
+
+
+displayContent = function (newcontent, more, baseUrl) {
+
+    // if (!PARAMS.offset || PARAMS.offset==0)
+    // {
+    $("#content").fadeOut ("fast", function () {
+        $(this).replaceWith (newcontent);
+        $("#content").fadeIn ("fast");
+    });
+
+    $("#content-nav").fadeOut ("fast", function () {
+        $("#content-nav a").hide ();
+
+        if (PARAMS.offset !== undefined || more !== undefined) {
+            $("#content-nav").fadeIn ("fast");
+
+            if (more !== undefined) {
+                $("#get-more").show ();
+
+                $("#get-more").unbind ('click').click (function () {
+                    url = baseUrl;
+                    url += "&offset="+more;
+
+                    document.location = url;
+                });
+            }
+            if (PARAMS.offset > 0) {
+                $("#get-less").show ();
+
+                $("#get-less").unbind ('click').click (function () {
+                    url = baseUrl;
+                    if (PARAMS.offset > 1) {
+                        url += "&offset="+(PARAMS.offset - 1);
+                    }
+
+                    document.location = url;
+                });
+            }
+        }
+    });
+    // }
+    // else {
+    //     tbody.children ().each (function (index, row) {
+    //         $("#history-list-actions").append (row);
+    //     });
+    // }
+};
+
+
+function custom_alert (output_msg, title_msg)
+{
+    if (!title_msg)
+        title_msg = 'Alert';
+
+    if (!output_msg)
+        output_msg = 'No Message to Display';
+
+    $("<div></div>").html(output_msg).dialog({
+        title: title_msg,
+        resizable: false,
+        modal: true,
+        buttons: {
+            "Ok": function()
+            {
+                $( this ).dialog( "close" );
+            }
+        }
+    });
+}

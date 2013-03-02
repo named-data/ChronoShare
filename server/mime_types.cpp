@@ -27,6 +27,7 @@ struct mapping
   { "js", "text/javascript" },
   { "jpg", "image/jpeg" },
   { "png", "image/png" },
+  { "ico", "image/x-icon" },
   { 0, 0 } // Marks end of list.
 };
 
