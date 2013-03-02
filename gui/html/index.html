@@ -17,21 +17,28 @@
 
   <body>
     <header>
-      <h1>ChronoShare</h1>
+      <h1>ChronoShare <green id="folder-name"></green> for <grey id="user-name"></grey></h1>
       <h2 id="folderName"></h2>
 
       <nav>
         <ul>
-          <li><a class="needs-get-url" href="#fileList">File list</a></li>
-          <li><a class="needs-get-url" href="#folderHistory">Folder history</a></li>
+          <li><a class="needs-get-url" href="#fileList">All files</a></li>
+          <li><a class="needs-get-url" href="#folderHistory">Recent actions</a></li>
         </ul>
       </nav>
     </header>
 
     <article>
-      <!-- <img id="loader" src="load.gif" /> -->
       <div id="content" class="hidden">
       </div>
+
+      <content-nav id="content-nav" style="display: none">
+        <ul>
+          <li><a id="get-less" class="ajax-action">&lt;&lt; Previous</a></li>
+          <li><a id="get-more" class="ajax-action">Next &gt;&gt;</a></li>
+        </ul>
+
+      </content-nav>
 
       <div class="hidden" id="loader">
         <img src="load.gif" />
@@ -57,6 +64,8 @@
     </footer>
 
     <script src="detect.js"></script>
+    <script type="text/javascript" src="chronoshare-helpers.js"></script>
+    <script type="text/javascript" src="chronoshare-navigation.js"></script>
     <script type="text/javascript" src="chronoshare.js"></script>
     <script type="text/javascript">
       $(window).ready (function () {

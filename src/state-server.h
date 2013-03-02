@@ -50,15 +50,15 @@
  *
  * - state: get list of SyncNodes, their sequence numbers, and forwarding hint (almost the same as RECOVERY interest)
  *
- *   <PREFIX_INFO>/"state"   (nonce should probably be the authentification code or authentication code should in addition somewhere)
+ *   <PREFIX_INFO>/"state"   (@todo: authentification code or authentication code should in addition somewhere)
  *
  * - action
  *
  *   Get list of actions for a folder (for all files under this folder)
  *
- *   <PREFIX_INFO>/"actions"/"folder"/<nonce>/<offset>   (all actions)
+ *   <PREFIX_INFO>/"actions"/"folder"/<offset>   (all actions)
  *   or
- *   <PREFIX_INFO>/"actions"/"folder"/<one-component-relative-file-name>/<nonce>/<offset>
+ *   <PREFIX_INFO>/"actions"/"folder"/<one-component-relative-file-name>/<offset>
  *
  *   Actions are ordered in decreasing order (latest will go first).
  *
@@ -98,15 +98,15 @@
  *      },
  *
  *      // only if there are more actions available
- *      "more": "<NDN-NAME-OF-NEXT-SEGMENT-OF-ACTION>"
+ *      "more": "next segment number"
  *   }
  *
  *
  * - file
  *
- *   <PREFIX_INFO>/"files"/"folder"/<nonce>/<offset>   (full filestate)
+ *   <PREFIX_INFO>/"files"/"folder"/<offset>   (full filestate)
  *   or
- *   <PREFIX_INFO>/"files"/"folder"/<one-component-relative-folder-name>/<nonce>/<offset>
+ *   <PREFIX_INFO>/"files"/"folder"/<one-component-relative-folder-name>/<offset>
  *
  *   Each Data packets contains a list of up to 100 files.
  *   If more items are available, application data will specify URL for the next packet
@@ -132,7 +132,7 @@
  *      ]
  *
  *      // only if there are more actions available
- *      "more": "<NDN-NAME-OF-NEXT-SEGMENT-OF-FILESTATE>"
+ *      "more": "next segment number"
  *   }
  *
  * Commands available:

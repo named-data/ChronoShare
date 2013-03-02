@@ -1,94 +1,78 @@
-var CHRONOSHARE;
+$.Class ("ChronoShare", { },
+ {
+     init: function (username, foldername) {
+         $("#folder-name").text (foldername);
+         $("#user-name").text (username);
 
-var PAGE = "folderHistory";
-var PARAMS = [ ];
-var URIPARAMS = "";
+         this.username = new Name (username);
+         this.files = new Name ("/localhost").add (this.username).add ("chronoshare").add (foldername).add ("info").add ("files").add ("folder");
 
-function nav_anchor (aurl) {
-    aurl = aurl.split('#');
-    if (aurl[1])
-    {
-        aurl_split = aurl[1].split ('&');
-        page = aurl_split[0];
+         this.actions = new Name ("/localhost").add (this.username).add ("chronoshare").add (foldername).add ("info").add ("actions");
 
-        vars = [ ];
-        for (var i = 1; i < aurl_split.length; i++)
-        {
-            hash = aurl_split[i].split('=');
-            vars.push(hash[0]);
-            // there is strange double-encoding problem...
-            vars[hash[0]] = decodeURIComponent (decodeURIComponent (hash[1]));
-        }
+         this.restore = new Name ("/localhost").add (this.username).add ("chronoshare").add (foldername).add ("cmd").add ("restore").add ("file");
 
-        if (page != PAGE)
-        {
-            PAGE = page;
-            PARAMS = vars;
-            URIPARAMS = aurl[1];
+         this.ndn = new NDN ({host:"127.0.0.1"});
+     },
 
-            if (CHRONOSHARE) {
-                CHRONOSHARE.run ();
-            }
-        }
-        else if (aurl != URIPARAMS)
-        {
-            PARAMS = vars;
-            URIPARAMS = aurl[1];
+     run: function () {
+         console.log ("RUN page: " + PAGE);
+         $("#loader").fadeIn (500);
+         $("#error").addClass ("hidden");
 
-            if (CHRONOSHARE) {
-                CHRONOSHARE.run ();
-            }
-        }
-    }
-}
+         cmd = {};
+         if (PAGE == "fileList") {
+             cmd = this.info_files (PARAMS.item);
+         }
+         else if (PAGE == "folderHistory") {
+             cmd = this.info_actions ("folder", PARAMS.item);
+         }
+         else if (PAGE == "fileHistory") {
+             cmd = this.info_actions ("file", PARAMS.item);
+         }
 
-$(document).ready (function () {
-    nav_anchor (window.location.href);
+         if (cmd.request && cmd.callback) {
+             console.log (cmd.request.to_uri ());
+             this.ndn.expressInterest (cmd.request, cmd.callback);
+         }
+         else {
+             $("#loader").fadeOut (500); // ("hidden");
+             $("#content").empty ();
+             if (cmd.error) {
+                 $("#error").html (cmd.error);
+             }
+             else {
+                 $("#error").html ("Unknown error with " + PAGE);
+             }
+             $("#error").removeClass ("hidden");
+         }
+     },
 
-    if (!PARAMS.user || !PARAMS.folder)
-    {
-        $("#error").html ("user and folder must be be specified in the URL");
-        $("#error").removeClass ("hidden");
-        return;
-    }
-    else {
-        // update in-page URLs
-        $(".needs-get-url").each (function (index,element) {
-            this.href += "&user="+encodeURIComponent (encodeURIComponent (PARAMS.user))
-                + "&folder="+encodeURIComponent (encodeURIComponent (PARAMS.folder));
-        });
-        $(".needs-get-url").removeClass ("needs-get-url");
-    }
+     info_files: function(folder) {
+         request = new Name ().add (this.files)./*add (folder_in_question).*/addSegment (PARAMS.offset?PARAMS.offset:0);
+         return { request:request, callback: new FilesClosure (this) };
+     },
 
-    CHRONOSHARE = new ChronoShare (PARAMS.user, PARAMS.folder);
-    CHRONOSHARE.run ();
+     info_actions: function (type/*"file" or "folder"*/, fileOrFolder /*file or folder name*/) {
+         if (type=="file" && !fileOrFolder) {
+             return { error: "info_actions: fileOrFolder parameter is missing" };
+         }
 
-    $(window).on('hashchange', function() {
-        nav_anchor (window.location.href);
-    });
-});
+         request = new Name ().add (this.actions).add (type);
+         if (fileOrFolder) {
+             request.add (fileOrFolder);
+         }
+         request.addSegment (PARAMS.offset?PARAMS.offset:0);
+         return { request: request, callback: new HistoryClosure (this) };
+     },
 
-/**
- * @brief Convert binary data represented as non-escaped hex string to Uint8Array
- * @param str String like ba0cb43e4b9639c114a0487d5faa7c70452533963fc8beb37d1b67c09a48a21d
- *
- * Note that if string length is odd, null will be returned
- */
-StringHashToUint8Array = function (str) {
-    if (str.length % 2 != 0) {
-        return null;
-    }
-
-    var buf = new Uint8Array (str.length / 2);
-
-    for (var i = 0; i < str.length; i+=2) {
-        value = parseInt (str.substring (i, i+2), 16);
-        buf[i/2] = value;
-    }
-
-    return buf;
-};
-
+     cmd_restore_file: function (filename, version, hash) {
+         request = new Name ().add (this.restore)
+             .add (filename)
+             .addSegment (version)
+             .add (hash);
+         console.log (request.to_uri ());
+     }
+ });
 
 $.Class ("FilesClosure", {}, {
     init: function (chronoshare) {
@@ -105,21 +89,24 @@ $.Class ("FilesClosure", {}, {
 	    }
             data = JSON.parse (convertedData);
 
+            tbody = $("<tbody />", { "id": "file-list-files" });
+
             // error handling?
-            table = $("#content").append (
+            newcontent = $("<div />", { "id": "content" }).append (
                 $("<table />", { "class": "item-list" })
                     .append ($("<thead />")
                              .append ($("<tr />")
                                       .append ($("<th />", { "class": "filename border-left", "scope": "col" }).text ("Filename"))
                                       .append ($("<th />", { "class": "version", "scope": "col" }).text ("Version"))
+                                      .append ($("<th />", { "class": "size", "scope": "col" }).text ("Size"))
                                       .append ($("<th />", { "class": "modified", "scope": "col" }).text ("Modified"))
                                       .append ($("<th />", { "class": "modified-by border-right", "scope": "col" }).text ("Modified By"))))
-                    .append ($("<tbody />", { "id": "file-list-files" }))
+                    .append (tbody)
                     .append ($("<tfoot />")
                              .append ($("<tr />")
-                                      .append ($("<td />", { "colspan": "4", "class": "border-right border-left" })))));
+                                      .append ($("<td />", { "colspan": "5", "class": "border-right border-left" })))));
+            newcontent.hide ();
 
-            var html = $("#file-list-files");
             for (var i = 0; i < data.files.length; i++) {
                 file = data.files[i];
 
@@ -130,28 +117,71 @@ $.Class ("FilesClosure", {}, {
                     $(this).toggleClass('highlighted');
                 });
 
-                row.attr ("filename", encodeURIComponent(encodeURIComponent(file.filename)));
+                row.attr ("filename", file.filename); //encodeURIComponent(encodeURIComponent(file.filename)));
+
 
                 row.bind('click', function (e) {
-                    url = "#fileHistory";
-                    url += "&item=" + $(this).attr ("filename");
-                    pos = URIPARAMS.indexOf ("&");
-                    if (pos >= 0) {
-                        url += URIPARAMS.substring (pos)
-                    }
+                    url = new HistoryClosure (null).base_url ("fileHistory")
+                    url += "&item=" + encodeURIComponent (encodeURIComponent ($(this).attr ("filename")));
 
                     document.location = url;
                 });
 
-		row.append ($("<td />", {"class": "border-left"}).text (file.filename));
-		row.append ($("<td />").text (file.version));
-		row.append ($("<td />").text (new Date (file.timestamp)));
-		row.append ($("<td />", {"class": "border-right"})
+		row.append ($("<td />", { "class": "filename border-left" }).text (file.filename));
+		row.append ($("<td />", { "class": "version" }).text (file.version));
+		row.append ($("<td />", { "class": "size" }).text (SegNumToFileSize (file.segNum)));
+		row.append ($("<td />", { "class": "modified" }).text (new Date (file.timestamp)));
+		row.append ($("<td />", { "class": "modified-by border-right"})
 			    .append ($("<userName />").text (file.owner.userName))
 			    .append ($("<seqNo> /").text (file.owner.seqNo)));
 
-		html = html.append (row);
+		tbody = tbody.append (row);
             }
+
+            // if (!PARAMS.offset || PARAMS.offset==0)
+            // {
+            $("#content").fadeOut ("fast", function () {
+                $(this).replaceWith (newcontent);
+                $("#content").fadeIn ("fast");
+            });
+
+            self = this; // small "cheat"
+            $("#content-nav").fadeOut ("fast", function () {
+                $("#content-nav a").hide ();
+
+                if (PARAMS.offset !== undefined || data.more !== undefined) {
+                    $("#content-nav").fadeIn ("fast");
+
+                    if (data.more !== undefined) {
+                        $("#get-more").show ();
+
+                        $("#get-more").unbind ('click').click (function () {
+                            url = self.base_url ();
+                            url += "&offset="+data.more;
+
+                            document.location = url;
+                        });
+                    }
+                    if (PARAMS.offset > 0) {
+                        $("#get-less").show ();
+
+                        $("#get-less").unbind ('click').click (function () {
+                            url = self.base_url ();
+                            if (PARAMS.offset > 1) {
+                                url += "&offset="+(PARAMS.offset - 1);
+                            }
+
+                            document.location = url;
+                        });
+                    }
+                }
+            });
+            // }
+            // else {
+            //     tbody.children ().each (function (index, row) {
+            //         $("#history-list-actions").append (row);
+            //     });
+            // }
         }
         else if (kind == Closure.UPCALL_INTEREST_TIMED_OUT) {
             $("#error").html ("Interest timed out");
@@ -161,6 +191,16 @@ $.Class ("FilesClosure", {}, {
             $("#error").html ("Unknown error happened");
             $("#error").removeClass ("hidden");
         }
+    },
+
+    base_url: function () {
+        url = "#fileList"+
+            "&user="+encodeURIComponent (encodeURIComponent (PARAMS.user)) +
+            "&folder="+encodeURIComponent (encodeURIComponent (PARAMS.folder));
+        if (PARAMS.item !== undefined) {
+            url += "&item="+encodeURIComponent (encodeURIComponent (PARAMS.item));
+        }
+        return url;
     }
 });
 
@@ -180,8 +220,9 @@ $.Class ("HistoryClosure", {}, {
 	    }
             data = JSON.parse (convertedData);
 
-            // error handling?
-            table = $("#content").append (
+            tbody = $("<tbody />", { "id": "history-list-actions" });
+
+            newcontent = $("<div />", { "id": "content" }).append (
                 $("<table />", { "class": "item-list" })
                     .append ($("<thead />")
                              .append ($("<tr />")
@@ -189,44 +230,90 @@ $.Class ("HistoryClosure", {}, {
                                       .append ($("<th />", { "class": "version", "scope": "col" }).text ("Version"))
                                       .append ($("<th />", { "class": "modified", "scope": "col" }).text ("Modified"))
                                       .append ($("<th />", { "class": "modified-by border-right", "scope": "col" }).text ("Modified By"))))
-                    .append ($("<tbody />", { "id": "history-list-actions" }))
+                    .append (tbody)
                     .append ($("<tfoot />")
                              .append ($("<tr />")
                                       .append ($("<td />", { "colspan": "4", "class": "border-right border-left" })))));
 
-            var html = $("#history-list-actions");
             for (var i = 0; i < data.actions.length; i++) {
                 action = data.actions[i];
 
 	        row = $("<tr />");
 	        if (i%2) { row.addClass ("odd"); }
+                if (action.action=="DELETE") { row.addClass ("delete"); }
 
                 row.bind('mouseenter mouseleave', function() {
                     $(this).toggleClass('highlighted');
                 });
 
-                row.attr ("filename", encodeURIComponent(encodeURIComponent(action.filename)));
+                // row.attr ("filename", );//encodeURIComponent(encodeURIComponent(action.filename)));
+                // row.attr ("version",
 
-                row.bind('click', function (e) {
-                    url = "#fileHistory";
-                    url += "&item=" + $(this).attr ("filename");
-                    pos = URIPARAMS.indexOf ("&");
-                    if (pos >= 0) {
-                        url += URIPARAMS.substring (pos)
-                    }
+                // row.bind('click', function (e) {
+                //     url = "#fileHistory";
+                //     url += "&item=" + $(this).attr ("filename");
+                //     pos = URIPARAMS.indexOf ("&");
+                //     if (pos >= 0) {
+                //         url += URIPARAMS.substring (pos)
+                //     }
 
-                    document.location = url;
-                });
+                //     document.location = url;
+                // });
 
-	        row.append ($("<td />", {"class": "border-left"}).text (action.filename));
-	        row.append ($("<td />").text (action.version));
-	        row.append ($("<td />").text (new Date (action.timestamp)));
-	        row.append ($("<td />")
+	        row.append ($("<td />", { "class": "filename border-left" }).text (action.filename));
+	        row.append ($("<td />", { "class": "version" }).text (action.version));
+	        row.append ($("<td />", { "class": "timestamp" }).text (new Date (action.timestamp)));
+	        row.append ($("<td />", { "class": "modified-by border-right" })
 	        	    .append ($("<userName />").text (action.id.userName))
 	        	    .append ($("<seqNo> /").text (action.id.seqNo)));
 
-	        html = html.append (row);
+	        tbody = tbody.append (row);
             }
+
+            // if (!PARAMS.offset || PARAMS.offset==0)
+            // {
+            $("#content").fadeOut ("fast", function () {
+                $(this).replaceWith (newcontent);
+                $("#content").fadeIn ("fast");
+            });
+
+            self = this; // small "cheat"
+            $("#content-nav").fadeOut ("fast", function () {
+                $("#content-nav a").hide ();
+
+                if (PARAMS.offset !== undefined || data.more !== undefined) {
+                    $("#content-nav").fadeIn ("fast");
+
+                    if (data.more !== undefined) {
+                        $("#get-more").show ();
+
+                        $("#get-more").unbind ('click').click (function () {
+                            url = self.base_url (PAGE);
+                            url += "&offset="+data.more;
+
+                            document.location = url;
+                        });
+                    }
+                    if (PARAMS.offset > 0) {
+                        $("#get-less").show ();
+
+                        $("#get-less").unbind ('click').click (function () {
+                            url = self.base_url (PAGE);
+                            if (PARAMS.offset > 1) {
+                                url += "&offset="+(PARAMS.offset - 1);
+                            }
+
+                            document.location = url;
+                        });
+                    }
+                }
+            });
+            // }
+            // else {
+            //     tbody.children ().each (function (index, row) {
+            //         $("#history-list-actions").append (row);
+            //     });
+            // }
         }
         else if (kind == Closure.UPCALL_INTEREST_TIMED_OUT) {
             $("#error").html ("Interest timed out");
@@ -236,52 +323,19 @@ $.Class ("HistoryClosure", {}, {
             $("#error").html ("Unknown error happened");
             $("#error").removeClass ("hidden");
         }
+    },
+
+    base_url: function (page) {
+        url = "#"+page+
+            "&user="+encodeURIComponent (encodeURIComponent (PARAMS.user)) +
+            "&folder="+encodeURIComponent (encodeURIComponent (PARAMS.folder));
+        if (PARAMS.item !== undefined) {
+            url += "&item="+encodeURIComponent (encodeURIComponent (PARAMS.item));
+        }
+        return url;
     }
 });
 
 
-$.Class ("ChronoShare", { },
- {
-     init: function (username, foldername) {
-         this.username = new Name (username);
-         this.files = new Name ("/localhost").add (this.username).add ("chronoshare").add (foldername).add ("info").add ("files").add ("folder");
-
-         this.actions = new Name ("/localhost").add (this.username).add ("chronoshare").add (foldername).add ("info").add ("actions");
-
-         this.restore = new Name ("/localhost").add (this.username).add ("chronoshare").add (foldername).add ("cmd").add ("restore").add ("file");
-
-         // this.ndn = new NDN ({host:"127.0.0.1", getHostAndPort: function() { return {host: "127.0.0.1", port: 9696}}});
-         this.ndn = new NDN ({host:"127.0.0.1"});
-     },
-
-
-     run: function () {
-         $("#content").empty ();
-         $("#loader").fadeIn (500);
-         $("#error").addClass ("hidden");
-
-         if (PAGE == "fileList") {
-             request = new Name ().add (this.files)./*add (folder_in_question).*/add ("nonce").addSegment (0);
-             console.log (request.to_uri ());
-             this.ndn.expressInterest (request, new FilesClosure (this));
-         }
-         else if (PAGE == "folderHistory") {
-             request = new Name ().add (this.actions).add ("folder")./*add (folder_in_question).*/add ("nonce").addSegment (0);
-             console.log (request.to_uri ());
-             this.ndn.expressInterest (request, new HistoryClosure (this));
-         }
-         else if (PAGE == "fileHistory") {
-             if (!PARAMS.item) {
-                 $("#loader").fadeOut (500); // ("hidden");
-                 $("#error").html ("incorrect input for fileHistory command");
-                 $("#error").removeClass ("hidden");
-                 return;
-             }
-             request = new Name ().add (this.actions).add ("file").add (PARAMS.item).add ("nonce").addSegment (0);
-             console.log (request.to_uri ());
-             this.ndn.expressInterest (request, new HistoryClosure (this));
-         }
-     }
- });
 
 

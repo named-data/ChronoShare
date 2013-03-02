@@ -77,11 +77,11 @@ StateServer::registerPrefixes ()
   // currently supporting limited number of command.
   // will be extended to support all planned commands later
 
-  // <PREFIX_INFO>/"actions"/"all"/<nonce>/<segment>  get list of all actions
+  // <PREFIX_INFO>/"actions"/"all"/<segment>  get list of all actions
   m_ccnx->setInterestFilter (Name (m_PREFIX_INFO)("actions")("folder"), bind(&StateServer::info_actions_folder, this, _1));
   m_ccnx->setInterestFilter (Name (m_PREFIX_INFO)("actions")("file"),   bind(&StateServer::info_actions_file, this, _1));
 
-  // <PREFIX_INFO>/"filestate"/"all"/<nonce>/<segment>
+  // <PREFIX_INFO>/"filestate"/"all"/<segment>
   m_ccnx->setInterestFilter (Name (m_PREFIX_INFO)("files")("folder"), bind(&StateServer::info_files_folder, this, _1));
 
   // <PREFIX_CMD>/"restore"/"file"/<one-component-relative-file-name>/<version>/<file-hash>
@@ -174,8 +174,8 @@ StateServer::formatActionJson (json_spirit::Array &actions,
 void
 StateServer::info_actions_folder (const Name &interest)
 {
-  if (interest.size () - m_PREFIX_INFO.size () != 4 &&
-      interest.size () - m_PREFIX_INFO.size () != 5)
+  if (interest.size () - m_PREFIX_INFO.size () != 3 &&
+      interest.size () - m_PREFIX_INFO.size () != 4)
     {
       _LOG_DEBUG ("Invalid interest: " << interest);
       return;
@@ -188,8 +188,8 @@ StateServer::info_actions_folder (const Name &interest)
 void
 StateServer::info_actions_file (const Name &interest)
 {
-  if (interest.size () - m_PREFIX_INFO.size () != 4 &&
-      interest.size () - m_PREFIX_INFO.size () != 5)
+  if (interest.size () - m_PREFIX_INFO.size () != 3 &&
+      interest.size () - m_PREFIX_INFO.size () != 4)
     {
       _LOG_DEBUG ("Invalid interest: " << interest);
       return;
@@ -203,7 +203,7 @@ StateServer::info_actions_file (const Name &interest)
 void
 StateServer::info_actions_fileOrFolder_Execute (const Ccnx::Name &interest, bool isFolder/* = true*/)
 {
-  // <PREFIX_INFO>/"actions"/"folder|file"/<folder|file>/<nonce>/<offset>  get list of all actions
+  // <PREFIX_INFO>/"actions"/"folder|file"/<folder|file>/<offset>  get list of all actions
 
   try
     {
@@ -212,9 +212,9 @@ StateServer::info_actions_fileOrFolder_Execute (const Ccnx::Name &interest, bool
       /// @todo !!! add security checking
 
       string fileOrFolderName;
-      if (interest.size () - m_PREFIX_INFO.size () == 5)
-        fileOrFolderName = interest.getCompFromBackAsString (2);
-      else // == 4
+      if (interest.size () - m_PREFIX_INFO.size () == 4)
+        fileOrFolderName = interest.getCompFromBackAsString (1);
+      else // == 3
         fileOrFolderName = "";
 /*
  *   {
@@ -234,13 +234,13 @@ StateServer::info_actions_fileOrFolder_Execute (const Ccnx::Name &interest, bool
       bool more;
       if (isFolder)
         {
-          m_actionLog->LookupActionsInFolderRecursively
+          more = m_actionLog->LookupActionsInFolderRecursively
             (boost::bind (StateServer::formatActionJson, boost::ref(actions), _1, _2, _3),
              fileOrFolderName, offset*10, 10);
         }
       else
         {
-          m_actionLog->LookupActionsForFile
+          more = m_actionLog->LookupActionsForFile
             (boost::bind (StateServer::formatActionJson, boost::ref(actions), _1, _2, _3),
              fileOrFolderName, offset*10, 10);
         }
@@ -249,8 +249,9 @@ StateServer::info_actions_fileOrFolder_Execute (const Ccnx::Name &interest, bool
 
       if (more)
         {
-          Ccnx::Name more = Name (interest.getPartialName (0, interest.size () - 1))(offset + 1);
-          json.push_back (Pair ("more", lexical_cast<string> (more)));
+          json.push_back (Pair ("more", lexical_cast<string> (offset + 1)));
+          // Ccnx::Name more = Name (interest.getPartialName (0, interest.size () - 1))(offset + 1);
+          // json.push_back (Pair ("more", lexical_cast<string> (more)));
         }
 
       ostringstream os;
@@ -324,8 +325,8 @@ void debugFileState (const FileItem &file)
 void
 StateServer::info_files_folder (const Ccnx::Name &interest)
 {
-  if (interest.size () - m_PREFIX_INFO.size () != 4 &&
-      interest.size () - m_PREFIX_INFO.size () != 5)
+  if (interest.size () - m_PREFIX_INFO.size () != 3 &&
+      interest.size () - m_PREFIX_INFO.size () != 4)
     {
       _LOG_DEBUG ("Invalid interest: " << interest << ", " << interest.size () - m_PREFIX_INFO.size ());
       return;
@@ -339,7 +340,7 @@ StateServer::info_files_folder (const Ccnx::Name &interest)
 void
 StateServer::info_files_folder_Execute (const Ccnx::Name &interest)
 {
-  // <PREFIX_INFO>/"filestate"/"folder"/<one-component-relative-folder-name>/<nonce>/<offset>
+  // <PREFIX_INFO>/"filestate"/"folder"/<one-component-relative-folder-name>/<offset>
   try
     {
       int offset = interest.getCompFromBackAsInt (0);
@@ -347,9 +348,9 @@ StateServer::info_files_folder_Execute (const Ccnx::Name &interest)
       // /// @todo !!! add security checking
 
       string folder;
-      if (interest.size () - m_PREFIX_INFO.size () == 5)
-        folder = interest.getCompFromBackAsString (2);
-      else // == 4
+      if (interest.size () - m_PREFIX_INFO.size () == 4)
+        folder = interest.getCompFromBackAsString (1);
+      else // == 3
         folder = "";
 
 /*
@@ -377,8 +378,9 @@ StateServer::info_files_folder_Execute (const Ccnx::Name &interest)
 
       if (more)
         {
-          Ccnx::Name more = Name (interest.getPartialName (0, interest.size () - 1))(offset + 1);
-          json.push_back (Pair ("more", lexical_cast<string> (more)));
+          json.push_back (Pair ("more", lexical_cast<string> (offset + 1)));
+          // Ccnx::Name more = Name (interest.getPartialName (0, interest.size () - 1))(offset + 1);
+          // json.push_back (Pair ("more", lexical_cast<string> (more)));
         }
 
       ostringstream os;
