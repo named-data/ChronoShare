@@ -37,8 +37,11 @@ using namespace Ccnx;
 
 static const string HTTP_SERVER_ADDRESS = "localhost";
 static const string HTTP_SERVER_PORT = "9001";
-//static const string DOC_ROOT = ":/html";
+#ifdef _DEBUG
 static const string DOC_ROOT = "gui/html";
+#else
+static const string DOC_ROOT = ":/html";
+#endif
 static const QString ICON_PICTURE_QSTRING(":/images/friends-group-icon.png");
 
 INIT_LOGGER ("Gui");
