@@ -2,7 +2,7 @@
 VERSION='0.1'
 APPNAME='chronoshare'
 
-from waflib import Build, Logs, Utils
+from waflib import Build, Logs, Utils, Task, TaskGen
 
 def options(opt):
     opt.add_option('--debug',action='store_true',default=False,dest='debug',help='''debugging mode''')
@@ -129,33 +129,7 @@ def configure(conf):
 
     conf.write_config_header('src/config.h')
 
-def update_html_qrc(bld):
-  import os
-  from tempfile import NamedTemporaryFile
-  from waflib import Logs
-  try:
-    Logs.pprint('BLUE', '[Pre-build] Generating gui/html.qrc')
-    if os.path.exists('gui/html'):
-      tf = NamedTemporaryFile(delete=False)
-      tf.write('<RCC><qresource prefix="/">\n')
-      for root, dirs, files in os.walk('gui/html'):
-        # get rid of 'gui' at the beginning for each root
-        path = '/'.join(root.split('/')[1:])
-        for filename in files:
-          tf.write('\t<file>{0}/{1}</file>\n'.format(path, filename))
-
-      tf.write('</qresource></RCC>')
-      tf.close()
-      os.rename(tf.name, 'gui/html.qrc')
-
-    else:
-      bld.fatal('Can not find html directory: gui/html does not exist')
-  except os.error as e:
-    bld.fatal('Os exception! Errno: {0}, Error: {1}'.format(e.errno(), e.strerror()))
-
 def build (bld):
-    bld.add_pre_fun(update_html_qrc)
-
     executor = bld.objects (
         target = "executor",
         features = ["cxx"],
@@ -229,11 +203,16 @@ def build (bld):
 
     qt = bld (
         target = "ChronoShare",
-        features = "qt4 cxx cxxprogram",
+        features = "qt4 cxx cxxprogram html_resources",
         defines = "WAF",
-        source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.cc', 'gui/images.qrc', 'gui/html.qrc']),
+        source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.cc', 'gui/images.qrc']),
         includes = "ccnx scheduler executor fs-watcher gui src adhoc server . ",
-        use = "BOOST BOOST_FILESYSTEM BOOST_DATE_TIME SQLITE3 QTCORE QTGUI LOG4CXX fs_watcher ccnx database chronoshare http_server"
+        use = "BOOST BOOST_FILESYSTEM BOOST_DATE_TIME SQLITE3 QTCORE QTGUI LOG4CXX fs_watcher ccnx database chronoshare http_server",
+
+        html_resources = bld.path.find_dir ("gui/html").ant_glob([
+                '**/*.js', '**/*.png', '**/*.css',
+                '**/*.html', '**/*.gif', '**/*.ico'
+                ]),
         )
 
     if Utils.unversioned_sys_platform () == "darwin":
@@ -293,14 +272,27 @@ def m_hook(self, node):
     """Alias .mm files to be compiled the same as .cc files, gcc/clang will do the right thing."""
     return self.create_compiled_task('cxx', node)
 
-#from waflib.TaskGen import extension
-#from waflib.Task import Task
-#class RecursiveQrcTask(Task):
-#  def run(self):
-#    print "inside RecursiveQrcTask: %s" % self.inputs
-#
-#@extension('.qrc')
-#def rec_qrc(self, node):
-#  print "inside rec_qc: %s" % node
-#  return self.create_task('RecursiveQrcTask', node)
+@TaskGen.extension('.js', '.png', '.css', '.html', '.gif', '.ico')
+def sig_hook(self, node):
+    node.sig=Utils.h_file (node.abspath())
 
+@TaskGen.feature('html_resources')
+@TaskGen.before_method('process_source')
+def create_qrc_task(self):
+    output = self.bld.path.find_or_declare ("gui/html.qrc")
+    tsk = self.create_task('html_resources', self.html_resources, output)
+    self.create_rcc_task (output)
+
+class html_resources(Task.Task):
+    color='PINK'
+
+    def __str__ (self):
+        return "%s: Generating %s\n" % (self.__class__.__name__.replace('_task',''), self.outputs[0])
+
+    def run (self):
+        out = self.outputs[0]
+        out.write('<RCC>\n    <qresource prefix="/">\n')
+        for f in self.inputs:
+            out.write ('        <file>%s</file>\n' % f.abspath (), 'a')
+        out.write('    </qresource>\n</RCC>', 'a')
+        return 0
