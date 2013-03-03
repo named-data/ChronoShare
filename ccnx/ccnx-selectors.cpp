@@ -11,7 +11,7 @@ Selectors::Selectors()
           , m_minSuffixComps(-1)
           , m_answerOriginKind(AOK_DEFAULT)
           , m_interestLifetime(-1.0)
-          , m_scope(-1)
+          , m_scope(NO_SCOPE)
           , m_childSelector(DEFAULT)
 {
 }
@@ -32,7 +32,7 @@ Selectors::Selectors(const ccn_parsed_interest *pi)
           , m_minSuffixComps(-1)
           , m_answerOriginKind(AOK_DEFAULT)
           , m_interestLifetime(-1.0)
-          , m_scope(-1)
+          , m_scope(NO_SCOPE)
           , m_childSelector(DEFAULT)
 {
   if (pi != NULL)
@@ -54,7 +54,7 @@ Selectors::Selectors(const ccn_parsed_interest *pi)
       case 0x10: m_answerOriginKind = AOK_EXPIRE; break;
       default: break;
     }
-    m_scope = pi->scope;
+    m_scope = static_cast<Scope> (pi->scope);
     // scope and interest lifetime do not really matter to receiving application, it's only meaningful to routers
   }
 }
@@ -77,7 +77,7 @@ Selectors::isEmpty() const
          && m_minSuffixComps == -1
          && m_answerOriginKind == AOK_DEFAULT
          && (m_interestLifetime - (-1.0)) < 10e-4
-         && m_scope == -1
+         && m_scope == NO_SCOPE
          && m_childSelector == DEFAULT;
 }
 
@@ -118,7 +118,7 @@ Selectors::toCcnxCharbuf() const
     ccn_charbuf_append_closer(cbuf); // <AnswerOriginKind>
   }
 
-  if (m_scope != -1)
+  if (m_scope != NO_SCOPE)
   {
     ccnb_tagged_putf(cbuf, CCN_DTAG_Scope, "%d", m_scope);
   }

@@ -53,6 +53,14 @@ public:
     DEFAULT = 2
   } CHILD_SELECTOR;
 
+  enum Scope
+    {
+      NO_SCOPE = -1,
+      SCOPE_LOCAL_CCND = 0,
+      SCOPE_LOCAL_HOST = 1,
+      SCOPE_NEXT_HOST = 2
+    };
+
   inline Selectors &
   maxSuffixComps(int maxSCs) {m_maxSuffixComps = maxSCs; return *this;}
 
@@ -66,7 +74,7 @@ public:
   interestLifetime(double lifetime) {m_interestLifetime = lifetime; return *this;}
 
   inline Selectors &
-  scope(int scope) {m_scope = scope; return *this;}
+  scope(Scope scope) {m_scope = scope; return *this;}
 
   inline Selectors &
   childSelector(CHILD_SELECTOR child) {m_childSelector = child; return *this;}
@@ -89,7 +97,7 @@ private:
   int m_minSuffixComps;
   AOK m_answerOriginKind;
   double m_interestLifetime;
-  int m_scope;
+  Scope m_scope;
   CHILD_SELECTOR m_childSelector;
   // not used now
   Bytes m_publisherPublicKeyDigest;
