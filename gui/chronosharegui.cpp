@@ -151,13 +151,26 @@ ChronoShareGui::startBackend()
   QFileInfo indexHtmlInfo(":/html/index.html");
   if (indexHtmlInfo.exists())
   {
-    m_httpServer = new http::server::server(HTTP_SERVER_ADDRESS, HTTP_SERVER_PORT, DOC_ROOT);
-    m_httpServerThread = boost::thread(&http::server::server::run, m_httpServer);
+    try
+    {
+      m_httpServer = new http::server::server(HTTP_SERVER_ADDRESS, HTTP_SERVER_PORT, DOC_ROOT);
+      m_httpServerThread = boost::thread(&http::server::server::run, m_httpServer);
+    }
+    catch (std::exception &e)
+    {
+      _LOG_ERROR ("Start http server failed");
+      m_httpServer = 0; // just to make sure
+      QMessageBox msgBox;
+      msgBox.setText ("WARNING: Cannot start http server!");
+      msgBox.setIcon (QMessageBox::Warning);
+      msgBox.setInformativeText(QString("Starting http server failed. You will not be able to check history from web brower. Exception caused: %1").arg(e.what()));
+      msgBox.setStandardButtons(QMessageBox::Ok);
+      msgBox.exec();
+    }
   }
   else
   {
     _LOG_ERROR ("Http server doc root dir does not exist!");
-    // shall we bail here?
   }
 }
 
@@ -169,9 +182,12 @@ ChronoShareGui::~ChronoShareGui()
 
   delete m_watcher; // stop filewatching ASAP
   delete m_dispatcher; // stop dispatcher ASAP, but after watcher (to prevent triggering callbacks on deleted object)
-  m_httpServer->handle_stop();
-  m_httpServerThread.join();
-  delete m_httpServer;
+  if (m_httpServer != 0)
+  {
+    m_httpServer->handle_stop();
+    m_httpServerThread.join();
+    delete m_httpServer;
+  }
 
   // cleanup
   delete m_trayIcon;
