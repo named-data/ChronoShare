@@ -29,7 +29,7 @@ def configure(conf):
                                                  '-Qunused-arguments'         # only clang supports
                                                  ])
     else:
-        conf.add_supported_cxxflags (cxxflags = ['-O3', '-O4'])
+        conf.add_supported_cxxflags (cxxflags = ['-O3', '-g'])
 
     # I wish I could use it, but there is some weirdness with boost tests. Give up for now
     # try:
