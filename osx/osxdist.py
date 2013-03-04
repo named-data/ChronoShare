@@ -109,8 +109,10 @@ class AppBundle(object):
       if not os.path.exists(self.framework_path):
         os.mkdir(self.framework_path)
       else:
-        shutil.rmtree(self.framework_path)
-        os.mkdir(self.framework_path)
+        # shutil.rmtree(self.framework_path)
+        # os.mkdir(self.framework_path)
+        # do not remove /Contents/Framework; we have Sparkle.framework there
+        pass
 
     # If we weren't explicitly told which binary to operate on, pick the
     # bundle's default executable from its property list.
