@@ -102,6 +102,7 @@ $.Class ("RestPipelineClosure", {}, {
 	$("#json").empty ();
 
 	this.collection = [];
+        this.counter = 0;
     },
 
     upcall: function(kind, upcallInfo) {
@@ -117,12 +118,20 @@ $.Class ("RestPipelineClosure", {}, {
 	    this.collection = this.collection.concat (data[this.collectionName]);
 	    if (data[this.moreName] !== undefined) {
 		nextSegment = upcallInfo.interest.name.cut (1).addSegment (data[this.moreName]);
-		console.log ("MORE: " +nextSegment.to_uri ());
-		CHRONOSHARE.ndn.expressInterest (nextSegment, this);
+                this.counter ++;
+
+                if (this.counter < 5) {
+		    console.log ("MORE: " +nextSegment.to_uri ());
+		    CHRONOSHARE.ndn.expressInterest (nextSegment, this);
+                }
+                else {
+		    $("#loader").fadeOut (500); // ("hidden");
+		    this.onData (this.collection, data[this.moreName]);
+                }
 	    }
 	    else {
 		$("#loader").fadeOut (500); // ("hidden");
-		this.onData (this.collection);
+		this.onData (this.collection, undefined);
 	    }
 	}
         else if (kind == Closure.UPCALL_INTEREST_TIMED_OUT) {
@@ -137,7 +146,7 @@ $.Class ("RestPipelineClosure", {}, {
 	return Closure.RESULT_OK; // make sure we never re-express the interest
     },
 
-    onData: function(data) {
+    onData: function(data, more) {
     },
 
     onTimeout: function () {
@@ -158,7 +167,7 @@ RestPipelineClosure ("FilesClosure", {}, {
         this.chronoshare = chronoshare;
     },
 
-    onData: function(data) {
+    onData: function(data, more) {
         tbody = $("<tbody />", { "id": "file-list-files" });
 
         /// @todo Eventually set title for other pages
@@ -207,10 +216,7 @@ RestPipelineClosure ("FilesClosure", {}, {
 	    tbody = tbody.append (row);
         }
 
-	$("#content").fadeOut ("fast", function () {
-	    $(this).replaceWith (newcontent);
-	    $("#content").fadeIn ("fast");
-	});
+        displayContent (newcontent, more, this.base_url ());
 
 	$.contextMenu( 'destroy',  ".with-context-menu" ); // cleanup
 	$.contextMenu({
@@ -245,7 +251,7 @@ RestPipelineClosure ("HistoryClosure", {}, {
         this.chronoshare = chronoshare;
     },
 
-    onData: function(data) {
+    onData: function(data, more) {
         tbody = $("<tbody />", { "id": "history-list-actions" });
 
         /// @todo Eventually set title for other pages
@@ -301,10 +307,7 @@ RestPipelineClosure ("HistoryClosure", {}, {
 	    tbody = tbody.append (row);
         }
 
-	$("#content").fadeOut ("fast", function () {
-	    $(this).replaceWith (newcontent);
-	    $("#content").fadeIn ("fast");
-	});
+        displayContent (newcontent, more, this.base_url (PAGE));
 
 	$.contextMenu( 'destroy',  ".with-context-menu" ); // cleanup
 	$.contextMenu({

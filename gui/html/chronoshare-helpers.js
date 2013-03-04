@@ -87,54 +87,44 @@ openHistoryForItem = function (fileName) {
     document.location = url;
 };
 
-// No need anymore (displaying the whole data set at once)
+displayContent = function (newcontent, more, baseUrl) {
 
-// displayContent = function (newcontent, more, baseUrl) {
+    $("#content").fadeOut ("fast", function () {
+        $(this).replaceWith (newcontent);
+        $("#content").fadeIn ("fast");
+    });
 
-//     // if (!PARAMS.offset || PARAMS.offset==0)
-//     // {
-//     $("#content").fadeOut ("fast", function () {
-//         $(this).replaceWith (newcontent);
-//         $("#content").fadeIn ("fast");
-//     });
+    $("#content-nav").fadeOut ("fast", function () {
+        $("#content-nav a").hide ();
 
-//     $("#content-nav").fadeOut ("fast", function () {
-//         $("#content-nav a").hide ();
+        if (PARAMS.offset !== undefined || more !== undefined) {
+            $("#content-nav").fadeIn ("fast");
 
-//         if (PARAMS.offset !== undefined || more !== undefined) {
-//             $("#content-nav").fadeIn ("fast");
+            if (more !== undefined) {
+                $("#get-more").show ();
 
-//             if (more !== undefined) {
-//                 $("#get-more").show ();
+                $("#get-more").unbind ('click').click (function () {
+                    url = baseUrl;
+                    url += "&offset="+more;
 
-//                 $("#get-more").unbind ('click').click (function () {
-//                     url = baseUrl;
-//                     url += "&offset="+more;
+                    document.location = url;
+                });
+            }
+            if (PARAMS.offset > 0) {
+                $("#get-less").show ();
 
-//                     document.location = url;
-//                 });
-//             }
-//             if (PARAMS.offset > 0) {
-//                 $("#get-less").show ();
+                $("#get-less").unbind ('click').click (function () {
+                    url = baseUrl;
+                    if (PARAMS.offset > 5) {
+                        url += "&offset="+(PARAMS.offset - 5);
+                    }
 
-//                 $("#get-less").unbind ('click').click (function () {
-//                     url = baseUrl;
-//                     if (PARAMS.offset > 1) {
-//                         url += "&offset="+(PARAMS.offset - 1);
-//                     }
-
-//                     document.location = url;
-//                 });
-//             }
-//         }
-//     });
-//     // }
-//     // else {
-//     //     tbody.children ().each (function (index, row) {
-//     //         $("#history-list-actions").append (row);
-//     //     });
-//     // }
-// };
+                    document.location = url;
+                });
+            }
+        }
+    });
+};
 
 function custom_alert (output_msg, title_msg)
 {
