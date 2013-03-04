@@ -59,6 +59,7 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
 #endif
 {
   setWindowTitle("Settings");
+  setMinimumWidth (600);
 
   labelUsername = new QLabel("Username (hint: /<username>)");
   labelSharedFolder = new QLabel("Shared Folder Name");
@@ -80,7 +81,7 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
   QPalette pal = editSharedFolderPath->palette();
   pal.setColor(QPalette::Active, QPalette::Base, pal.color(QPalette::Disabled, QPalette::Base));
   editSharedFolderPath->setPalette(pal);
-  button = new QPushButton("Submit");
+  button = new QPushButton("Save and apply settings");
 
   QString versionString = QString("Version: ChronoShare v%1").arg(CHRONOSHARE_VERSION);
   label = new QLabel(versionString, this);
@@ -110,10 +111,6 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
   // show tray icon
   m_trayIcon->show();
 
-  // Dispatcher(const boost::filesystem::path &path, const std::string &localUserName,  const Ccnx::Name &localPrefix,
-  //            const std::string &sharedFolder, const boost::filesystem::path &rootDir,
-  //            Ccnx::CcnxWrapperPtr ccnx, SchedulerPtr scheduler, int poolSize = 2);
-
   // load settings
   if(!loadSettings())
     {
@@ -125,7 +122,16 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
     }
   else
     {
-      startBackend();
+      if (m_username.isNull () || m_username == "" ||
+          m_sharedFolderName.isNull () || m_sharedFolderName == "")
+        {
+          openMessageBox("First Time Setup", "To activate ChronoShare, please configure your username and shared folder name.");
+          viewSettings();
+        }
+      else
+        {
+          startBackend();
+        }
     }
 
 #ifdef ADHOC_SUPPORTED
@@ -134,20 +140,45 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
 }
 
 void
-ChronoShareGui::startBackend()
+ChronoShareGui::startBackend (bool restart/*=false*/)
 {
+  if (m_username.isNull () || m_username=="" ||
+      m_sharedFolderName.isNull () || m_sharedFolderName=="" ||
+      m_dirPath.isNull () || m_dirPath=="")
+    {
+      _LOG_DEBUG ("Don't start backend, because settings are in progress or incomplete");
+      return;
+    }
+
   if (m_watcher != 0 && m_dispatcher != 0)
   {
-    return;
+    if (!restart)
+      {
+        return;
+      }
+
+    _LOG_DEBUG ("Restarting Dispatcher and FileWatcher for the new location or new username");
+    delete m_watcher; // stop filewatching ASAP
+    delete m_dispatcher; // stop dispatcher ASAP, but after watcher (to prevent triggering callbacks on deleted object)
   }
 
+  filesystem::path realPathToFolder (m_dirPath.toStdString ());
+  realPathToFolder /= m_sharedFolderName.toStdString ();
+
   m_dispatcher = new Dispatcher (m_username.toStdString (), m_sharedFolderName.toStdString (),
-                                 m_dirPath.toStdString (), make_shared<CcnxWrapper> ());
+                                 realPathToFolder, make_shared<CcnxWrapper> ());
 
   // Alex: this **must** be here, otherwise m_dirPath will be uninitialized
-  m_watcher = new FsWatcher (m_dirPath,
+  m_watcher = new FsWatcher (realPathToFolder.string ().c_str (),
                              bind (&Dispatcher::Did_LocalFile_AddOrModify, m_dispatcher, _1),
                              bind (&Dispatcher::Did_LocalFile_Delete,      m_dispatcher, _1));
+
+  if (m_httpServer != 0)
+    {
+      // no need to restart webserver if it already exists
+      return;
+    }
+
   QFileInfo indexHtmlInfo(":/html/index.html");
   if (indexHtmlInfo.exists())
   {
@@ -474,6 +505,9 @@ void ChronoShareGui::checkFileAction (const std::string &filename, int action, i
 
 void ChronoShareGui::changeSettings()
 {
+  QString oldUsername = m_username;
+  QString oldSharedFolderName = m_sharedFolderName;
+
   if(!editUsername->text().isEmpty())
     m_username = editUsername->text().trimmed();
   else
@@ -484,33 +518,73 @@ void ChronoShareGui::changeSettings()
   else
     editSharedFolder->setText(m_sharedFolderName);
 
-  saveSettings();
-  this->hide();
+  if (m_username.isNull () || m_username=="" ||
+      m_sharedFolderName.isNull () || m_sharedFolderName=="")
+    {
+      openMessageBox ("Error",
+                      "Username and shared folder name cannot be empty");
+    }
+  else
+    {
+      saveSettings();
+      this->hide();
 
-  startBackend();
+      if (m_username != oldUsername ||
+          oldSharedFolderName != m_sharedFolderName)
+        {
+          startBackend (true); // restart dispatcher/fswatcher
+        }
+    }
 }
 
 void ChronoShareGui::openFileDialog()
 {
-  // prompt user for new directory
-  QString tempPath = QFileDialog::getExistingDirectory(this, tr("Choose a new folder"),
-                                                       m_dirPath, QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
-  QFileInfo qFileInfo (tempPath);
-
-  if(qFileInfo.isDir())
+  while (true)
     {
+      // prompt user for new directory
+      QString tempPath = QFileDialog::getExistingDirectory(this, tr("Choose ChronoShare folder"),
+                                                           m_dirPath, QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+      if (tempPath.isNull ())
+        {
+          if (m_dirPath.isNull ())
+            {
+              openMessageBox ("Notice", "ChronoShare will use [" + QDir::homePath () + "/ChronoShare]. \n\nYou can change it later selecting \"Change Folder\" menu.");
+
+              m_dirPath = QDir::homePath () + "/ChronoShare";
+              editSharedFolderPath->setText (m_dirPath);
+              break;
+            }
+          else
+            {
+              // user just cancelled, no need to do anything else
+              return;
+            }
+        }
+
+      QFileInfo qFileInfo (tempPath);
+
+      if (!qFileInfo.isDir())
+        {
+          openMessageBox ("Error", "Please select an existing folder or create a new one.");
+          continue;
+        }
+
+      if (m_dirPath == tempPath)
+        {
+          // user selected the same directory, no need to do anything
+          return;
+        }
+
       m_dirPath = tempPath;
       editSharedFolderPath->setText(m_dirPath);
-    }
-  else
-    {
-      openMessageBox ("Error", "Not a valid folder, Ignoring.");
+      break;
     }
 
   _LOG_DEBUG ("Selected path: " << m_dirPath.toStdString ());
-
   // save settings
-  saveSettings();
+  saveSettings ();
+
+  startBackend (true); // restart dispatcher/fswatcher
 }
 
 void ChronoShareGui::trayIconClicked (QSystemTrayIcon::ActivationReason reason)
@@ -591,8 +665,15 @@ void ChronoShareGui::saveSettings()
 
 void ChronoShareGui::closeEvent(QCloseEvent* event)
 {
-  _LOG_DEBUG ("Close Event")
-    this->hide();
+  _LOG_DEBUG ("Close Event");
+
+  if (m_username.isNull () || m_username == "" ||
+      m_sharedFolderName.isNull () || m_sharedFolderName == "")
+    {
+      openMessageBox ("ChronoShare is not active", "Username and/or shared folder name are not set.\n\n To activate ChronoShare, open Settings menu and configure your username and shared folder name");
+    }
+
+  this->hide();
   event->ignore(); // don't let the event propagate to the base class
 }
 

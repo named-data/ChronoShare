@@ -112,9 +112,9 @@ private:
   // capture close event
   void closeEvent(QCloseEvent* event);
 
-  // starts fs watcher and dispatcher
+  // starts/restarts fs watcher and dispatcher
   void
-  startBackend();
+  startBackend(bool restart=false);
 
 private:
   QSystemTrayIcon* m_trayIcon; // tray icon
