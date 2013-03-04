@@ -82,7 +82,7 @@ INIT_LOGGERS ();
 #include <iostream>
 
 #define _LOG_DEBUG(x) \
-  std::clog << boost::get_system_time () << " " << boost::this_thread::get_id () << " " << x << endl;
+  std::clog << boost::get_system_time () << " " << boost::this_thread::get_id () << " " << x << std::endl;
 
 #else
 #define _LOG_DEBUG(x)
