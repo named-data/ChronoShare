@@ -288,20 +288,23 @@ def sig_hook(self, node):
 def create_qrc_task(self):
     output = self.bld.path.find_or_declare ("gui/html.qrc")
     tsk = self.create_task('html_resources', self.html_resources, output)
-    self.create_rcc_task (output)
+    tsk.base_path = output.parent.get_src ()
+    self.create_rcc_task (output.get_src ())
 
 class html_resources(Task.Task):
     color='PINK'
 
     def __str__ (self):
-        return "%s: Generating %s\n" % (self.__class__.__name__.replace('_task',''), self.outputs[0])
+        return "%s: Generating %s\n" % (self.__class__.__name__.replace('_task',''), self.outputs[0].nice_path ())
 
     def run (self):
         out = self.outputs[0]
         out.write('<RCC>\n    <qresource prefix="/">\n')
         for f in self.inputs:
-            out.write ('        <file>%s</file>\n' % f.abspath (), 'a')
+            out.write ('        <file>%s</file>\n' % f.path_from (self.base_path), 'a')
         out.write('    </qresource>\n</RCC>', 'a')
+
+        out.get_src ().write (out.read(), 'w')
         return 0
 
 @Configure.conf

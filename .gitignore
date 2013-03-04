@@ -12,3 +12,4 @@ ui_*
 osx/Frameworks/Sparkle.framework
 Sparkle*
 *priv.pem
+gui/html.qrc
