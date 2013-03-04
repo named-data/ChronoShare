@@ -2,7 +2,7 @@
 VERSION='0.1'
 APPNAME='chronoshare'
 
-from waflib import Build, Logs, Utils, Task, TaskGen
+from waflib import Build, Logs, Utils, Task, TaskGen, Configure
 
 def options(opt):
     opt.add_option('--debug',action='store_true',default=False,dest='debug',help='''debugging mode''')
@@ -17,6 +17,19 @@ def options(opt):
 
 def configure(conf):
     conf.load("compiler_c compiler_cxx")
+
+    if conf.options.debug:
+        conf.define ('_DEBUG', 1)
+        conf.add_supported_cxxflags (cxxflags = ['-O0',
+                                                 '-Wall',
+                                                 '-Wno-unused-variable',
+                                                 '-g3',
+                                                 '-Wno-unused-private-field', # only clang supports
+                                                 '-fcolor-diagnostics',       # only clang supports
+                                                 '-Qunused-arguments'         # only clang supports
+                                                 ])
+    else:
+        conf.add_supported_cxxflags (cxxflags = ['-O3', '-O4'])
 
     # I wish I could use it, but there is some weirdness with boost tests. Give up for now
     # try:
@@ -37,13 +50,15 @@ def configure(conf):
 
     if Utils.unversioned_sys_platform () == "darwin":
         conf.check_cxx(framework_name='Foundation', uselib_store='OSX_FOUNDATION', mandatory=False, compile_filename='test.mm')
-        conf.check_cxx(framework_name='CoreWLAN',   uselib_store='OSX_COREWLAN',   define_name='HAVE_COREWLAN', mandatory=False, compile_filename='test.mm')
+        conf.check_cxx(framework_name='AppKit',     uselib_store='OSX_APPKIT',     mandatory=False, compile_filename='test.mm')
+        conf.check_cxx(framework_name='CoreWLAN',   uselib_store='OSX_COREWLAN',   define_name='HAVE_COREWLAN',
+                       use="OSX_FOUNDATION", mandatory=False, compile_filename='test.mm')
 
         if conf.options.autoupdate:
             def check_sparkle(**kwargs):
-              conf.check_cxx (framework_name='Sparkle', header_name="Foundation/Foundation.h",
+              conf.check_cxx (framework_name="Sparkle", header_name=["Foundation/Foundation.h", "AppKit/AppKit.h"],
                               uselib_store='OSX_SPARKLE', define_name='HAVE_SPARKLE', mandatory=True,
-                              compile_filename='test.mm',
+                              compile_filename='test.mm', use="OSX_FOUNDATION OSX_APPKIT",
                               **kwargs
                               )
             try:
@@ -57,27 +72,28 @@ def configure(conf):
                                   linkflags="-F%s/osx/Frameworks/" % conf.path.abspath())
                     conf.env.HAVE_LOCAL_SPARKLE = 1
                 except:
-                    # Download to local path and retry
-                    Logs.info ("Sparkle framework not found, trying to download it to 'build/'")
-
                     import urllib, subprocess, os, shutil
-                    urllib.urlretrieve ("http://sparkle.andymatuschak.org/files/Sparkle%201.5b6.zip", "build/Sparkle.zip")
-                    if os.path.exists('build/Sparkle.zip'):
-                        try:
-                            subprocess.check_call (['unzip', '-qq', 'build/Sparkle.zip', '-d', 'build/Sparkle'])
-                            os.remove ("build/Sparkle.zip")
-                            if not os.path.exists("osx/Frameworks"):
-                                os.mkdir ("osx/Frameworks")
-                            os.rename ("build/Sparkle/Sparkle.framework", "osx/Frameworks/Sparkle.framework")
-                            shutil.rmtree("build/Sparkle", ignore_errors=True)
+                    if not os.path.exists('osx/Frameworks/Sparkle.framework'):
+                        # Download to local path and retry
+                        Logs.info ("Sparkle framework not found, trying to download it to 'build/'")
 
-                            check_sparkle(cxxflags="-F%s/osx/Frameworks/" % conf.path.abspath(),
-                                          linkflags="-F%s/osx/Frameworks/" % conf.path.abspath())
-                            conf.env.HAVE_LOCAL_SPARKLE = 1
-                        except subprocess.CalledProcessError as e:
-                            conf.fatal("Cannot find Sparkle framework. Auto download failed: '%s' returned %s" % (' '.join(e.cmd), e.returncode))
-                        except:
-                            conf.fatal("Unknown Error happened when auto downloading Sparkle framework")
+                        urllib.urlretrieve ("http://sparkle.andymatuschak.org/files/Sparkle%201.5b6.zip", "build/Sparkle.zip")
+                        if os.path.exists('build/Sparkle.zip'):
+                            try:
+                                subprocess.check_call (['unzip', '-qq', 'build/Sparkle.zip', '-d', 'build/Sparkle'])
+                                os.remove ("build/Sparkle.zip")
+                                if not os.path.exists("osx/Frameworks"):
+                                    os.mkdir ("osx/Frameworks")
+                                os.rename ("build/Sparkle/Sparkle.framework", "osx/Frameworks/Sparkle.framework")
+                                shutil.rmtree("build/Sparkle", ignore_errors=True)
+
+                                check_sparkle(cxxflags="-F%s/osx/Frameworks/" % conf.path.abspath(),
+                                              linkflags="-F%s/osx/Frameworks/" % conf.path.abspath())
+                                conf.env.HAVE_LOCAL_SPARKLE = 1
+                            except subprocess.CalledProcessError as e:
+                                conf.fatal("Cannot find Sparkle framework. Auto download failed: '%s' returned %s" % (' '.join(e.cmd), e.returncode))
+                            except:
+                                conf.fatal("Unknown Error happened when auto downloading Sparkle framework")
 
             if conf.is_defined('HAVE_SPARKLE'):
                 conf.env.HAVE_SPARKLE = 1 # small cheat for wscript
@@ -113,15 +129,6 @@ def configure(conf):
 
     conf.check_ccnx (path=conf.options.ccnx_dir)
     conf.define ('CCNX_PATH', conf.env.CCNX_ROOT)
-
-    if conf.options.debug:
-        conf.define ('_DEBUG', 1)
-        conf.env.append_value('CXXFLAGS', ['-O0', '-Wall', '-Wno-unused-variable', '-Wno-unused-private-field', '-g3'])
-    else:
-        conf.env.append_value('CXXFLAGS', ['-O3', '-g'])
-
-    if conf.env["CXX"] == ["clang++"]:
-        conf.env.append_value('CXXFLAGS', ['-fcolor-diagnostics', '-Qunused-arguments'])
 
     if conf.options._test:
         conf.define ('_TESTS', 1)
@@ -296,3 +303,18 @@ class html_resources(Task.Task):
             out.write ('        <file>%s</file>\n' % f.abspath (), 'a')
         out.write('    </qresource>\n</RCC>', 'a')
         return 0
+
+@Configure.conf
+def add_supported_cxxflags(self, cxxflags):
+    """
+    Check which cxxflags are supported by compiler and add them to env.CXXFLAGS variable
+    """
+    self.start_msg('Checking allowed flags for c++ compiler')
+
+    supportedFlags = []
+    for flag in cxxflags:
+        if self.check_cxx (cxxflags=[flag], mandatory=False):
+            supportedFlags += [flag]
+
+    self.end_msg (' '.join (supportedFlags))
+    self.env.CXXFLAGS += supportedFlags

@@ -21,13 +21,17 @@
 
 #include "sparkle-auto-update.h"
 #import <Foundation/Foundation.h>
+#import <AppKit/AppKit.h>
 #import <Sparkle/Sparkle.h>
-#include <stdio.h>
+
+#include "logging.h"
+
+INIT_LOGGER ("SparkeAutoUpdate");
 
 class SparkleAutoUpdate::Private
 {
-  public:
-    SUUpdater *updater;
+public:
+  SUUpdater *updater;
 };
 
 SparkleAutoUpdate::SparkleAutoUpdate(const QString &updateUrl)
@@ -51,5 +55,5 @@ void SparkleAutoUpdate::checkForUpdates()
 {
   //[d->updater checkForUpdatesInBackground];
   [d->updater checkForUpdates : nil];
-  printf("++++++++ checking update ++++++\n");
+  _LOG_DEBUG ("++++++++ checking update +++++");
 }

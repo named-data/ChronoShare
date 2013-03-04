@@ -36,15 +36,16 @@ INIT_LOGGER ("Adhoc.OSX");
 #import <CoreWLAN/CWInterface.h>
 #import <CoreWLAN/CoreWLANTypes.h>
 
+const NSUInteger channel = 11;
+
 bool
 Adhoc::CreateAdhoc ()
 {
-  NSString *networkName = @"NDNdirect";
-  NSNumber *channel = @11;
-  NSString *passphrase = @"NDNhello";
-  NSString *securityMode = @"Open";
+  NSString *networkName = [[NSString alloc] initWithCString:"NDNdirect" encoding:NSASCIIStringEncoding];
+  NSString *passphrase = [[NSString alloc] initWithCString:"NDNhello" encoding:NSASCIIStringEncoding];
+  NSString *securityMode = [[NSString alloc] initWithCString:"Open" encoding:NSASCIIStringEncoding];
 
-  NSArray *airportInterfaces = [CWInterface supportedInterfaces];
+  NSArray *airportInterfaces = [[CWInterface interfaceNames] allObjects];
 
   //Choose the desired interface . the first one will be enought for this example
   NSString *interfaceName =[airportInterfaces objectAtIndex:0];
@@ -58,7 +59,7 @@ Adhoc::CreateAdhoc ()
 
   NSError *error = nil;
   NSData* data = [networkName dataUsingEncoding:NSUTF8StringEncoding];
-  BOOL created = [airport startIBSSModeWithSSID:data security:kCWIBSSModeSecurityNone channel:(NSUInteger)@11 password:passphrase error:&error];
+  BOOL created = [airport startIBSSModeWithSSID:data security:kCWIBSSModeSecurityNone channel:channel password:passphrase error:&error];
 
   if (!created)
     {
@@ -86,15 +87,10 @@ Adhoc::CreateAdhoc ()
 void
 Adhoc::DestroyAdhoc ()
 {
-  NSString *networkName = @"NDNdirect";
-  NSNumber *channel = @11;
-  NSString *passphrase = @"NDNhello";
-  NSString *securityMode = @"Open";
-
-  NSArray *airportInterfaces = [CWInterface supportedInterfaces];
+  NSArray *airportInterfaces = [[CWInterface interfaceNames] allObjects];
 
   //Choose the desired interface . the first one will be enought for this example
-  NSString *interfaceName =[airportInterfaces objectAtIndex:0];
+  NSString *interfaceName = [airportInterfaces objectAtIndex:0];
 
   CWInterface *airport = [CWInterface interfaceWithName:interfaceName];
 

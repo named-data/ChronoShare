@@ -279,10 +279,17 @@ void ChronoShareGui::createTrayIcon()
   m_trayIconMenu->addSeparator();
   m_trayIconMenu->addAction(m_viewSettings);
   m_trayIconMenu->addAction(m_changeFolder);
+
+#ifdef SPARKLE_SUPPORTED
   m_trayIconMenu->addSeparator();
   m_trayIconMenu->addAction(m_checkForUpdates);
+#endif
+
+#ifdef ADHOC_SUPPORTED
   m_trayIconMenu->addSeparator();
   m_trayIconMenu->addAction(m_wifiAction);
+#endif
+
   m_trayIconMenu->addSeparator();
   m_trayIconMenu->addAction(m_quitProgram);
 
