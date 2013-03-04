@@ -54,7 +54,7 @@ Adhoc::CreateAdhoc ()
   CWInterface *airport = [CWInterface interfaceWithName:interfaceName];
 
   g_priorNetwork = airport.ssid;
-  _LOG_DEBUG ("Prior network: " << [_priorNetwork cStringUsingEncoding:NSASCIIStringEncoding]);
+  _LOG_DEBUG ("Prior network: " << [g_priorNetwork cStringUsingEncoding:NSASCIIStringEncoding]);
 
   _LOG_DEBUG ("Starting adhoc connection");
 
