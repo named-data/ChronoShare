@@ -380,7 +380,7 @@ if __name__ == '__main__':
   a.handle_libs()
   a.copy_resources(['../gui/images', '../gui/html', '../osx/qt.conf', '../osx/dsa_pub.pem'])
   a.update_plist()
-  a.set_min_macosx_version('10.8.0')
+  a.set_min_macosx_version('10.6.0')
   a.done()
 
   # Sign our binaries, etc.

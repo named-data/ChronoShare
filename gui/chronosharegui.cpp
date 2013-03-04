@@ -409,7 +409,9 @@ void ChronoShareGui::setIcon()
 
 void ChronoShareGui::openSharedFolder()
 {
-  QString path = QDir::toNativeSeparators(m_dirPath);
+  filesystem::path realPathToFolder (m_dirPath.toStdString ());
+  realPathToFolder /= m_sharedFolderName.toStdString ();
+  QString path = QDir::toNativeSeparators(realPathToFolder.string().c_str());
   QDesktopServices::openUrl(QUrl("file:///" + path));
 }
 
@@ -461,7 +463,10 @@ void ChronoShareGui::updateRecentFilesMenu()
 
 void ChronoShareGui::checkFileAction (const std::string &filename, int action, int index)
 {
-  QString fullPath = m_dirPath + "/" + filename.c_str();
+  filesystem::path realPathToFolder (m_dirPath.toStdString ());
+  realPathToFolder /= m_sharedFolderName.toStdString ();
+  realPathToFolder /= filename;
+  QString fullPath =  realPathToFolder.string().c_str();
   QFileInfo fileInfo(fullPath);
   if (fileInfo.exists())
   {
