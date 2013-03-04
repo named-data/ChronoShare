@@ -36,7 +36,8 @@ INIT_LOGGER ("Adhoc.OSX");
 #import <CoreWLAN/CWInterface.h>
 #import <CoreWLAN/CoreWLANTypes.h>
 
-const NSUInteger channel = 11;
+const NSUInteger g_channel = 11;
+static NSString * g_priorNetwork = 0;
 
 bool
 Adhoc::CreateAdhoc ()
@@ -52,14 +53,14 @@ Adhoc::CreateAdhoc ()
 
   CWInterface *airport = [CWInterface interfaceWithName:interfaceName];
 
-  NSString * _priorNetwork = airport.ssid;
+  g_priorNetwork = airport.ssid;
   _LOG_DEBUG ("Prior network: " << [_priorNetwork cStringUsingEncoding:NSASCIIStringEncoding]);
 
   _LOG_DEBUG ("Starting adhoc connection");
 
   NSError *error = nil;
   NSData* data = [networkName dataUsingEncoding:NSUTF8StringEncoding];
-  BOOL created = [airport startIBSSModeWithSSID:data security:kCWIBSSModeSecurityNone channel:channel password:passphrase error:&error];
+  BOOL created = [airport startIBSSModeWithSSID:data security:kCWIBSSModeSecurityNone channel:g_channel password:passphrase error:&error];
 
   if (!created)
     {
@@ -97,6 +98,24 @@ Adhoc::DestroyAdhoc ()
   [airport disassociate];
 
   NSError *err;
+
+  if (g_priorNetwork != 0)
+    {
+      NSSet *scanResults = [airport scanForNetworksWithName:g_priorNetwork error:&err];
+
+      if([scanResults count] > 0)
+        {
+          CWNetwork *previousNetwork = [[scanResults allObjects] objectAtIndex:0];
+
+          [airport associateToNetwork:previousNetwork password:nil error:&err];
+
+          g_priorNetwork = 0;
+          return;
+        }
+
+      g_priorNetwork = 0;
+    }
+
   [airport setPower:NO error:&err];
   [airport setPower:YES error:&err];
 
