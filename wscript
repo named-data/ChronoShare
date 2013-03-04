@@ -299,12 +299,14 @@ class html_resources(Task.Task):
 
     def run (self):
         out = self.outputs[0]
-        out.write('<RCC>\n    <qresource prefix="/">\n')
+        bld_out = out.get_bld ()
+        src_out = out.get_src ()
+        bld_out.write('<RCC>\n    <qresource prefix="/">\n')
         for f in self.inputs:
-            out.write ('        <file>%s</file>\n' % f.path_from (self.base_path), 'a')
-        out.write('    </qresource>\n</RCC>', 'a')
+            bld_out.write ('        <file>%s</file>\n' % f.path_from (self.base_path), 'a')
+        bld_out.write('    </qresource>\n</RCC>', 'a')
 
-        out.get_src ().write (out.read(), 'w')
+        src_out.write (bld_out.read(), 'w')
         return 0
 
 @Configure.conf
