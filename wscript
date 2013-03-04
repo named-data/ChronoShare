@@ -229,6 +229,8 @@ def build (bld):
 <dict>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
+    <key>CFBundleIconFile</key>
+    <string>chronoshare.icns</string>
     <key>CFBundleGetInfoString</key>
     <string>Created by Waf</string>
     <key>CFBundleIdentifier</key>
@@ -243,10 +245,13 @@ def build (bld):
     <string>1</string>
     <key>SUPublicDSAKeyFile</key>
     <string>dsa_pub.pem</string>
+    <key>CFBundleIconFile</key>
+    <string>chronoshare.icns</string>
 </dict>
 </plist>'''
         qt.mac_app = "ChronoShare.app"
         qt.mac_plist = app_plist % "ChronoShare"
+        qt.mac_resources = 'chronoshare.icns'
         qt.use += " OSX_FOUNDATION OSX_COREWLAN adhoc"
 
         if bld.env['HAVE_SPARKLE']:
