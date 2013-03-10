@@ -418,7 +418,7 @@ void ChronoShareGui::openSharedFolder()
 void ChronoShareGui::openInWebBrowser()
 {
   QUrl url ("http://localhost:9001/");
-  url.setFragment ("fileList&"
+  url.setFragment ("folderHistory&"
                    "user=" + QUrl::toPercentEncoding (m_username) + "&"
                    "folder=" + QUrl::toPercentEncoding (m_sharedFolderName));
 

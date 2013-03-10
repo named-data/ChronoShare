@@ -73,6 +73,15 @@ $.Class ("ChronoShare", { },
              .add (hash);
          console.log (request.to_uri ());
 	 this.ndn.expressInterest (request, new CmdRestoreFileClosure (this, callback));
+     },
+
+     get_file: function (modifiedBy, hash, segments, callback/*function (bool <- data received, data <- returned data)*/) {
+         baseName = new Name (modifiedBy)
+             .add ("chronoshare").add ("file")
+             .add (hash);
+
+         new FileGetter (this.ndn, baseName, segments, callback)
+             .start ();
      }
  });
 
@@ -91,6 +100,47 @@ $.Class ("CmdRestoreFileClosure", {}, {
         }
         else {
 	    this.callback (false, "Unknown error happened");
+        }
+    }
+});
+
+$.Class ("FileGetter", {}, {
+    init: function (ndn, baseName, segments, callback) {
+        this.ndn = ndn;
+        this.callback = callback;
+        this.baseName = baseName;
+        this.segments = segments;
+        this.lastSegmentRequested = -1;
+
+        this.data = "";
+    },
+
+    start: function () {
+        this.lastSegmentRequested ++;
+
+        request = new Name ()
+            .add (this.baseName)
+            .addSegment (this.lastSegmentRequested);
+
+        console.log (request.to_uri ());
+	this.ndn.expressInterest (request, this);
+    },
+
+    upcall: function(kind, upcallInfo) {
+        if (kind == Closure.UPCALL_CONTENT || kind == Closure.UPCALL_CONTENT_UNVERIFIED) { //disable content verification
+            convertedData = DataUtils.toString (upcallInfo.contentObject.content);
+
+            this.data += convertedData;
+
+            if (this.lastSegmentRequested+1 == this.segments) {
+                this.callback (true, this.data);
+            }
+            else {
+                this.start ();
+            }
+        }
+        else {
+	    this.callback (false, "Interest timed out");
         }
     }
 });
@@ -205,7 +255,7 @@ RestPipelineClosure ("FilesClosure", {}, {
 
 	    row.append ($("<td />", { "class": "filename border-left" })
 			.text (file.filename)
-			.prepend ($("<img />", { "src": fileExtension(file.filename) })));
+			.prepend ($("<img />", { "src": imgFullPath(fileExtension(file.filename)) })));
 	    row.append ($("<td />", { "class": "version" }).text (file.version));
 	    row.append ($("<td />", { "class": "size" }).text (SegNumToFileSize (file.segNum)));
 	    row.append ($("<td />", { "class": "modified" }).text (new Date (file.timestamp+"+00:00"))); // convert from UTC
@@ -251,6 +301,29 @@ RestPipelineClosure ("HistoryClosure", {}, {
         this.chronoshare = chronoshare;
     },
 
+    previewFile: function (file) {
+        if (fileExtension(file.attr ("filename")) == "txt") {
+            CHRONOSHARE.get_file (file.attr ("file_modified_by"),
+                                  DataUtils.toNumbers (file.attr ("file_hash")),
+                                  file.attr ("file_seg_num"),
+                                  function (status, data) {
+			              $("<div />", { "title": "Preview of " + file.attr ("filename") + " version " + file.attr ("file_version") })
+                                          .append ($("<pre />").text (data))
+			                  .dialog ({
+			                      resizable: true,
+			                      width: $(window).width() * 0.8,
+                                              maxHeight: $(window).height() * 0.8,
+                                              show: "blind",
+                                              hide: "fold",
+			                      modal: true,
+			                  });
+                                  });
+        }
+        else {
+            custom_alert ("Preview is not support for this type of file");
+        }
+    },
+
     onData: function(data, more) {
         tbody = $("<tbody />", { "id": "history-list-actions" });
 
@@ -284,11 +357,21 @@ RestPipelineClosure ("HistoryClosure", {}, {
 		row.addClass ("with-context-menu");
                 row.attr ("file_version", action.version);
 		row.attr ("file_hash", action.update.hash);
+		row.attr ("file_seg_num", action.update.segNum);
 		row.attr ("file_modified_by", action.id.userName);
 	    }
 
             row.attr ("filename", action.filename);
-            row.bind('click', function (e) { openHistoryForItem ($(this).attr ("filename")) });
+
+            self = this;
+            if (PARAMS.item != action.filename) {
+                row.bind('click', function (e) { openHistoryForItem ($(this).attr ("filename")) });
+            }
+            else {
+                row.bind('click', function (e) {
+                    self.previewFile ($(this));
+                });
+            }
 
             row.bind('mouseenter mouseleave', function() {
                 $(this).toggleClass('highlighted');
@@ -296,7 +379,7 @@ RestPipelineClosure ("HistoryClosure", {}, {
 
 	    row.append ($("<td />", { "class": "filename border-left" })
 			.text (action.filename)
-			.prepend ($("<img />", { "src": fileExtension(action.filename) })));
+			.prepend ($("<img />", { "src": imgFullPath(fileExtension(action.filename)) })));
 	    row.append ($("<td />", { "class": "version" }).text (action.version));
 	    row.append ($("<td />", { "class": "size" }).text (action.update?SegNumToFileSize (action.update.segNum):""));
 	    row.append ($("<td />", { "class": "timestamp" }).text (new Date (action.timestamp+"+00:00"))); // conversion from UTC timezone (we store action time in UTC)
@@ -309,11 +392,18 @@ RestPipelineClosure ("HistoryClosure", {}, {
 
         displayContent (newcontent, more, this.base_url (PAGE));
 
+        self = this;
 	$.contextMenu( 'destroy',  ".with-context-menu" ); // cleanup
 	$.contextMenu({
 	    selector: ".with-context-menu",
 	    items: {
 		"sep1": "---------",
+                preview: {name: "Preview revision",
+                          icon: "edit", // ned a better icon
+                          callback: function(key, opt) {
+                              self.previewFile (opt.$trigger);
+                          }},
+		"sep3": "---------",
 		restore: {name: "Restore this revision",
 			  icon: "cut", // need a better icon
 			  callback: function(key, opt) {
@@ -336,6 +426,8 @@ RestPipelineClosure ("HistoryClosure", {}, {
 				      height:200,
 				      width:300,
 				      modal: true,
+                                      show: "blind",
+                                      hide: "fold",
 				      buttons: {
 					  "Restore": function() {
 					      self = $(this);
@@ -359,6 +451,13 @@ RestPipelineClosure ("HistoryClosure", {}, {
 		"sep2": "---------",
 	    }
 	});
+    },
+
+    base_no_item_url: function (page) {
+        url = "#"+page+
+            "&user="+encodeURIComponent (encodeURIComponent (PARAMS.user)) +
+            "&folder="+encodeURIComponent (encodeURIComponent (PARAMS.folder));
+        return url;
     },
 
     base_url: function (page) {

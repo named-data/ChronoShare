@@ -73,16 +73,16 @@ fileExtension = function (fileName) {
     extension = fileName.substr (extStart+1);
     // return imgFullPath (extension);
     if ($.inArray(extension, knownExtensions) >= 0) {
-    	return imgFullPath (extension);
+    	return extension;
     }
     else {
-    	return imgFullPath (defaultExtension);
+    	return defaultExtension;
     }
 };
 
 
 openHistoryForItem = function (fileName) {
-    url = new HistoryClosure (null).base_url ("fileHistory")
+    url = new HistoryClosure (null).base_no_item_url ("fileHistory")
     url += "&item=" + encodeURIComponent (encodeURIComponent (fileName));
     document.location = url;
 };
