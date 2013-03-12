@@ -14,6 +14,7 @@ def options(opt):
         opt.add_option('--auto-update', action='store_true',default=False,dest='autoupdate',help='''(OSX) Download sparkle framework and enable autoupdate feature''')
 
     opt.load('compiler_c compiler_cxx boost ccnx protoc qt4 gnu_dirs')
+    opt.load('tinyxml', tooldir=['waf-tools'])
 
 def configure(conf):
     conf.load("compiler_c compiler_cxx gnu_dirs")
@@ -47,6 +48,8 @@ def configure(conf):
     conf.check_cfg(package='sqlite3', args=['--cflags', '--libs'], uselib_store='SQLITE3', mandatory=True)
     conf.check_cfg(package='libevent', args=['--cflags', '--libs'], uselib_store='LIBEVENT', mandatory=True)
     conf.check_cfg(package='libevent_pthreads', args=['--cflags', '--libs'], uselib_store='LIBEVENT_PTHREADS', mandatory=True)
+    conf.load('tinyxml')
+    conf.check_tinyxml(path=conf.options.tinyxml_dir)
 
     conf.define ("TRAY_ICON", "chronoshare-big.png")
     if Utils.unversioned_sys_platform () == "linux":
@@ -161,7 +164,7 @@ def build (bld):
         target="ccnx",
         features=['cxx'],
         source = bld.path.ant_glob(['ccnx/**/*.cc', 'ccnx/**/*.cpp']),
-        use = 'BOOST BOOST_THREAD SSL CCNX LOG4CXX scheduler executor',
+        use = 'TINYXML BOOST BOOST_THREAD SSL CCNX LOG4CXX scheduler executor',
         includes = "ccnx src scheduler executor",
         )
 

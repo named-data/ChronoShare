@@ -40,6 +40,12 @@ public:
   static unsigned char _origin;
   static HashPtr Origin;
 
+  Hash ()
+    : m_length(0)
+    , m_buf(0)
+  {
+  }
+
   Hash (const void *buf, unsigned int length)
     : m_length (length)
   {
