@@ -93,7 +93,7 @@ public:
   putToCcnd (const Bytes &contentObject);
 
   bool
-  verifyPco(PcoPtr &pco);
+  checkPcoIntegrity(PcoPtr &pco);
 
   PcoPtr
   get (const Name &interest, const Selectors &selector = Selectors(), double maxWait = 4.0/*seconds*/);

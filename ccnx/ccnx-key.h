@@ -36,7 +36,7 @@ public:
   enum VALIDITY
   {
     NOT_YET_VALID,
-    VALID,
+    WITHIN_VALID_TIME_SPAN,
     EXPIRED,
     OTHER
   };

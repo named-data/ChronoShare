@@ -58,8 +58,8 @@ Key::updateMeta(const PcoPtr &metaObject)
       TiXmlElement *root = doc.RootElement();
       for (TiXmlElement *child = root->FirstChildElement(); child; child = child->NextSiblingElement())
       {
-        const char *elemName = child->Value();
-        const char *text = child->GetText();
+        string elemName = child->Value();
+        string text = child->GetText();
         if (elemName == "Name")
         {
           m_meta.realworldID = text;
@@ -70,7 +70,7 @@ Key::updateMeta(const PcoPtr &metaObject)
         }
         else if (elemName == "Valid_to")
         {
-          m_meta.validTo = boost::lexical_cast<time_t>(std::string(text));
+          m_meta.validTo = boost::lexical_cast<time_t>(text);
         }
         else if (elemName == "Valid_from")
         {
@@ -109,7 +109,7 @@ Key::validity()
     return EXPIRED;
   }
 
-  return VALID;
+  return WITHIN_VALID_TIME_SPAN;
 }
 
 } // Ccnx

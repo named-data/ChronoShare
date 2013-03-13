@@ -68,7 +68,7 @@ void encapCallback(const Name &name, Ccnx::PcoPtr pco)
   PcoPtr npco = make_shared<ParsedContentObject> (*(pco->contentPtr()));
   g_dataCallback_counter ++;
   BOOST_CHECK(npco);
-  BOOST_CHECK(c1->verifyPco(npco));
+  BOOST_CHECK(c1->checkPcoIntegrity(npco));
 }
 
 void

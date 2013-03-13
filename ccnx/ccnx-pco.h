@@ -25,18 +25,28 @@
 #include "ccnx-wrapper.h"
 #include "ccnx-common.h"
 #include "ccnx-name.h"
+#include "hash-helper.h"
 
 namespace Ccnx {
 
 struct MisformedContentObjectException : virtual boost::exception, virtual std::exception { };
 
+class Key;
+typedef boost::shared_ptr<Key> KeyPtr;
+
 class ParsedContentObject
 {
 public:
-  ParsedContentObject(const unsigned char *data, size_t len, bool verified = false);
-  ParsedContentObject(const unsigned char *data, const ccn_parsed_ContentObject &pco, bool verified = false);
-  ParsedContentObject(const Bytes &bytes, bool verified = false);
-  ParsedContentObject(const ParsedContentObject &other, bool verified = false);
+  enum Type
+  {
+    DATA,
+    KEY,
+    OTHER
+  };
+  ParsedContentObject(const unsigned char *data, size_t len, bool integrityChecked = false, bool verified = false);
+  ParsedContentObject(const unsigned char *data, const ccn_parsed_ContentObject &pco, bool integrityChecked = false, bool verified = false);
+  ParsedContentObject(const Bytes &bytes, bool integrityChecked = false, bool verified = false);
+  ParsedContentObject(const ParsedContentObject &other, bool integrityChecked = false, bool verified = false);
   virtual ~ParsedContentObject();
 
   Bytes
@@ -48,6 +58,15 @@ public:
   Name
   name() const;
 
+  Name
+  keyName() const;
+
+  HashPtr
+  publisherPublicKeyDigest() const;
+
+  Type
+  type() const;
+
   inline const Bytes &
   buf () const;
 
@@ -56,6 +75,12 @@ public:
 
   void
   setVerified(bool verified) { m_verified = verified; }
+
+  bool
+  integrityChecked() const { return m_integrityChecked; }
+
+  void
+  setIntegrityChecked(bool checked) { m_integrityChecked = checked; }
 
   const unsigned char *
   msg() const { return head(m_bytes); }
@@ -72,6 +97,7 @@ protected:
   ccn_indexbuf *m_comps;
   Bytes m_bytes;
   bool m_verified;
+  bool m_integrityChecked;
 };
 
 const Bytes &

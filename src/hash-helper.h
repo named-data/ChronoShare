@@ -41,8 +41,8 @@ public:
   static HashPtr Origin;
 
   Hash ()
-    : m_length(0)
-    , m_buf(0)
+    : m_buf(0)
+    , m_length(0)
   {
   }
 
