@@ -18,33 +18,33 @@
  * Author: Zhenkai Zhu <zhenkai@cs.ucla.edu>
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
-#include "ccnx-key.h"
+#include "ccnx-cert.h"
 #include <tinyxml.h>
 #include <boost/lexical_cast.hpp>
 #include "logging.h"
 
-INIT_LOGGER ("Ccnx.Key");
+INIT_LOGGER ("Ccnx.Cert");
 
 using namespace std;
 
 namespace Ccnx {
 
-Key::Key()
+Cert::Cert()
     : m_meta("", "",  0, 0)
 {
 }
 
-Key::Key(const PcoPtr &keyObject, const PcoPtr &metaObject = PcoPtr())
+Cert::Cert(const PcoPtr &keyObject, const PcoPtr &metaObject = PcoPtr())
     : m_meta("", "", 0, 0)
 {
   m_name = keyObject->name();
   m_raw = keyObject->content();
-  m_hash = *(Hash::FromString(string((const char *)head(m_raw), m_raw.size())));
+  m_hash = *(Hash::FromBytes(m_raw));
   updateMeta(metaObject);
 }
 
 void
-Key::updateMeta(const PcoPtr &metaObject)
+Cert::updateMeta(const PcoPtr &metaObject)
 {
   if (metaObject)
   {
@@ -90,8 +90,8 @@ Key::updateMeta(const PcoPtr &metaObject)
   }
 }
 
-Key::VALIDITY
-Key::validity()
+Cert::VALIDITY
+Cert::validity()
 {
   if (m_meta.validFrom == 0 && m_meta.validTo == 0)
   {

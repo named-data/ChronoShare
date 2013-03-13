@@ -25,7 +25,7 @@
 #include "ccnx-common.h"
 #include "ccnx-wrapper.h"
 #include "ccnx-name.h"
-#include "ccnx-key.h"
+#include "ccnx-cert.h"
 #include "ccnx-pco.h"
 #include <map>
 
@@ -33,7 +33,7 @@ namespace Ccnx {
 
 class CcnxWrapper;
 
-// not thread-safe, don't want to add a mutex for KeyCache
+// not thread-safe, don't want to add a mutex for CertCache
 // which increases the possibility of dead-locking
 // ccnx-wrapper would take care of thread-safety issue
 class Verifier
@@ -49,8 +49,8 @@ private:
 private:
   CcnxWrapper *m_ccnx;
   Hash m_rootKeyDigest;
-  typedef std::map<Hash, KeyPtr> KeyCache;
-  KeyCache m_keyCache;
+  typedef std::map<Hash, CertPtr> CertCache;
+  CertCache m_certCache;
 };
 
 } // Ccnx

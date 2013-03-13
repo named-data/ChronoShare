@@ -19,8 +19,8 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#ifndef CCNX_KEY_H
-#define CCNX_KEY_H
+#ifndef CCNX_CERT_H
+#define CCNX_CERT_H
 
 #include "ccnx-common.h"
 #include "ccnx-name.h"
@@ -30,7 +30,7 @@
 
 namespace Ccnx {
 
-class Key
+class Cert
 {
 public:
   enum VALIDITY
@@ -41,8 +41,8 @@ public:
     OTHER
   };
 
-  Key();
-  Key(const PcoPtr &keyObject, const PcoPtr &metaObject);
+  Cert();
+  Cert(const PcoPtr &keyObject, const PcoPtr &metaObject);
 
   void
   updateMeta(const PcoPtr &metaObject);
@@ -54,7 +54,7 @@ public:
   raw() { return m_raw; }
 
   Hash
-  hash() { return m_hash; }
+  keyDigest() { return m_hash; }
 
   std::string
   realworldID() { return m_meta.realworldID; }
@@ -66,9 +66,9 @@ public:
   validity();
 
 private:
-  struct KeyMeta
+  struct Meta
   {
-    KeyMeta(std::string id, std::string affi, time_t from, time_t to)
+    Meta(std::string id, std::string affi, time_t from, time_t to)
       : realworldID(id)
       , affiliation(affi)
       , validFrom(from)
@@ -84,11 +84,11 @@ private:
   Name m_name;
   Hash m_hash; // publisherPublicKeyHash
   Bytes m_raw;
-  KeyMeta m_meta;
+  Meta m_meta;
 };
 
-typedef boost::shared_ptr<Key> KeyPtr;
+typedef boost::shared_ptr<Cert> CertPtr;
 
 }
 
-#endif // CCNX_KEY_H
+#endif // CCNX_CERT_H

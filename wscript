@@ -192,7 +192,7 @@ def build (bld):
         defines = "WAF",
         source = bld.path.ant_glob(['fs-watcher/*.cc']),
         use = "SQLITE3 LOG4CXX scheduler executor QTCORE",
-        includes = "fs-watcher scheduler executor src",
+        includes = "fs-watcher scheduler executor src ccnx",
         )
 
     # Unit tests

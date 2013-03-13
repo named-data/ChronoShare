@@ -106,11 +106,17 @@ ParsedContentObject::name() const
 Name
 ParsedContentObject::keyName() const
 {
-  CcnxCharbufPtr ptr = boost::make_shared<CcnxCharbuf>();
-  ccn_charbuf_append(ptr->getBuf(), head(m_bytes) + m_pco.offset[CCN_PCO_B_KeyName_Name], m_pco.offset[CCN_PCO_E_KeyName_Name] - m_pco.offset[CCN_PCO_B_KeyName_Name]);
+  if (m_pco.offset[CCN_PCO_E_KeyName_Name] > m_pco.offset[CCN_PCO_B_KeyName_Name])
+  {
+    CcnxCharbufPtr ptr = boost::make_shared<CcnxCharbuf>();
+    ccn_charbuf_append(ptr->getBuf(), head(m_bytes) + m_pco.offset[CCN_PCO_B_KeyName_Name], m_pco.offset[CCN_PCO_E_KeyName_Name] - m_pco.offset[CCN_PCO_B_KeyName_Name]);
 
-  return Name(*ptr);
-
+    return Name(*ptr);
+  }
+  else
+  {
+    return Name();
+  }
 }
 
 HashPtr

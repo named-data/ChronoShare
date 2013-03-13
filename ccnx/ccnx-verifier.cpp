@@ -47,11 +47,11 @@ Verifier::verify(const PcoPtr &pco)
   }
 
   HashPtr publisherPublicKeyDigest = pco->publisherPublicKeyDigest();
-  KeyCache::iterator it = m_keyCache.find(*publisherPublicKeyDigest);
-  if (it != m_keyCache.end())
+  CertCache::iterator it = m_certCache.find(*publisherPublicKeyDigest);
+  if (it != m_certCache.end())
   {
-    KeyPtr key = it->second;
-    if (key->validity() == Key::WITHIN_VALID_TIME_SPAN)
+    CertPtr cert = it->second;
+    if (cert->validity() == Cert::WITHIN_VALID_TIME_SPAN)
     {
       // integrity checked, and the key is trustworthy
       pco->setVerified(true);
@@ -59,14 +59,19 @@ Verifier::verify(const PcoPtr &pco)
     }
     else
     {
-      // delete the invalid key cache
-      m_keyCache.erase(it);
+      // delete the invalid cert cache
+      m_certCache.erase(it);
     }
   }
 
   // keyName is the name specified in key locator, i.e. without version and segment
   Name keyName = pco->keyName();
   int keyNameSize = keyName.size();
+
+  if (keyNameSize == 0)
+  {
+    return false;
+  }
 
   // for keys, we have to make sure key name is strictly prefix of the content name
   if (pco->type() == ParsedContentObject::KEY)
@@ -105,20 +110,20 @@ Verifier::verify(const PcoPtr &pco)
     return false;
   }
 
-  KeyPtr key = boost::make_shared<Key>(keyObject, metaObject);
-  if (key->validity() != Key::WITHIN_VALID_TIME_SPAN)
+  CertPtr cert = boost::make_shared<Cert>(keyObject, metaObject);
+  if (cert->validity() != Cert::WITHIN_VALID_TIME_SPAN)
   {
     return false;
   }
 
   // check pco is actually signed by this key (maybe redundant)
-  if (! (*pco->publisherPublicKeyDigest() == key->hash()))
+  if (! (*pco->publisherPublicKeyDigest() == cert->keyDigest()))
   {
     return false;
   }
 
-  // now we only need to make sure the keyObject is trustworthy
-  if (key->hash() == m_rootKeyDigest)
+  // now we only need to make sure the key is trustworthy
+  if (cert->keyDigest() == m_rootKeyDigest)
   {
     // the key is the root key
     // do nothing now
@@ -134,7 +139,7 @@ Verifier::verify(const PcoPtr &pco)
 
   // ok, keyObject verified, because metaObject is signed by the same parent key and integrity checked
   // so metaObject is also verified
-  m_keyCache.insert(std::make_pair(key->hash(), key));
+  m_certCache.insert(std::make_pair(cert->keyDigest(), cert));
 
   pco->setVerified(true);
   return true;
