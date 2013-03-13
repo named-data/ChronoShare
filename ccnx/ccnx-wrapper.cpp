@@ -261,7 +261,7 @@ CcnxWrapper::ccnLoop ()
 }
 
 Bytes
-CcnxWrapper::createContentObject(const Name  &name, const void *buf, size_t len, int freshness, const Name &keyName)
+CcnxWrapper::createContentObject(const Name  &name, const void *buf, size_t len, int freshness, const Name &keyNameParam)
 {
   {
     UniqueRecLock lock(m_mutex);
@@ -279,27 +279,38 @@ CcnxWrapper::createContentObject(const Name  &name, const void *buf, size_t len,
   struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
   sp.freshness = freshness;
 
-  if (keyName.size() > 0)
+  Name keyName;
+
+  if (keyNameParam.size() == 0)
   {
-    if (sp.template_ccnb == NULL)
-    {
-      sp.template_ccnb = ccn_charbuf_create();
-      ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_SignedInfo, CCN_DTAG);
-    }
-    // no idea what the following 3 lines do, but it was there
-    else if (sp.template_ccnb->length > 0) {
-        sp.template_ccnb->length--;
-    }
-    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyLocator, CCN_DTAG);
-    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyName, CCN_DTAG);
-    CcnxCharbufPtr keyPtr = keyName.toCcnxCharbuf();
-    ccn_charbuf *keyBuf = keyPtr->getBuf();
-    ccn_charbuf_append(sp.template_ccnb, keyBuf->buf, keyBuf->length);
-    ccn_charbuf_append_closer(sp.template_ccnb); // </KeyName>
-    ccn_charbuf_append_closer(sp.template_ccnb); // </KeyLocator>
-    sp.sp_flags |= CCN_SP_TEMPL_KEY_LOCATOR;
-    ccn_charbuf_append_closer(sp.template_ccnb); // </SignedInfo>
+    // use default key name
+    CcnxCharbufPtr defaultKeyNamePtr = boost::make_shared<CcnxCharbuf>();
+    ccn_get_public_key_and_name(m_handle, &sp, NULL, NULL, defaultKeyNamePtr->getBuf());
+    keyName = Name(*defaultKeyNamePtr);
   }
+  else
+  {
+    keyName = keyNameParam;
+  }
+
+  if (sp.template_ccnb == NULL)
+  {
+    sp.template_ccnb = ccn_charbuf_create();
+    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_SignedInfo, CCN_DTAG);
+  }
+  // no idea what the following 3 lines do, but it was there
+  else if (sp.template_ccnb->length > 0) {
+      sp.template_ccnb->length--;
+  }
+  ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyLocator, CCN_DTAG);
+  ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyName, CCN_DTAG);
+  CcnxCharbufPtr keyPtr = keyName.toCcnxCharbuf();
+  ccn_charbuf *keyBuf = keyPtr->getBuf();
+  ccn_charbuf_append(sp.template_ccnb, keyBuf->buf, keyBuf->length);
+  ccn_charbuf_append_closer(sp.template_ccnb); // </KeyName>
+  ccn_charbuf_append_closer(sp.template_ccnb); // </KeyLocator>
+  sp.sp_flags |= CCN_SP_TEMPL_KEY_LOCATOR;
+  ccn_charbuf_append_closer(sp.template_ccnb); // </SignedInfo>
 
   if (ccn_sign_content(m_handle, content, pname, &sp, buf, len) != 0)
   {

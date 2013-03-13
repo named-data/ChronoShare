@@ -87,7 +87,7 @@ public:
   getLocalPrefix ();
 
   Bytes
-  createContentObject(const Name &name, const void *buf, size_t len, int freshness = DEFAULT_FRESHNESS, const Name &keyName=Name());
+  createContentObject(const Name &name, const void *buf, size_t len, int freshness = DEFAULT_FRESHNESS, const Name &keyNameParam=Name());
 
   int
   putToCcnd (const Bytes &contentObject);
