@@ -22,6 +22,7 @@
 #include "ccnx-verifier.h"
 #include "ccnx-wrapper.h"
 
+INIT_LOGGER ("Ccnx.Verifier");
 namespace Ccnx {
 
 static const size_t ROOT_KEY_DIGEST_LEN = 32;  // SHA-256
@@ -42,6 +43,7 @@ Verifier::~Verifier()
 bool
 Verifier::verify(const PcoPtr &pco, double maxWait)
 {
+  _LOG_TRACE("Verifying content [" << pco->name() << "]");
   HashPtr publisherPublicKeyDigest = pco->publisherPublicKeyDigest();
 
   {
@@ -67,8 +69,9 @@ Verifier::verify(const PcoPtr &pco, double maxWait)
   Name keyName = pco->keyName();
   int keyNameSize = keyName.size();
 
-  if (keyNameSize == 0)
+  if (keyNameSize < 2)
   {
+    _LOG_ERROR("Key name is empty or has too few components.");
     return false;
   }
 
@@ -76,8 +79,11 @@ Verifier::verify(const PcoPtr &pco, double maxWait)
   if (pco->type() == ParsedContentObject::KEY)
   {
     Name contentName = pco->name();
-    if (keyNameSize >= contentName.size() || contentName.getPartialName(0, keyNameSize) != keyName)
+    // when checking for prefix, do not include the hash in the key name (which is the last component)
+    Name keyNamePrefix = keyName.getPartialName(0, keyNameSize - 1);
+    if (keyNamePrefix.size() >= contentName.size() || contentName.getPartialName(0, keyNamePrefix.size()) != keyNamePrefix)
     {
+      _LOG_ERROR("Key name prefix [" << keyNamePrefix << "] is not the prefix of content name [" << contentName << "]");
       return false;
     }
   }
@@ -93,10 +99,11 @@ Verifier::verify(const PcoPtr &pco, double maxWait)
   selectors.childSelector(Selectors::RIGHT)
            .interestLifetime(maxWait);
 
-  PcoPtr keyObject = m_ccnx->get(keyName, selectors);
-  PcoPtr metaObject = m_ccnx->get(metaName, selectors);
+  PcoPtr keyObject = m_ccnx->get(keyName, selectors, maxWait);
+  PcoPtr metaObject = m_ccnx->get(metaName, selectors, maxWait);
   if (!keyObject || !metaObject )
   {
+    _LOG_ERROR("can not fetch key or meta");
     return false;
   }
 
@@ -106,18 +113,21 @@ Verifier::verify(const PcoPtr &pco, double maxWait)
   // make sure key and meta are signed using the same key
   if (publisherKeyHashInKeyObject->IsZero() || ! (*publisherKeyHashInKeyObject == *publisherKeyHashInMetaObject))
   {
+    _LOG_ERROR("Key and Meta not signed by the same publisher");
     return false;
   }
 
   CertPtr cert = boost::make_shared<Cert>(keyObject, metaObject);
   if (cert->validity() != Cert::WITHIN_VALID_TIME_SPAN)
   {
+    _LOG_ERROR("Certificate is not valid, validity status is : " << cert->validity());
     return false;
   }
 
   // check pco is actually signed by this key (i.e. we don't trust the publisherPublicKeyDigest given by ccnx c lib)
   if (! (*pco->publisherPublicKeyDigest() == cert->keyDigest()))
   {
+    _LOG_ERROR("key digest does not match the publisher public key digest of the content object");
     return false;
   }
 
@@ -132,6 +142,7 @@ Verifier::verify(const PcoPtr &pco, double maxWait)
     // can not verify key or can not verify meta
     if (!verify(keyObject, maxWait) || !verify(metaObject, maxWait))
     {
+      _LOG_ERROR("Can not verify key or meta");
       return false;
     }
   }
@@ -144,6 +155,14 @@ Verifier::verify(const PcoPtr &pco, double maxWait)
   }
 
   pco->verifySignature(cert);
+  if (pco->verified())
+  {
+    _LOG_TRACE("[" << pco->name() << "] VERIFIED.");
+  }
+  else
+  {
+    _LOG_ERROR("[" << pco->name() << "] CANNOT BE VERIFIED.");
+  }
   return pco->verified();
 }
 

@@ -705,7 +705,7 @@ CcnxWrapper::getLocalPrefix ()
 }
 
 bool
-CcnxWrapper::verifyKey(PcoPtr &pco, double maxWait)
+CcnxWrapper::verify(PcoPtr &pco, double maxWait)
 {
   return m_verifier->verify(pco, maxWait);
 }
@@ -726,8 +726,10 @@ struct GetState
   PcoPtr
   WaitForResult ()
   {
+    //_LOG_TRACE("GetState::WaitForResult start");
     boost::unique_lock<boost::mutex> lock (m_mutex);
     m_cond.timed_wait (lock, m_maxWait);
+    //_LOG_TRACE("GetState::WaitForResult finish");
 
     return m_retval;
   }
@@ -735,9 +737,9 @@ struct GetState
   void
   DataCallback (Name name, PcoPtr pco)
   {
-    m_retval = pco;
-
+    //_LOG_TRACE("GetState::DataCallback, Name [" << name << "]");
     boost::unique_lock<boost::mutex> lock (m_mutex);
+    m_retval = pco;
     m_cond.notify_one ();
   }
 

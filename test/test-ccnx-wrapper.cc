@@ -65,10 +65,12 @@ void dataCallback(const Name &name, Ccnx::PcoPtr pco)
 void encapCallback(const Name &name, Ccnx::PcoPtr pco)
 {
   cout << " in encap data callback" << endl;
+  BOOST_CHECK(!c1->verify(pco));
+  cout << "++++++++++++++++++ Outer content couldn't be verified, which is expected." << endl;
   PcoPtr npco = make_shared<ParsedContentObject> (*(pco->contentPtr()));
   g_dataCallback_counter ++;
   BOOST_CHECK(npco);
-  //BOOST_CHECK(c1->checkPcoIntegrity(npco));
+  BOOST_CHECK(c1->verify(npco));
 }
 
 void
@@ -211,10 +213,11 @@ BOOST_AUTO_TEST_CASE (TestUnsigned)
   c1->publishUnsignedData(Name(n2), head(content), content.size(), 1);
   Closure encapClosure(bind(encapCallback, _1, _2), bind(timeout, _1, _2, _3));
   c2->sendInterest(Name(n2), encapClosure);
-  usleep(200000);
+  usleep(4000000);
   BOOST_CHECK_EQUAL(g_dataCallback_counter, 2);
   teardown();
 }
+
 
  /*
  BOOST_AUTO_TEST_CASE (CcnxWrapperUnsigningTest)
