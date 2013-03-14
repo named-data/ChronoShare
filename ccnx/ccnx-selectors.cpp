@@ -100,16 +100,25 @@ Selectors::toCcnxCharbuf() const
     boost::throw_exception(InterestSelectorException() << error_info_str("MaxSuffixComps = " + boost::lexical_cast<string>(m_maxSuffixComps) + " is smaller than  MinSuffixComps = " + boost::lexical_cast<string>(m_minSuffixComps)));
   }
 
-  if (m_maxSuffixComps > 0)
-  {
-    ccnb_tagged_putf(cbuf, CCN_DTAG_MaxSuffixComponents, "%d", m_maxSuffixComps);
-  }
-
   if (m_minSuffixComps > 0)
   {
     ccnb_tagged_putf(cbuf, CCN_DTAG_MinSuffixComponents, "%d", m_minSuffixComps);
   }
 
+  if (m_maxSuffixComps > 0)
+  {
+    ccnb_tagged_putf(cbuf, CCN_DTAG_MaxSuffixComponents, "%d", m_maxSuffixComps);
+  }
+
+  // publisher digest
+
+  // exclude
+
+  if (m_childSelector != DEFAULT)
+  {
+    ccnb_tagged_putf(cbuf, CCN_DTAG_ChildSelector, "%d", (int)m_childSelector);
+  }
+  
   if (m_answerOriginKind != AOK_DEFAULT)
   {
     // it was not using "ccnb_tagged_putf" in ccnx c code, no idea why
@@ -139,12 +148,6 @@ Selectors::toCcnxCharbuf() const
     }
     ccnb_append_tagged_blob(cbuf, CCN_DTAG_InterestLifetime, buf, sizeof(buf));
   }
-
-  if (m_childSelector != DEFAULT)
-  {
-    ccnb_tagged_putf(cbuf, CCN_DTAG_ChildSelector, "%d", m_childSelector);
-  }
-
 
   ccn_charbuf_append_closer(cbuf); // </Interest>
 

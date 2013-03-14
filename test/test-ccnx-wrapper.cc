@@ -106,6 +106,8 @@ teardown()
 
 BOOST_AUTO_TEST_CASE (BlaCcnxWrapperTest)
 {
+  INIT_LOGGERS ();
+  
   setup();
   Name prefix1("/c1");
   Name prefix2("/c2");
@@ -135,7 +137,9 @@ BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)
   Closure closure (bind(dataCallback, _1, _2), bind(timeout, _1, _2, _3));
 
   Selectors selectors;
-  selectors.interestLifetime(1);
+  selectors
+    .interestLifetime(1)
+    .childSelector(Selectors::RIGHT);
 
   string n1 = "/random/01";
   c1->sendInterest(Name(n1), closure, selectors);
