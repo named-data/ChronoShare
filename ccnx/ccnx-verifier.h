@@ -23,19 +23,18 @@
 #define CCNX_VERIFIER_H
 
 #include "ccnx-common.h"
-#include "ccnx-wrapper.h"
 #include "ccnx-name.h"
 #include "ccnx-cert.h"
 #include "ccnx-pco.h"
 #include <map>
+#include <boost/thread/locks.hpp>
+#include <boost/thread/recursive_mutex.hpp>
+#include <boost/thread/thread.hpp>
 
 namespace Ccnx {
 
 class CcnxWrapper;
 
-// not thread-safe, don't want to add a mutex for CertCache
-// which increases the possibility of dead-locking
-// ccnx-wrapper would take care of thread-safety issue
 class Verifier
 {
 public:
@@ -51,6 +50,9 @@ private:
   Hash m_rootKeyDigest;
   typedef std::map<Hash, CertPtr> CertCache;
   CertCache m_certCache;
+  typedef boost::recursive_mutex RecLock;
+  typedef boost::unique_lock<RecLock> UniqueRecLock;
+  RecLock m_cacheLock;
 };
 
 } // Ccnx

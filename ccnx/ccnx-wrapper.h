@@ -37,6 +37,7 @@ namespace Ccnx {
 
 struct CcnxOperationException : boost::exception, std::exception { };
 
+class Verifier;
 class CcnxWrapper
 {
 public:
@@ -95,6 +96,9 @@ public:
   bool
   checkPcoIntegrity(PcoPtr &pco);
 
+  bool
+  verifyKey(PcoPtr &pco);
+
   PcoPtr
   get (const Name &interest, const Selectors &selector = Selectors(), double maxWait = 4.0/*seconds*/);
 
@@ -126,6 +130,7 @@ protected:
   bool m_connected;
   std::map<Name, InterestCallback> m_registeredInterests;
   ExecutorPtr m_executor;
+  Verifier *m_verifier;
 };
 
 typedef boost::shared_ptr<CcnxWrapper> CcnxWrapperPtr;

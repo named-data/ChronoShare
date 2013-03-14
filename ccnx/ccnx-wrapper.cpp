@@ -31,6 +31,7 @@ extern "C" {
 #include <boost/algorithm/string.hpp>
 #include <sstream>
 
+#include "ccnx-verifier.h"
 #include "logging.h"
 
 INIT_LOGGER ("Ccnx.Wrapper");
@@ -110,6 +111,7 @@ CcnxWrapper::CcnxWrapper()
   , m_running (true)
   , m_connected (false)
   , m_executor (new Executor(1))
+  , m_verifier(new Verifier(this))
 {
   start ();
 }
@@ -146,6 +148,11 @@ CcnxWrapper::connectCcnd()
 CcnxWrapper::~CcnxWrapper()
 {
   shutdown ();
+  if (m_verifier != 0)
+  {
+    delete m_verifier;
+    m_verifier = 0;
+  }
 }
 
 void
@@ -700,6 +707,12 @@ CcnxWrapper::checkPcoIntegrity(PcoPtr &pco)
   bool checked = (ccn_verify_content(m_handle, pco->msg(), (ccn_parsed_ContentObject *)pco->pco()) == 0);
   pco->setIntegrityChecked(checked);
   return checked;
+}
+
+bool
+CcnxWrapper::verifyKey(PcoPtr &pco)
+{
+  return m_verifier->verify(pco);
 }
 
 // This is needed just for get function implementation

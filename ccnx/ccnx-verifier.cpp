@@ -20,6 +20,7 @@
  */
 
 #include "ccnx-verifier.h"
+#include "ccnx-wrapper.h"
 
 namespace Ccnx {
 
@@ -47,20 +48,24 @@ Verifier::verify(const PcoPtr &pco)
   }
 
   HashPtr publisherPublicKeyDigest = pco->publisherPublicKeyDigest();
-  CertCache::iterator it = m_certCache.find(*publisherPublicKeyDigest);
-  if (it != m_certCache.end())
+
   {
-    CertPtr cert = it->second;
-    if (cert->validity() == Cert::WITHIN_VALID_TIME_SPAN)
+    UniqueRecLock lock(m_cacheLock);
+    CertCache::iterator it = m_certCache.find(*publisherPublicKeyDigest);
+    if (it != m_certCache.end())
     {
-      // integrity checked, and the key is trustworthy
-      pco->setVerified(true);
-      return true;
-    }
-    else
-    {
-      // delete the invalid cert cache
-      m_certCache.erase(it);
+      CertPtr cert = it->second;
+      if (cert->validity() == Cert::WITHIN_VALID_TIME_SPAN)
+      {
+        // integrity checked, and the key is trustworthy
+        pco->setVerified(true);
+        return true;
+      }
+      else
+      {
+        // delete the invalid cert cache
+        m_certCache.erase(it);
+      }
     }
   }
 
@@ -139,7 +144,10 @@ Verifier::verify(const PcoPtr &pco)
 
   // ok, keyObject verified, because metaObject is signed by the same parent key and integrity checked
   // so metaObject is also verified
-  m_certCache.insert(std::make_pair(cert->keyDigest(), cert));
+  {
+    UniqueRecLock lock(m_cacheLock);
+    m_certCache.insert(std::make_pair(cert->keyDigest(), cert));
+  }
 
   pco->setVerified(true);
   return true;
