@@ -1,5 +1,5 @@
 # -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
-VERSION='0.1'
+VERSION='0.4'
 APPNAME='chronoshare'
 
 from waflib import Build, Logs, Utils, Task, TaskGen, Configure
