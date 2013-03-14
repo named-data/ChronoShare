@@ -31,8 +31,8 @@ namespace Ccnx {
 
 struct MisformedContentObjectException : virtual boost::exception, virtual std::exception { };
 
-class Key;
-typedef boost::shared_ptr<Key> KeyPtr;
+class Cert;
+typedef boost::shared_ptr<Cert> CertPtr;
 
 class ParsedContentObject
 {
@@ -43,10 +43,10 @@ public:
     KEY,
     OTHER
   };
-  ParsedContentObject(const unsigned char *data, size_t len, bool integrityChecked = false, bool verified = false);
-  ParsedContentObject(const unsigned char *data, const ccn_parsed_ContentObject &pco, bool integrityChecked = false, bool verified = false);
-  ParsedContentObject(const Bytes &bytes, bool integrityChecked = false, bool verified = false);
-  ParsedContentObject(const ParsedContentObject &other, bool integrityChecked = false, bool verified = false);
+  ParsedContentObject(const unsigned char *data, size_t len, bool verified = false);
+  ParsedContentObject(const unsigned char *data, const ccn_parsed_ContentObject &pco, bool verified = false);
+  ParsedContentObject(const Bytes &bytes, bool verified = false);
+  ParsedContentObject(const ParsedContentObject &other, bool verified = false);
   virtual ~ParsedContentObject();
 
   Bytes
@@ -74,13 +74,7 @@ public:
   verified() const { return m_verified; }
 
   void
-  setVerified(bool verified) { m_verified = verified; }
-
-  bool
-  integrityChecked() const { return m_integrityChecked; }
-
-  void
-  setIntegrityChecked(bool checked) { m_integrityChecked = checked; }
+  verifySignature(const CertPtr &cert);
 
   const unsigned char *
   msg() const { return head(m_bytes); }

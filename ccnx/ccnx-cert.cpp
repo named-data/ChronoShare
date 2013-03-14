@@ -30,17 +30,29 @@ using namespace std;
 namespace Ccnx {
 
 Cert::Cert()
-    : m_meta("", "",  0, 0)
+    : m_pkey(0)
+    , m_meta("", "",  0, 0)
 {
 }
 
 Cert::Cert(const PcoPtr &keyObject, const PcoPtr &metaObject = PcoPtr())
-    : m_meta("", "", 0, 0)
+    : m_pkey(0)
+    , m_meta("", "", 0, 0)
 {
   m_name = keyObject->name();
-  m_raw = keyObject->content();
-  m_hash = *(Hash::FromBytes(m_raw));
+  m_rawKeyBytes = keyObject->content();
+  m_keyHash = *(Hash::FromBytes(m_rawKeyBytes));
+  m_pkey = ccn_d2i_pubkey(head(m_rawKeyBytes), m_rawKeyBytes.size());
   updateMeta(metaObject);
+}
+
+Cert::~Cert()
+{
+  if (m_pkey != 0)
+  {
+    ccn_pubkey_free(m_pkey);
+    m_pkey = 0;
+  }
 }
 
 void
@@ -85,7 +97,7 @@ Cert::updateMeta(const PcoPtr &metaObject)
     }
     else
     {
-      _LOG_ERROR("Cannot parse meta info:" << std::string(head(xml), xml.size()));
+      _LOG_ERROR("Cannot parse meta info:" << std::string((const char *)head(xml), xml.size()));
     }
   }
 }

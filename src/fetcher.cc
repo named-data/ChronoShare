@@ -132,8 +132,8 @@ Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
 
   if (m_forwardingHint == Name ())
   {
-    // check whether data integrity is checked in this case
-    if (data->integrityChecked())
+    // TODO: check verified!!!!
+    if (true)
     {
       if (!m_segmentCallback.empty ())
       {
@@ -154,7 +154,8 @@ Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
         PcoPtr pco = make_shared<ParsedContentObject> (*data->contentPtr ());
 
         // we need to verify this pco and apply callback only when verified
-        if (m_ccnx->checkPcoIntegrity(pco))
+        // TODO: check verified !!!
+        if (true)
         {
           if (!m_segmentCallback.empty ())
             {

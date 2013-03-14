@@ -20,6 +20,7 @@
  */
 
 #include "ccnx-pco.h"
+#include "ccnx-cert.h"
 
 namespace Ccnx {
 
@@ -37,25 +38,22 @@ ParsedContentObject::init(const unsigned char *data, size_t len)
 
 }
 
-ParsedContentObject::ParsedContentObject(const unsigned char *data, size_t len, bool integrityChecked, bool verified)
+ParsedContentObject::ParsedContentObject(const unsigned char *data, size_t len, bool verified)
             : m_comps(NULL)
-            , m_integrityChecked(integrityChecked)
             , m_verified(verified)
 {
   init(data, len);
 }
 
-ParsedContentObject::ParsedContentObject(const Bytes &bytes, bool integrityChecked, bool verified)
+ParsedContentObject::ParsedContentObject(const Bytes &bytes, bool verified)
             : m_comps(NULL)
-            , m_integrityChecked(integrityChecked)
             , m_verified(verified)
 {
   init(head(bytes), bytes.size());
 }
 
-ParsedContentObject::ParsedContentObject(const ParsedContentObject &other, bool integrityChecked, bool verified)
+ParsedContentObject::ParsedContentObject(const ParsedContentObject &other, bool verified)
             : m_comps(NULL)
-            , m_integrityChecked(integrityChecked)
             , m_verified(verified)
 {
   init(head(other.m_bytes), other.m_bytes.size());
@@ -139,6 +137,12 @@ ParsedContentObject::type() const
   default: break;
   }
   return OTHER;
+}
+
+void
+ParsedContentObject::verifySignature(const CertPtr &cert)
+{
+  m_verified = (ccn_verify_signature(head(m_bytes), m_pco.offset[CCN_PCO_E], &m_pco, cert->pkey()) == 1);
 }
 
 }

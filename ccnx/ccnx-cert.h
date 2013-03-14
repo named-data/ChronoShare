@@ -43,6 +43,7 @@ public:
 
   Cert();
   Cert(const PcoPtr &keyObject, const PcoPtr &metaObject);
+  ~Cert();
 
   void
   updateMeta(const PcoPtr &metaObject);
@@ -51,16 +52,19 @@ public:
   name() { return m_name; }
 
   Bytes
-  raw() { return m_raw; }
+  rawKeyBytes() { return m_rawKeyBytes; }
 
   Hash
-  keyDigest() { return m_hash; }
+  keyDigest() { return m_keyHash; }
 
   std::string
   realworldID() { return m_meta.realworldID; }
 
   std::string
   affilication() { return m_meta.affiliation; }
+
+  ccn_pkey *
+  pkey() { return m_pkey; }
 
   VALIDITY
   validity();
@@ -82,8 +86,9 @@ private:
   };
 
   Name m_name;
-  Hash m_hash; // publisherPublicKeyHash
-  Bytes m_raw;
+  Hash m_keyHash; // publisherPublicKeyHash
+  Bytes m_rawKeyBytes;
+  ccn_pkey *m_pkey;
   Meta m_meta;
 };
 

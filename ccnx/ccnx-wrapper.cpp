@@ -473,8 +473,6 @@ incomingData(ccn_closure *selfp,
   tuple<Closure *, ExecutorPtr, Selectors> *realData = reinterpret_cast< tuple<Closure*, ExecutorPtr, Selectors>* > (selfp->data);
   tie (cp, executor, selectors) = *realData;
 
-  bool checked = false;
-
   switch (kind)
     {
     case CCN_UPCALL_FINAL:  // effecitve in unit tests
@@ -486,10 +484,15 @@ incomingData(ccn_closure *selfp,
       return CCN_UPCALL_RESULT_OK;
 
     case CCN_UPCALL_CONTENT:
-      checked = true;
       _LOG_TRACE (">> incomingData content upcall: " << Name (info->content_ccnb, info->content_comps));
       break;
 
+    // this is the case where the intentionally unsigned packets coming (in Encapsulation case)
+    case CCN_UPCALL_CONTENT_BAD:
+      _LOG_TRACE (">> incomingData content bad upcall: " << Name (info->content_ccnb, info->content_comps));
+      break;
+
+    // always ask ccnd to try to fetch the key
     case CCN_UPCALL_CONTENT_UNVERIFIED:
       _LOG_TRACE (">> incomingData content unverified upcall: " << Name (info->content_ccnb, info->content_comps));
       break;
@@ -513,7 +516,7 @@ incomingData(ccn_closure *selfp,
       return CCN_UPCALL_RESULT_OK;
     }
 
-  PcoPtr pco = make_shared<ParsedContentObject> (info->content_ccnb, info->pco->offset[CCN_PCO_E], checked);
+  PcoPtr pco = make_shared<ParsedContentObject> (info->content_ccnb, info->pco->offset[CCN_PCO_E]);
 
   // this will be run in executor
   executor->execute (bind (&Closure::runDataCallback, cp, pco->name (), pco));
@@ -702,17 +705,9 @@ CcnxWrapper::getLocalPrefix ()
 }
 
 bool
-CcnxWrapper::checkPcoIntegrity(PcoPtr &pco)
+CcnxWrapper::verifyKey(PcoPtr &pco, double maxWait)
 {
-  bool checked = (ccn_verify_content(m_handle, pco->msg(), (ccn_parsed_ContentObject *)pco->pco()) == 0);
-  pco->setIntegrityChecked(checked);
-  return checked;
-}
-
-bool
-CcnxWrapper::verifyKey(PcoPtr &pco)
-{
-  return m_verifier->verify(pco);
+  return m_verifier->verify(pco, maxWait);
 }
 
 // This is needed just for get function implementation

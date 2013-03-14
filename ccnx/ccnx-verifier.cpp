@@ -40,13 +40,8 @@ Verifier::~Verifier()
 }
 
 bool
-Verifier::verify(const PcoPtr &pco)
+Verifier::verify(const PcoPtr &pco, double maxWait)
 {
-  if (pco->integrityChecked())
-  {
-    return false;
-  }
-
   HashPtr publisherPublicKeyDigest = pco->publisherPublicKeyDigest();
 
   {
@@ -57,9 +52,8 @@ Verifier::verify(const PcoPtr &pco)
       CertPtr cert = it->second;
       if (cert->validity() == Cert::WITHIN_VALID_TIME_SPAN)
       {
-        // integrity checked, and the key is trustworthy
-        pco->setVerified(true);
-        return true;
+        pco->verifySignature(cert);
+        return pco->verified();
       }
       else
       {
@@ -97,11 +91,11 @@ Verifier::verify(const PcoPtr &pco)
   Selectors selectors;
 
   selectors.childSelector(Selectors::RIGHT)
-           .interestLifetime(1.0);
+           .interestLifetime(maxWait);
 
   PcoPtr keyObject = m_ccnx->get(keyName, selectors);
   PcoPtr metaObject = m_ccnx->get(metaName, selectors);
-  if (!keyObject || !metaObject || !keyObject->integrityChecked() || !metaObject->integrityChecked())
+  if (!keyObject || !metaObject )
   {
     return false;
   }
@@ -121,7 +115,7 @@ Verifier::verify(const PcoPtr &pco)
     return false;
   }
 
-  // check pco is actually signed by this key (maybe redundant)
+  // check pco is actually signed by this key (i.e. we don't trust the publisherPublicKeyDigest given by ccnx c lib)
   if (! (*pco->publisherPublicKeyDigest() == cert->keyDigest()))
   {
     return false;
@@ -135,8 +129,8 @@ Verifier::verify(const PcoPtr &pco)
   }
   else
   {
-    // can not verify key
-    if (!verify(keyObject))
+    // can not verify key or can not verify meta
+    if (!verify(keyObject, maxWait) || !verify(metaObject, maxWait))
     {
       return false;
     }
@@ -149,8 +143,8 @@ Verifier::verify(const PcoPtr &pco)
     m_certCache.insert(std::make_pair(cert->keyDigest(), cert));
   }
 
-  pco->setVerified(true);
-  return true;
+  pco->verifySignature(cert);
+  return pco->verified();
 }
 
 } // Ccnx

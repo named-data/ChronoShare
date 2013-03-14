@@ -41,7 +41,7 @@ public:
   Verifier(CcnxWrapper *ccnx);
   ~Verifier();
 
-  bool verify(const PcoPtr &pco);
+  bool verify(const PcoPtr &pco, double maxWait);
 
 private:
 
