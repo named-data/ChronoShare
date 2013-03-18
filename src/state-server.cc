@@ -135,7 +135,7 @@ StateServer::formatActionJson (json_spirit::Array &actions,
   Object id;
 
   id.push_back (Pair ("userName", boost::lexical_cast<string> (name)));
-  id.push_back (Pair ("seqNo",    seq_no));
+  id.push_back (Pair ("seqNo",    static_cast<int64_t> (seq_no)));
 
   json.push_back (Pair ("id", id));
 
