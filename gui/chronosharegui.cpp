@@ -22,6 +22,7 @@
  */
 
 #include "chronosharegui.h"
+#include "config.h"
 
 #include "logging.h"
 #include "ccnx-wrapper.h"
@@ -42,7 +43,8 @@ static const string DOC_ROOT = "gui/html";
 #else
 static const string DOC_ROOT = ":/html";
 #endif
-static const QString ICON_PICTURE_QSTRING(":/images/friends-group-icon.png");
+static const QString ICON_BIG_FILE(":/images/chronoshare-big.png");
+static const QString ICON_TRAY_FILE(":/images/" TRAY_ICON);
 
 INIT_LOGGER ("Gui");
 
@@ -250,7 +252,7 @@ void ChronoShareGui::openMessageBox(QString title, QString text)
   messageBox.setWindowTitle(title);
   messageBox.setText(text);
 
-  messageBox.setIconPixmap(QPixmap(ICON_PICTURE_QSTRING));
+  messageBox.setIconPixmap(QPixmap(ICON_BIG_FILE));
 
   messageBox.exec();
 }
@@ -262,7 +264,7 @@ void ChronoShareGui::openMessageBox(QString title, QString text, QString infotex
   messageBox.setText(text);
   messageBox.setInformativeText(infotext);
 
-  messageBox.setIconPixmap(QPixmap(ICON_PICTURE_QSTRING));
+  messageBox.setIconPixmap(QPixmap(ICON_BIG_FILE));
 
   messageBox.exec();
 }
@@ -402,7 +404,7 @@ ChronoShareGui::onCheckForUpdates()
 void ChronoShareGui::setIcon()
 {
   // set the icon image
-  m_trayIcon->setIcon(QIcon(ICON_PICTURE_QSTRING));
+  m_trayIcon->setIcon(QIcon(ICON_TRAY_FILE));
 }
 
 void ChronoShareGui::openSharedFolder()

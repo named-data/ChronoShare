@@ -48,6 +48,10 @@ def configure(conf):
     conf.check_cfg(package='libevent', args=['--cflags', '--libs'], uselib_store='LIBEVENT', mandatory=True)
     conf.check_cfg(package='libevent_pthreads', args=['--cflags', '--libs'], uselib_store='LIBEVENT_PTHREADS', mandatory=True)
 
+    conf.define ("TRAY_ICON", "chronoshare-big.png")
+    if Utils.unversioned_sys_platform () == "linux":
+        conf.define ("TRAY_ICON", "chronoshare-ubuntu.png")
+
     if Utils.unversioned_sys_platform () == "darwin":
         conf.check_cxx(framework_name='Foundation', uselib_store='OSX_FOUNDATION', mandatory=False, compile_filename='test.mm')
         conf.check_cxx(framework_name='AppKit',     uselib_store='OSX_APPKIT',     mandatory=False, compile_filename='test.mm')
