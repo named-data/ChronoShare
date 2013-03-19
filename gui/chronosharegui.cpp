@@ -343,10 +343,8 @@ void ChronoShareGui::createTrayIcon()
   // create new tray icon
   m_trayIcon = new QSystemTrayIcon(this);
 
-#ifdef ADHOC_SUPPORTED
   // associate the menu with the tray icon
   m_trayIcon->setContextMenu(m_trayIconMenu);
-#endif
 
   // handle left click of icon
   connect(m_trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)), this, SLOT(trayIconClicked(QSystemTrayIcon::ActivationReason)));
