@@ -62,8 +62,15 @@ Fetcher::Fetcher (Ccnx::CcnxWrapperPtr ccnx,
   , m_minSeqNo (minSeqNo)
   , m_maxSeqNo (maxSeqNo)
 
-  , m_pipeline (6) // initial "congestion window"
+  , m_pipeline (1) // initial "congestion window"
   , m_activePipeline (0)
+
+  , m_rto(1) // for temporary congestion control, should be removed when NDN provide transport functionality.
+  , m_maxRto(static_cast<double>(timeout.total_seconds())/2)
+  , m_slowStart(true)
+  , m_threshold(4)
+  , m_roundCount(0)
+
   , m_retryPause (0)
   , m_nextScheduledRetry (date_time::second_clock<boost::posix_time::ptime>::universal_time ())
   , m_executor (executor) // must be 1
@@ -112,7 +119,7 @@ Fetcher::FillPipeline ()
       m_ccnx->sendInterest (Name (m_forwardingHint)(m_name)(m_minSendSeqNo+1),
                             Closure (bind(&Fetcher::OnData, this, m_minSendSeqNo+1, _1, _2),
                                      bind(&Fetcher::OnTimeout, this, m_minSendSeqNo+1, _1, _2, _3)),
-                            Selectors().interestLifetime (1)); // Alex: this lifetime should be changed to RTO
+                            Selectors().interestLifetime (m_rto)); // Alex: this lifetime should be changed to RTO
       _LOG_DEBUG (" >>> i ok");
 
       m_activePipeline ++;
@@ -178,6 +185,26 @@ Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
 
   m_activePipeline --;
   m_lastPositiveActivity = date_time::second_clock<boost::posix_time::ptime>::universal_time();
+
+  {
+    unique_lock<mutex> lock (m_pipelineMutex);
+    if(m_slowStart){
+      m_pipeline++;
+      if(m_pipeline == m_threshold)
+        m_slowStart = false;
+    }
+    else{
+      m_roundCount++;
+      _LOG_DEBUG ("roundCount: " << m_roundCount);
+      if(m_roundCount == m_pipeline){
+        m_pipeline++;
+        m_roundCount = 0;
+      }
+    }
+  }
+
+  _LOG_DEBUG ("slowStart: " << boolalpha << m_slowStart << " pipeline: " << m_pipeline << " threshold: " << m_threshold);
+
 
   ////////////////////////////////////////////////////////////////////////////
   unique_lock<mutex> lock (m_seqNoMutex);
@@ -283,6 +310,29 @@ Fetcher::OnTimeout_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::Closure closu
   else
     {
       _LOG_DEBUG ("Asking to reexpress seqno: " << seqno);
-      m_ccnx->sendInterest (name, closure, selectors);
+      {
+        unique_lock<mutex> lock (m_rtoMutex);
+        _LOG_DEBUG ("Interest Timeout");
+        m_rto = m_rto * 2;
+        if(m_rto > m_maxRto)
+          {
+            m_rto = m_maxRto;
+            _LOG_DEBUG ("RTO is max: " << m_rto);
+          }
+        else
+          {
+            _LOG_DEBUG ("RTO is doubled: " << m_rto);
+          }
+      }
+
+      {
+        unique_lock<mutex> lock (m_pipelineMutex);
+        m_threshold = m_pipeline / 2;
+        m_pipeline = 1;
+        m_roundCount = 0;
+        m_slowStart = true;
+      }
+
+      m_ccnx->sendInterest (name, closure, selectors.interestLifetime (m_rto));
     }
 }

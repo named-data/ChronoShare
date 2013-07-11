@@ -133,6 +133,11 @@ private:
 
   uint32_t m_pipeline;
   uint32_t m_activePipeline;
+  double m_rto;
+  double m_maxRto;
+  bool m_slowStart;
+  uint32_t m_threshold;
+  uint32_t m_roundCount;
 
   boost::posix_time::ptime m_lastPositiveActivity;
 
@@ -142,6 +147,8 @@ private:
   ExecutorPtr m_executor; // to serialize FillPipeline events
 
   boost::mutex m_seqNoMutex;
+  boost::mutex m_rtoMutex;
+  boost::mutex m_pipelineMutex;
 };
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;

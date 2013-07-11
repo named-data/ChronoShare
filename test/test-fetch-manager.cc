@@ -24,7 +24,9 @@
 #include "ccnx-wrapper.h"
 #include <boost/test/unit_test.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/thread/thread.hpp>
 #include "logging.h"
+
 
 INIT_LOGGER ("Test.FetchManager");
 
@@ -92,6 +94,26 @@ struct FetcherTestData
   }
 };
 
+void run()
+{
+  CcnxWrapperPtr ccnx = make_shared<CcnxWrapper> ();
+
+  Name baseName ("/base");
+  Name deviceName ("/device");
+
+  for (int i = 0; i < 10; i++)
+    {
+      usleep(100000);
+      ccnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 30);
+    }
+
+  for (int i = 11; i < 50; i++)
+    {
+      usleep(100000);
+      ccnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 30);
+    }
+
+}
 
 BOOST_AUTO_TEST_CASE (TestFetcher)
 {
@@ -197,10 +219,8 @@ BOOST_AUTO_TEST_CASE (TestFetcher2)
 
   Name baseName ("/base");
   Name deviceName ("/device");
-  int i = 0;
 
-  ccnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 30);
-
+  thread publishThread(run);
 
   FetcherTestData data;
   ExecutorPtr executor = make_shared<Executor>(1);
@@ -212,14 +232,14 @@ BOOST_AUTO_TEST_CASE (TestFetcher2)
                    bind (&FetcherTestData::finish, &data, _1, _2),
                    bind (&FetcherTestData::onComplete, &data, _1),
                    bind (&FetcherTestData::onFail, &data, _1),
-                   deviceName, Name ("/base"), 1, 1,
+                   deviceName, baseName, 0, 49,
                    boost::posix_time::seconds (5)); // this time is not precise
 
   BOOST_CHECK_EQUAL (fetcher.IsActive (), false);
   fetcher.RestartPipeline ();
   BOOST_CHECK_EQUAL (fetcher.IsActive (), true);
 
-  usleep(7000000);
+  usleep(20000000);
   BOOST_CHECK_EQUAL (data.m_failed, true);
 
   executor->shutdown ();
