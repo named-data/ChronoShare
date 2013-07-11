@@ -188,6 +188,45 @@ BOOST_AUTO_TEST_CASE (TestFetcher)
   executor->shutdown ();
 }
 
+
+BOOST_AUTO_TEST_CASE (TestFetcher2)
+{
+  INIT_LOGGERS ();
+
+  CcnxWrapperPtr ccnx = make_shared<CcnxWrapper> ();
+
+  Name baseName ("/base");
+  Name deviceName ("/device");
+  int i = 0;
+
+  ccnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 30);
+
+
+  FetcherTestData data;
+  ExecutorPtr executor = make_shared<Executor>(1);
+  executor->start ();
+
+  Fetcher fetcher (ccnx,
+                   executor,
+                   bind (&FetcherTestData::onData, &data, _1, _2, _3, _4),
+                   bind (&FetcherTestData::finish, &data, _1, _2),
+                   bind (&FetcherTestData::onComplete, &data, _1),
+                   bind (&FetcherTestData::onFail, &data, _1),
+                   deviceName, Name ("/base"), 1, 1,
+                   boost::posix_time::seconds (5)); // this time is not precise
+
+  BOOST_CHECK_EQUAL (fetcher.IsActive (), false);
+  fetcher.RestartPipeline ();
+  BOOST_CHECK_EQUAL (fetcher.IsActive (), true);
+
+  usleep(7000000);
+  BOOST_CHECK_EQUAL (data.m_failed, true);
+
+  executor->shutdown ();
+}
+
+
+
 // BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)
 // {
 

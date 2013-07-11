@@ -124,9 +124,10 @@ FsWatcher::DidFileChanged (QString filePath)
       m_watcher->removePath (absFilePath);
       m_watcher->addPath (absFilePath);
 
-      Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
+      Scheduler::scheduleDelayOneTimeTask (m_scheduler, 0.5,
                                       bind (m_onChange, triggeredFile.relative_path ()),
                                       triggeredFile.relative_path ().string());
+
     }
   else
     {

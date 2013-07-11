@@ -175,6 +175,20 @@ Scheduler::schedulePeriodicTask (SchedulerPtr scheduler, IntervalGeneratorPtr de
     return TaskPtr ();
 }
 
+TaskPtr
+Scheduler::scheduleDelayOneTimeTask (SchedulerPtr scheduler, double delay,
+                                const Task::Callback &callback, const Task::Tag &tag)
+{
+  TaskPtr task = make_shared<OneTimeTask> (callback, tag, scheduler, delay);
+  if (scheduler->addTask (task))
+    return task;
+  else{
+    _LOG_ERROR ("reschedule task for " << tag);
+    scheduler->rescheduleTask(tag);
+    return TaskPtr ();
+  }
+}
+
 bool
 Scheduler::addTask(TaskPtr newTask, bool reset/* = true*/)
 {

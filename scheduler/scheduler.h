@@ -70,6 +70,10 @@ public:
   schedulePeriodicTask (SchedulerPtr scheduler, IntervalGeneratorPtr delayGenerator,
                         const Task::Callback &callback, const Task::Tag &tag);
 
+  // helper method to schedule/reschedule one-time task
+  static TaskPtr
+  scheduleDelayOneTimeTask (SchedulerPtr scheduler, double delay, const Task::Callback &callback, const Task::Tag &tag);
+
   // if task with the same tag exists, the task is not added and return false
   virtual bool
   addTask(TaskPtr task, bool reset = true);

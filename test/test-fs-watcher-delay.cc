@@ -69,13 +69,15 @@ BOOST_AUTO_TEST_CASE (TestFsWatcherDelay)
   
   
 
-  usleep(2000000);
+  usleep(10000000);
 
   // cleanup
   if (fs::exists(dir))
   {
     fs::remove_all(dir);
   }
+
+  usleep(1000000);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
