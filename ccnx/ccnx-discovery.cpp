@@ -22,12 +22,12 @@ string
 TaggedFunction::GetRandomTag()
 {
   //boost::random::random_device rng;
-  boost::random::uniform_int_distribution<> dist(0, CHAR_SET.size() - 1);
+  //boost::random::uniform_int_distribution<> dist(0, CHAR_SET.size() - 1);
   ostringstream oss;
-  for (int i = 0; i < DEFAULT_TAG_SIZE; i++)
-  {
+  //for (int i = 0; i < DEFAULT_TAG_SIZE; i++)
+  //{
     //oss << CHAR_SET[dist(rng)];
-  }
+  //}
   return oss.str();
 }
 

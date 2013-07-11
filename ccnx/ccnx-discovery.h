@@ -28,8 +28,7 @@
 #include "scheduler.h"
 #include <boost/shared_ptr.hpp>
 #include <boost/function.hpp>
-#include <boost/random/random_device.hpp>
-#include <boost/random/uniform_int_distribution.hpp>
+#include <boost/random.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/locks.hpp>
 #include <list>

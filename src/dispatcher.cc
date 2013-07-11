@@ -235,7 +235,13 @@ Dispatcher::Did_LocalFile_AddOrModify_Execute (filesystem::path relativeFilePath
     {
       m_actionLog->AddLocalActionUpdate (relativeFilePath.generic_string(),
                                          *hash,
-                                         last_write_time (absolutePath), status (absolutePath).permissions (), seg_num);
+                                         last_write_time (absolutePath), 
+#if BOOST_VERSION >= 104900
+                                         status (absolutePath).permissions (), 
+#else
+                                         0,
+#endif
+                                         seg_num);
 
       // notify SyncCore to propagate the change
       m_core->localStateChangedDelayed ();
@@ -473,7 +479,9 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
         {
           if (filesystem::exists (filePath) &&
               filesystem::last_write_time (filePath) == file->mtime () &&
+#if BOOST_VERSION >= 104900
               filesystem::status (filePath).permissions () == static_cast<filesystem::perms> (file->mode ()) &&
+#endif
               *Hash::FromFileContent (filePath) == hash)
             {
               _LOG_DEBUG ("Asking to assemble a file, but file already exists on a filesystem");
@@ -491,7 +499,9 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
         if (ok)
           {
             last_write_time (filePath, file->mtime ());
+#if BOOST_VERSION >= 104900
             permissions (filePath, static_cast<filesystem::perms> (file->mode ()));
+#endif
 
             m_fileState->SetFileComplete (file->filename ());
           }

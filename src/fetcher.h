@@ -28,6 +28,7 @@
 #include "executor.h"
 #include <boost/intrusive/list.hpp>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <set>
 
 #include <set>
 
