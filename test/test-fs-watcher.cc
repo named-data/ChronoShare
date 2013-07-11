@@ -8,6 +8,7 @@
 #include <fstream>
 #include <set>
 #include <QtGui>
+#include <iostream>
 
 using namespace std;
 using namespace boost;
@@ -18,6 +19,7 @@ BOOST_AUTO_TEST_SUITE(TestFsWatcher)
 void
 onChange(set<string> &files, const fs::path &file)
 {
+  cerr << "onChange called" << endl;
   files.insert(file.string());
 }
 
@@ -70,7 +72,7 @@ BOOST_AUTO_TEST_CASE (TestFsWatcher)
   // ============ check create file detection ================
   create_file(dir / "test.txt", "hello");
   // have to at least wait 0.5 seconds
-  usleep(600000);
+  usleep(1000000);
   // test.txt
   BOOST_CHECK_EQUAL(files.size(), 1);
   BOOST_CHECK(files.find("test.txt") != files.end());

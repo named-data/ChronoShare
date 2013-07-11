@@ -75,7 +75,7 @@ FsWatcher::~FsWatcher()
 void
 FsWatcher::DidDirectoryChanged (QString dirPath)
 {
-  _LOG_DEBUG ("Triggered DirPath: " << dirPath.toStdString ());
+  _LOG_DEBUG ("Triggered DirPath(DidDirectoryChanged): " << dirPath.toStdString ());
 
   filesystem::path absPathTriggeredDir (dirPath.toStdString ());
   if (!filesystem::exists (filesystem::path (absPathTriggeredDir)))
@@ -145,7 +145,7 @@ FsWatcher::DidFileChanged (QString filePath)
 void
 FsWatcher::ScanDirectory_NotifyUpdates_Execute (QString dirPath)
 {
-  _LOG_TRACE (" >> ScanDirectory_NotifyUpdates_Execute");
+  _LOG_TRACE (" >> ScanDirectory_NotifyUpdates_Execute " << dirPath.toStdString());
 
   // exclude working only on last component, not the full path; iterating through all directories, even excluded from monitoring
   QRegExp exclude ("^(\\.|\\.\\.|\\.chronoshare|.*~|.*\\.swp)$");
