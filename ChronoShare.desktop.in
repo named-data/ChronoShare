@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=ChronoShare
+Comment=Peer-to-peer file sharing over NDN
+Exec=${BINDIR}/ChronoShare
+Icon=${DATADIR}/ChronoShare/chronoshare-big.png
+Terminal=false
+Type=Application
+StartupNotify=true

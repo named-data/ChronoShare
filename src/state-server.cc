@@ -135,7 +135,7 @@ StateServer::formatActionJson (json_spirit::Array &actions,
   Object id;
 
   id.push_back (Pair ("userName", boost::lexical_cast<string> (name)));
-  id.push_back (Pair ("seqNo",    seq_no));
+  id.push_back (Pair ("seqNo",    static_cast<int64_t> (seq_no)));
 
   json.push_back (Pair ("id", id));
 
@@ -463,7 +463,9 @@ StateServer::cmd_restore_file_Execute (const Ccnx::Name &interest)
         {
           if (filesystem::exists (filePath) &&
               filesystem::last_write_time (filePath) == file->mtime () &&
+#if BOOST_VERSION >= 104900
               filesystem::status (filePath).permissions () == static_cast<filesystem::perms> (file->mode ()) &&
+#endif
               *Hash::FromFileContent (filePath) == hash)
             {
               m_ccnx->publishData (interest, "OK: File already exists", 1);
@@ -481,7 +483,9 @@ StateServer::cmd_restore_file_Execute (const Ccnx::Name &interest)
       if (m_objectManager.objectsToLocalFile (deviceName, hash, filePath))
         {
           last_write_time (filePath, file->mtime ());
+#if BOOST_VERSION >= 104900
           permissions (filePath, static_cast<filesystem::perms> (file->mode ()));
+#endif
           m_ccnx->publishData (interest, "OK", 1);
         }
       else

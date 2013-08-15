@@ -13,10 +13,10 @@ def options(opt):
     if Utils.unversioned_sys_platform () == "darwin":
         opt.add_option('--auto-update', action='store_true',default=False,dest='autoupdate',help='''(OSX) Download sparkle framework and enable autoupdate feature''')
 
-    opt.load('compiler_c compiler_cxx boost ccnx protoc qt4')
+    opt.load('compiler_c compiler_cxx boost ccnx protoc qt4 gnu_dirs')
 
 def configure(conf):
-    conf.load("compiler_c compiler_cxx")
+    conf.load("compiler_c compiler_cxx gnu_dirs")
 
     if conf.options.debug:
         conf.define ('_DEBUG', 1)
@@ -47,6 +47,10 @@ def configure(conf):
     conf.check_cfg(package='sqlite3', args=['--cflags', '--libs'], uselib_store='SQLITE3', mandatory=True)
     conf.check_cfg(package='libevent', args=['--cflags', '--libs'], uselib_store='LIBEVENT', mandatory=True)
     conf.check_cfg(package='libevent_pthreads', args=['--cflags', '--libs'], uselib_store='LIBEVENT_PTHREADS', mandatory=True)
+
+    conf.define ("TRAY_ICON", "chronoshare-big.png")
+    if Utils.unversioned_sys_platform () == "linux":
+        conf.define ("TRAY_ICON", "chronoshare-ubuntu.png")
 
     if Utils.unversioned_sys_platform () == "darwin":
         conf.check_cxx(framework_name='Foundation', uselib_store='OSX_FOUNDATION', mandatory=False, compile_filename='test.mm')
@@ -261,6 +265,16 @@ def build (bld):
             if bld.env['HAVE_LOCAL_SPARKLE']:
                 qt.mac_frameworks = "osx/Frameworks/Sparkle.framework"
 
+    if Utils.unversioned_sys_platform () == "linux":
+        bld (
+            features = "process_in",
+            target = "ChronoShare.desktop",
+            source = "ChronoShare.desktop.in",
+            install_prefix = "${DATADIR}/applications",
+            )
+        bld.install_files ("${DATADIR}/applications", "ChronoShare.desktop")
+        bld.install_files ("${DATADIR}/ChronoShare", "gui/images/chronoshare-big.png")
+
     cmdline = bld (
         target = "csd",
 	features = "qt4 cxx cxxprogram",
@@ -284,9 +298,21 @@ def m_hook(self, node):
     """Alias .mm files to be compiled the same as .cc files, gcc/clang will do the right thing."""
     return self.create_compiled_task('cxx', node)
 
-@TaskGen.extension('.js', '.png', '.css', '.html', '.gif', '.ico')
+@TaskGen.extension('.js', '.png', '.css', '.html', '.gif', '.ico', '.in')
 def sig_hook(self, node):
     node.sig=Utils.h_file (node.abspath())
+
+@TaskGen.feature('process_in')
+@TaskGen.after_method('process_source')
+def create_process_in(self):
+    dst = self.bld.path.find_or_declare (self.target)
+    tsk = self.create_task ('process_in', self.source, dst)
+
+class process_in(Task.Task):
+    color='PINK'
+
+    def run (self):
+        self.outputs[0].write (Utils.subst_vars(self.inputs[0].read (), self.env))
 
 @TaskGen.feature('html_resources')
 @TaskGen.before_method('process_source')

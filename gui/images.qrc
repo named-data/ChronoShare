@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
-        <file>images/friends-group-icon.png</file>
+        <file>images/chronoshare-big.png</file>
+	<file>images/chronoshare-ubuntu.png</file>
     </qresource>
 </RCC>
