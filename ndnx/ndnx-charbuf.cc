@@ -19,53 +19,53 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#include "ccnx-charbuf.h"
+#include "ndnx-charbuf.h"
 
 using namespace std;
 
-namespace Ccnx {
+namespace Ndnx {
 
 void
-CcnxCharbuf::init(ccn_charbuf *buf)
+NdnxCharbuf::init(ndn_charbuf *buf)
 {
   if (buf != NULL)
   {
-    m_buf = ccn_charbuf_create();
-    ccn_charbuf_reserve(m_buf, buf->length);
+    m_buf = ndn_charbuf_create();
+    ndn_charbuf_reserve(m_buf, buf->length);
     memcpy(m_buf->buf, buf->buf, buf->length);
     m_buf->length = buf->length;
   }
 }
 
-CcnxCharbuf::CcnxCharbuf()
+NdnxCharbuf::NdnxCharbuf()
             : m_buf(NULL)
 {
-  m_buf = ccn_charbuf_create();
+  m_buf = ndn_charbuf_create();
 }
 
-CcnxCharbuf::CcnxCharbuf(ccn_charbuf *buf)
+NdnxCharbuf::NdnxCharbuf(ndn_charbuf *buf)
             : m_buf(NULL)
 {
   init(buf);
 }
 
-CcnxCharbuf::CcnxCharbuf(const CcnxCharbuf &other)
+NdnxCharbuf::NdnxCharbuf(const NdnxCharbuf &other)
             : m_buf (NULL)
 {
   init(other.m_buf);
 }
 
-CcnxCharbuf::CcnxCharbuf(const void *buf, size_t length)
+NdnxCharbuf::NdnxCharbuf(const void *buf, size_t length)
 {
-  m_buf = ccn_charbuf_create ();
-  ccn_charbuf_reserve (m_buf, length);
+  m_buf = ndn_charbuf_create ();
+  ndn_charbuf_reserve (m_buf, length);
   memcpy (m_buf->buf, buf, length);
   m_buf->length = length;
 }
 
-CcnxCharbuf::~CcnxCharbuf()
+NdnxCharbuf::~NdnxCharbuf()
 {
-  ccn_charbuf_destroy(&m_buf);
+  ndn_charbuf_destroy(&m_buf);
 }
 
 }

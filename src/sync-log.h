@@ -24,7 +24,7 @@
 
 #include "db-helper.h"
 #include <sync-state.pb.h>
-#include <ccnx-name.h>
+#include <ndnx-name.h>
 #include <map>
 #include <boost/thread/shared_mutex.hpp>
 
@@ -33,12 +33,12 @@ typedef boost::shared_ptr<SyncStateMsg> SyncStateMsgPtr;
 class SyncLog : public DbHelper
 {
 public:
-  SyncLog (const boost::filesystem::path &path, const Ccnx::Name &localName);
+  SyncLog (const boost::filesystem::path &path, const Ndnx::Name &localName);
 
   /**
    * @brief Get local username
    */
-  inline const Ccnx::Name &
+  inline const Ndnx::Name &
   GetLocalName () const;
 
   sqlite3_int64
@@ -46,22 +46,22 @@ public:
 
   // done
   void
-  UpdateDeviceSeqNo (const Ccnx::Name &name, sqlite3_int64 seqNo);
+  UpdateDeviceSeqNo (const Ndnx::Name &name, sqlite3_int64 seqNo);
 
   void
   UpdateLocalSeqNo (sqlite3_int64 seqNo);
 
-  Ccnx::Name
-  LookupLocator (const Ccnx::Name &deviceName);
+  Ndnx::Name
+  LookupLocator (const Ndnx::Name &deviceName);
 
-  Ccnx::Name
+  Ndnx::Name
   LookupLocalLocator ();
 
   void
-  UpdateLocator (const Ccnx::Name &deviceName, const Ccnx::Name &locator);
+  UpdateLocator (const Ndnx::Name &deviceName, const Ndnx::Name &locator);
 
   void
-  UpdateLocalLocator (const Ccnx::Name &locator);
+  UpdateLocalLocator (const Ndnx::Name &locator);
 
   // done
   /**
@@ -87,7 +87,7 @@ public:
 
   //-------- only used in test -----------------
   sqlite3_int64
-  SeqNo(const Ccnx::Name &name);
+  SeqNo(const Ndnx::Name &name);
 
   sqlite3_int64
   LogSize ();
@@ -97,7 +97,7 @@ protected:
   UpdateDeviceSeqNo (sqlite3_int64 deviceId, sqlite3_int64 seqNo);
 
 protected:
-  Ccnx::Name m_localName;
+  Ndnx::Name m_localName;
 
   sqlite3_int64 m_localDeviceId;
 
@@ -109,7 +109,7 @@ protected:
 
 typedef boost::shared_ptr<SyncLog> SyncLogPtr;
 
-const Ccnx::Name &
+const Ndnx::Name &
 SyncLog::GetLocalName () const
 {
   return m_localName;

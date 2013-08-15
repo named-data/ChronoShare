@@ -27,7 +27,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/filesystem.hpp>
-#include "ccnx-common.h"
+#include "ndnx-common.h"
 
 // Other options: VP_md2, EVP_md5, EVP_sha, EVP_sha1, EVP_sha256, EVP_dss, EVP_dss1, EVP_mdc2, EVP_ripemd160
 #define HASH_FUNCTION EVP_sha256
@@ -74,7 +74,7 @@ public:
   FromFileContent (const boost::filesystem::path &fileName);
 
   static HashPtr
-  FromBytes (const Ccnx::Bytes &bytes);
+  FromBytes (const Ndnx::Bytes &bytes);
 
   ~Hash ()
   {

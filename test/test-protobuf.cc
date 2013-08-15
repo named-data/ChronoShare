@@ -1,4 +1,4 @@
-#include "ccnx-common.h"
+#include "ndnx-common.h"
 #include "sync-core.h"
 #include <boost/make_shared.hpp>
 #include <boost/test/unit_test.hpp>
@@ -8,7 +8,7 @@
 #include <boost/range/iterator_range.hpp>
 #include <boost/make_shared.hpp>
 
-using namespace Ccnx;
+using namespace Ndnx;
 using namespace std;
 using namespace boost;
 

@@ -24,7 +24,7 @@
 
 #include "db-helper.h"
 
-#include "ccnx-name.h"
+#include "ndnx-name.h"
 #include "file-item.pb.h"
 #include "hash-helper.h"
 
@@ -49,7 +49,7 @@ public:
    */
   void
   UpdateFile (const std::string &filename, sqlite3_int64 version,
-              const Hash &hash, const Ccnx::CcnxCharbuf &device_name, sqlite3_int64 seqno,
+              const Hash &hash, const Ndnx::NdnxCharbuf &device_name, sqlite3_int64 seqno,
               time_t atime, time_t mtime, time_t ctime, int mode, int seg_num);
 
   /**

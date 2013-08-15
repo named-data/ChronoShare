@@ -19,10 +19,10 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#ifndef CCNX_TUNNEL_H
-#define CCNX_TUNNEL_H
+#ifndef NDNX_TUNNEL_H
+#define NDNX_TUNNEL_H
 
-#include "ccnx-wrapper.h"
+#include "ndnx-wrapper.h"
 
 #define _OVERRIDE
 #ifdef __GNUC__
@@ -32,20 +32,20 @@
 #endif // __GNUC__ version
 #endif // __GNUC__
 
-// Eventually, Sync::CcnxWrapper should be moved to this namespace.
+// Eventually, Sync::NdnxWrapper should be moved to this namespace.
 // It has nothing to do with Sync.
-namespace Ccnx
+namespace Ndnx
 {
 
-class CcnxTunnel : public CcnxWrapper
+class NdnxTunnel : public NdnxWrapper
 {
 public:
   typedef std::multimap<Name, InterestCallback> RegisteredInterestTable;
   typedef std::multimap<Name, InterestCallback>::iterator RitIter;
 
 
-  CcnxTunnel();
-  virtual ~CcnxTunnel();
+  NdnxTunnel();
+  virtual ~NdnxTunnel();
 
   // name is topology-independent
   virtual int
@@ -91,7 +91,7 @@ public:
   handleTunneledData(const Name &name, const Bytes &tunneledData, const Closure::DataCallback &originalDataCallback);
 
 private:
-  CcnxTunnel(const CcnxTunnel &other) {}
+  NdnxTunnel(const NdnxTunnel &other) {}
 
 protected:
   // need a way to update local prefix, perhaps using macports trick, but eventually we need something more portable
@@ -103,10 +103,10 @@ protected:
 class TunnelClosure : public Closure
 {
 public:
-  TunnelClosure(const DataCallback &dataCallback, CcnxTunnel &tunnel,
+  TunnelClosure(const DataCallback &dataCallback, NdnxTunnel &tunnel,
                 const Name &originalInterest, const TimeoutCallback &timeoutCallback = TimeoutCallback());
 
-  TunnelClosure(const Closure &closure, CcnxTunnel &tunnel, const Name &originalInterest);
+  TunnelClosure(const Closure &closure, NdnxTunnel &tunnel, const Name &originalInterest);
 
   virtual void
   runDataCallback(const Name &name, const Bytes &content) _OVERRIDE;
@@ -118,7 +118,7 @@ public:
   dup() const;
 
 private:
-  CcnxTunnel &m_tunnel;
+  NdnxTunnel &m_tunnel;
   Name m_originalInterest;
 };
 

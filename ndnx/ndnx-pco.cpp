@@ -19,18 +19,19 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#include "ccnx-pco.h"
-#include "ccnx-cert.h"
+#include "ndnx-pco.h"
+#include "ndnx-cert.h"
+#include "hash-helper.h"
 
-namespace Ccnx {
+namespace Ndnx {
 
 void
 ParsedContentObject::init(const unsigned char *data, size_t len)
 {
   readRaw(m_bytes, data, len);
 
-  m_comps = ccn_indexbuf_create();
-  int res = ccn_parse_ContentObject(head (m_bytes), len, &m_pco, m_comps);
+  m_comps = ndn_indexbuf_create();
+  int res = ndn_parse_ContentObject(head (m_bytes), len, &m_pco, m_comps);
   if (res < 0)
   {
     boost::throw_exception(MisformedContentObjectException());
@@ -61,7 +62,7 @@ ParsedContentObject::ParsedContentObject(const ParsedContentObject &other, bool 
 
 ParsedContentObject::~ParsedContentObject()
 {
-  ccn_indexbuf_destroy(&m_comps);
+  ndn_indexbuf_destroy(&m_comps);
   m_comps = NULL;
 }
 
@@ -70,7 +71,7 @@ ParsedContentObject::content() const
 {
   const unsigned char *content;
   size_t len;
-  int res = ccn_content_get_value(head(m_bytes), m_pco.offset[CCN_PCO_E], &m_pco, &content, &len);
+  int res = ndn_content_get_value(head(m_bytes), m_pco.offset[NDN_PCO_E], &m_pco, &content, &len);
   if (res < 0)
   {
     boost::throw_exception(MisformedContentObjectException());
@@ -86,7 +87,7 @@ ParsedContentObject::contentPtr() const
 {
   const unsigned char *content;
   size_t len;
-  int res = ccn_content_get_value(head(m_bytes), m_pco.offset[CCN_PCO_E], &m_pco, &content, &len);
+  int res = ndn_content_get_value(head(m_bytes), m_pco.offset[NDN_PCO_E], &m_pco, &content, &len);
   if (res < 0)
   {
     boost::throw_exception(MisformedContentObjectException());
@@ -104,13 +105,13 @@ ParsedContentObject::name() const
 Name
 ParsedContentObject::keyName() const
 {
-  if (m_pco.offset[CCN_PCO_E_KeyName_Name] > m_pco.offset[CCN_PCO_B_KeyName_Name])
+  if (m_pco.offset[NDN_PCO_E_KeyName_Name] > m_pco.offset[NDN_PCO_B_KeyName_Name])
   {
-    CcnxCharbufPtr ptr = boost::make_shared<CcnxCharbuf>();
-    ccn_charbuf_append(ptr->getBuf(), head(m_bytes) + m_pco.offset[CCN_PCO_B_KeyName_Name], m_pco.offset[CCN_PCO_E_KeyName_Name] - m_pco.offset[CCN_PCO_B_KeyName_Name]);
+    NdnxCharbufPtr ptr = boost::make_shared<NdnxCharbuf>();
+    ndn_charbuf_append(ptr->getBuf(), head(m_bytes) + m_pco.offset[NDN_PCO_B_KeyName_Name], m_pco.offset[NDN_PCO_E_KeyName_Name] - m_pco.offset[NDN_PCO_B_KeyName_Name]);
 
     return Name(*ptr);
-  }
+}
   else
   {
     return Name();
@@ -122,7 +123,7 @@ ParsedContentObject::publisherPublicKeyDigest() const
 {
   const unsigned char *buf = NULL;
   size_t size = 0;
-  ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest, head(m_bytes), m_pco.offset[CCN_PCO_B_PublisherPublicKeyDigest], m_pco.offset[CCN_PCO_E_PublisherPublicKeyDigest], &buf, &size);
+  ndn_ref_tagged_BLOB(NDN_DTAG_PublisherPublicKeyDigest, head(m_bytes), m_pco.offset[NDN_PCO_B_PublisherPublicKeyDigest], m_pco.offset[NDN_PCO_E_PublisherPublicKeyDigest], &buf, &size);
 
   return boost::make_shared<Hash>(buf, size);
 }
@@ -132,8 +133,8 @@ ParsedContentObject::type() const
 {
   switch (m_pco.type)
   {
-  case CCN_CONTENT_DATA: return DATA;
-  case CCN_CONTENT_KEY: return KEY;
+  case NDN_CONTENT_DATA: return DATA;
+  case NDN_CONTENT_KEY: return KEY;
   default: break;
   }
   return OTHER;
@@ -142,7 +143,7 @@ ParsedContentObject::type() const
 void
 ParsedContentObject::verifySignature(const CertPtr &cert)
 {
-  m_verified = (ccn_verify_signature(head(m_bytes), m_pco.offset[CCN_PCO_E], &m_pco, cert->pkey()) == 1);
+  m_verified = (ndn_verify_signature(head(m_bytes), m_pco.offset[NDN_PCO_E], &m_pco, cert->pkey()) == 1);
 }
 
 }

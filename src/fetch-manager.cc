@@ -32,14 +32,14 @@ INIT_LOGGER ("FetchManager");
 
 using namespace boost;
 using namespace std;
-using namespace Ccnx;
+using namespace Ndnx;
 
 //The disposer object function
 struct fetcher_disposer { void operator() (Fetcher *delete_this) { delete delete_this; } };
 
 static const string SCHEDULE_FETCHES_TAG = "ScheduleFetches";
 
-FetchManager::FetchManager (Ccnx::CcnxWrapperPtr ccnx,
+FetchManager::FetchManager (Ndnx::NdnxWrapperPtr ndnx,
                             const Mapping &mapping,
                             const Name &broadcastForwardingHint,
                             uint32_t parallelFetches, // = 3
@@ -47,7 +47,7 @@ FetchManager::FetchManager (Ccnx::CcnxWrapperPtr ccnx,
                             const FinishCallback &defaultFinishCallback,
                             const FetchTaskDbPtr &taskDb
                             )
-  : m_ccnx (ccnx)
+  : m_ndnx (ndnx)
   , m_mapping (mapping)
   , m_maxParallelFetches (parallelFetches)
   , m_currentParallelFetches (0)
@@ -76,21 +76,21 @@ FetchManager::~FetchManager ()
   m_scheduler->shutdown ();
   m_executor->shutdown();
 
-  m_ccnx.reset ();
+  m_ndnx.reset ();
 
   m_fetchList.clear_and_dispose (fetcher_disposer ());
 }
 
 // Enqueue using default callbacks
 void
-FetchManager::Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
+FetchManager::Enqueue (const Ndnx::Name &deviceName, const Ndnx::Name &baseName,
            uint64_t minSeqNo, uint64_t maxSeqNo, int priority)
 {
   Enqueue(deviceName, baseName, m_defaultSegmentCallback, m_defaultFinishCallback, minSeqNo, maxSeqNo, priority);
 }
 
 void
-FetchManager::Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
+FetchManager::Enqueue (const Ndnx::Name &deviceName, const Ndnx::Name &baseName,
          const SegmentCallback &segmentCallback, const FinishCallback &finishCallback,
          uint64_t minSeqNo, uint64_t maxSeqNo, int priority/*PRIORITY_NORMAL*/)
 {
@@ -112,7 +112,7 @@ FetchManager::Enqueue (const Ccnx::Name &deviceName, const Ccnx::Name &baseName,
   unique_lock<mutex> lock (m_parellelFetchMutex);
 
   _LOG_TRACE ("++++ Create fetcher: " << baseName);
-  Fetcher *fetcher = new Fetcher (m_ccnx,
+  Fetcher *fetcher = new Fetcher (m_ndnx,
                                   m_executor,
                                   segmentCallback,
                                   finishCallback,

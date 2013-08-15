@@ -40,8 +40,8 @@ operator << (std::ostream &os, const SyncStateMsgPtr &msg)
       string strLocator = state.locator();
       sqlite3_int64 seq = state.seq();
 
-      os << "Name: " << Ccnx::Name((const unsigned char *)strName.c_str(), strName.size())
-         << ", Locator: " << Ccnx::Name((const unsigned char *)strLocator.c_str(), strLocator.size())
+      os << "Name: " << Ndnx::Name((const unsigned char *)strName.c_str(), strName.size())
+         << ", Locator: " << Ndnx::Name((const unsigned char *)strLocator.c_str(), strLocator.size())
          << ", seq: " << seq << std::endl;
       index ++;
     }

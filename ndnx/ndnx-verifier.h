@@ -19,26 +19,26 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#ifndef CCNX_VERIFIER_H
-#define CCNX_VERIFIER_H
+#ifndef NDNX_VERIFIER_H
+#define NDNX_VERIFIER_H
 
-#include "ccnx-common.h"
-#include "ccnx-name.h"
-#include "ccnx-cert.h"
-#include "ccnx-pco.h"
+#include "ndnx-common.h"
+#include "ndnx-name.h"
+#include "ndnx-cert.h"
+#include "ndnx-pco.h"
 #include <map>
 #include <boost/thread/locks.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #include <boost/thread/thread.hpp>
 
-namespace Ccnx {
+namespace Ndnx {
 
-class CcnxWrapper;
+class NdnxWrapper;
 
 class Verifier
 {
 public:
-  Verifier(CcnxWrapper *ccnx);
+  Verifier(NdnxWrapper *ndnx);
   ~Verifier();
 
   bool verify(const PcoPtr &pco, double maxWait);
@@ -46,7 +46,7 @@ public:
 private:
 
 private:
-  CcnxWrapper *m_ccnx;
+  NdnxWrapper *m_ndnx;
   Hash m_rootKeyDigest;
   typedef std::map<Hash, CertPtr> CertCache;
   CertCache m_certCache;
@@ -55,6 +55,6 @@ private:
   RecLock m_cacheLock;
 };
 
-} // Ccnx
+} // Ndnx
 
-#endif // CCNX_VERIFIER_H
+#endif // NDNX_VERIFIER_H

@@ -1,10 +1,10 @@
-#include "ccnx-selectors.h"
-#include "ccnx-common.h"
+#include "ndnx-selectors.h"
+#include "ndnx-common.h"
 #include <boost/lexical_cast.hpp>
 
 using namespace std;
 
-namespace Ccnx {
+namespace Ndnx {
 
 Selectors::Selectors()
           : m_maxSuffixComps(-1)
@@ -27,7 +27,7 @@ Selectors::Selectors(const Selectors &other)
   m_publisherPublicKeyDigest = other.m_publisherPublicKeyDigest;
 }
 
-Selectors::Selectors(const ccn_parsed_interest *pi)
+Selectors::Selectors(const ndn_parsed_interest *pi)
           : m_maxSuffixComps(-1)
           , m_minSuffixComps(-1)
           , m_answerOriginKind(AOK_DEFAULT)
@@ -82,18 +82,18 @@ Selectors::isEmpty() const
 }
 
 
-CcnxCharbufPtr
-Selectors::toCcnxCharbuf() const
+NdnxCharbufPtr
+Selectors::toNdnxCharbuf() const
 {
   if (isEmpty())
   {
-    return CcnxCharbufPtr ();
+    return NdnxCharbufPtr ();
   }
-  CcnxCharbufPtr ptr(new CcnxCharbuf());
-  ccn_charbuf *cbuf = ptr->getBuf();
-  ccn_charbuf_append_tt(cbuf, CCN_DTAG_Interest, CCN_DTAG);
-  ccn_charbuf_append_tt(cbuf, CCN_DTAG_Name, CCN_DTAG);
-  ccn_charbuf_append_closer(cbuf); // </Name>
+  NdnxCharbufPtr ptr(new NdnxCharbuf());
+  ndn_charbuf *cbuf = ptr->getBuf();
+  ndn_charbuf_append_tt(cbuf, NDN_DTAG_Interest, NDN_DTAG);
+  ndn_charbuf_append_tt(cbuf, NDN_DTAG_Name, NDN_DTAG);
+  ndn_charbuf_append_closer(cbuf); // </Name>
 
   if (m_maxSuffixComps < m_minSuffixComps)
   {
@@ -102,12 +102,12 @@ Selectors::toCcnxCharbuf() const
 
   if (m_minSuffixComps > 0)
   {
-    ccnb_tagged_putf(cbuf, CCN_DTAG_MinSuffixComponents, "%d", m_minSuffixComps);
+    ndnb_tagged_putf(cbuf, NDN_DTAG_MinSuffixComponents, "%d", m_minSuffixComps);
   }
 
   if (m_maxSuffixComps > 0)
   {
-    ccnb_tagged_putf(cbuf, CCN_DTAG_MaxSuffixComponents, "%d", m_maxSuffixComps);
+    ndnb_tagged_putf(cbuf, NDN_DTAG_MaxSuffixComponents, "%d", m_maxSuffixComps);
   }
 
   // publisher digest
@@ -116,42 +116,42 @@ Selectors::toCcnxCharbuf() const
 
   if (m_childSelector != DEFAULT)
   {
-    ccnb_tagged_putf(cbuf, CCN_DTAG_ChildSelector, "%d", (int)m_childSelector);
+    ndnb_tagged_putf(cbuf, NDN_DTAG_MinSuffixComponents, "%d", (int)m_minSuffixComps);
   }
-  
+
   if (m_answerOriginKind != AOK_DEFAULT)
   {
-    // it was not using "ccnb_tagged_putf" in ccnx c code, no idea why
-    ccn_charbuf_append_tt(cbuf, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
-    ccnb_append_number(cbuf, m_answerOriginKind);
-    ccn_charbuf_append_closer(cbuf); // <AnswerOriginKind>
+    // it was not using "ndnb_tagged_putf" in ndnx c code, no idea why
+    ndn_charbuf_append_tt(cbuf, NDN_DTAG_AnswerOriginKind, NDN_DTAG);
+    ndnb_append_number(cbuf, m_answerOriginKind);
+    ndn_charbuf_append_closer(cbuf); // <AnswerOriginKind>
   }
 
   if (m_scope != NO_SCOPE)
   {
-    ccnb_tagged_putf(cbuf, CCN_DTAG_Scope, "%d", m_scope);
+    ndnb_tagged_putf(cbuf, NDN_DTAG_Scope, "%d", m_scope);
   }
 
   if (m_interestLifetime > 0.0)
   {
-    // Ccnx timestamp unit is weird 1/4096 second
+    // Ndnx timestamp unit is weird 1/4096 second
     // this is from their code
     unsigned lifetime = 4096 * (m_interestLifetime + 1.0/8192.0);
     if (lifetime == 0 || lifetime > (30 << 12))
     {
-      boost::throw_exception(InterestSelectorException() << error_info_str("Ccnx requires 0 < lifetime < 30.0. lifetime= " + boost::lexical_cast<string>(m_interestLifetime)));
+      boost::throw_exception(InterestSelectorException() << error_info_str("Ndnx requires 0 < lifetime < 30.0. lifetime= " + boost::lexical_cast<string>(m_interestLifetime)));
     }
     unsigned char buf[3] = {0};
     for (int i = sizeof(buf) - 1; i >= 0; i--, lifetime >>= 8)
     {
       buf[i] = lifetime & 0xff;
     }
-    ccnb_append_tagged_blob(cbuf, CCN_DTAG_InterestLifetime, buf, sizeof(buf));
+    ndnb_append_tagged_blob(cbuf, NDN_DTAG_InterestLifetime, buf, sizeof(buf));
   }
 
-  ccn_charbuf_append_closer(cbuf); // </Interest>
+  ndn_charbuf_append_closer(cbuf); // </Interest>
 
   return ptr;
 }
 
-} // Ccnx
+} // Ndnx

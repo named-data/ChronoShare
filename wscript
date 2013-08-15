@@ -5,7 +5,6 @@ APPNAME='chronoshare'
 from waflib import Build, Logs, Utils, Task, TaskGen, Configure
 
 def options(opt):
-    opt.add_option('--debug',action='store_true',default=False,dest='debug',help='''debugging mode''')
     opt.add_option('--test', action='store_true',default=False,dest='_test',help='''build unit tests''')
     opt.add_option('--yes',action='store_true',default=False) # for autoconf/automake/make compatibility
     opt.add_option('--log4cxx', action='store_true',default=False,dest='log4cxx',help='''Compile with log4cxx logging support''')
@@ -13,35 +12,11 @@ def options(opt):
     if Utils.unversioned_sys_platform () == "darwin":
         opt.add_option('--auto-update', action='store_true',default=False,dest='autoupdate',help='''(OSX) Download sparkle framework and enable autoupdate feature''')
 
-    opt.load('compiler_c compiler_cxx boost ccnx protoc qt4 gnu_dirs')
-    opt.load('tinyxml', tooldir=['waf-tools'])
+    opt.load('compiler_c compiler_cxx boost protoc qt4 gnu_dirs')
+    opt.load('ndnx flags tinyxml', tooldir=['waf-tools'])
 
 def configure(conf):
-    conf.load("compiler_c compiler_cxx gnu_dirs")
-
-    if conf.options.debug:
-        conf.define ('_DEBUG', 1)
-        conf.add_supported_cxxflags (cxxflags = ['-O0',
-                                                 '-Wall',
-                                                 '-Wno-unused-variable',
-                                                 '-g3',
-                                                 '-Wno-unused-private-field', # only clang supports
-                                                 '-fcolor-diagnostics',       # only clang supports
-                                                 '-Qunused-arguments'         # only clang supports
-                                                 ])
-    else:
-        conf.add_supported_cxxflags (cxxflags = ['-O3', '-g'])
-
-    # I wish I could use it, but there is some weirdness with boost tests. Give up for now
-    # try:
-    #     conf.check(features='cxx cxxprogram', cxxflags="-std=c++11")
-    #     conf.env.append_value ('CXXFLAGS', ["-std=c++11"])
-    # except:
-    #     try:
-    #         conf.check(features='cxx cxxprogram', cxxflags="-std=c++0x")
-    #         conf.env.append_value ('CXXFLAGS', ["-std=c++0x"])
-    #     except:
-    #         conf.fatal ("You compiler doesn't support C++11. You can try GCC >= 4.4 or recent version of Clang.")
+    conf.load("compiler_c compiler_cxx gnu_dirs flags")
 
     conf.define ("CHRONOSHARE_VERSION", VERSION)
 
@@ -105,21 +80,11 @@ def configure(conf):
             if conf.is_defined('HAVE_SPARKLE'):
                 conf.env.HAVE_SPARKLE = 1 # small cheat for wscript
 
-    if not conf.check_cfg(package='openssl', args=['--cflags', '--libs'], uselib_store='SSL', mandatory=False):
-        libcrypto = conf.check_cc(lib='crypto',
-                                  header_name='openssl/crypto.h',
-                                  define_name='HAVE_SSL',
-                                  uselib_store='SSL')
-    else:
-        conf.define ("HAVE_SSL", 1)
-    if not conf.get_define ("HAVE_SSL"):
-        conf.fatal ("Cannot find SSL libraries")
-
     if conf.options.log4cxx:
         conf.check_cfg(package='liblog4cxx', args=['--cflags', '--libs'], uselib_store='LOG4CXX', mandatory=True)
         conf.define ("HAVE_LOG4CXX", 1)
 
-    conf.load ('ccnx')
+    conf.load ('ndnx')
 
     conf.load('protoc')
 
@@ -134,8 +99,9 @@ def configure(conf):
         Logs.error ("Minumum required boost version is 1.46")
         return
 
-    conf.check_ccnx (path=conf.options.ccnx_dir)
-    conf.define ('CCNX_PATH', conf.env.CCNX_ROOT)
+    conf.check_ndnx ()
+    conf.check_openssl ()
+    conf.define ('NDNX_PATH', conf.env.NDNX_ROOT)
 
     if conf.options._test:
         conf.define ('_TESTS', 1)
@@ -160,18 +126,18 @@ def build (bld):
         includes = "scheduler executor src",
         )
 
-    libccnx = bld (
-        target="ccnx",
+    libndnx = bld (
+        target="ndnx",
         features=['cxx'],
-        source = bld.path.ant_glob(['ccnx/**/*.cc', 'ccnx/**/*.cpp']),
-        use = 'TINYXML BOOST BOOST_THREAD SSL CCNX LOG4CXX scheduler executor',
-        includes = "ccnx src scheduler executor",
+        source = bld.path.ant_glob(['ndnx/**/*.cc', 'ndnx/**/*.cpp']),
+        use = 'TINYXML BOOST BOOST_THREAD SSL NDNX LOG4CXX scheduler executor',
+        includes = "ndnx src scheduler executor",
         )
 
     adhoc = bld (
         target = "adhoc",
         features=['cxx'],
-        includes = "ccnx src",
+        includes = "ndnx src",
     )
     if Utils.unversioned_sys_platform () == "darwin":
         adhoc.mac_app = True
@@ -182,8 +148,8 @@ def build (bld):
         target="chronoshare",
         features=['cxx'],
         source = bld.path.ant_glob(['src/**/*.cc', 'src/**/*.cpp', 'src/**/*.proto']),
-        use = "BOOST BOOST_FILESYSTEM BOOST_DATE_TIME SQLITE3 LOG4CXX scheduler ccnx",
-        includes = "ccnx scheduler src executor",
+        use = "BOOST BOOST_FILESYSTEM BOOST_DATE_TIME SQLITE3 LOG4CXX scheduler ndnx",
+        includes = "ndnx scheduler src executor",
         )
 
     fs_watcher = bld (
@@ -192,7 +158,7 @@ def build (bld):
         defines = "WAF",
         source = bld.path.ant_glob(['fs-watcher/*.cc']),
         use = "SQLITE3 LOG4CXX scheduler executor QTCORE",
-        includes = "fs-watcher scheduler executor src ccnx",
+        includes = "ndnx fs-watcher scheduler executor src",
         )
 
     # Unit tests
@@ -202,8 +168,8 @@ def build (bld):
           features = "qt4 cxx cxxprogram",
           defines = "WAF",
           source = bld.path.ant_glob(['test/*.cc']),
-          use = 'BOOST_TEST BOOST_FILESYSTEM BOOST_DATE_TIME LOG4CXX SQLITE3 QTCORE QTGUI ccnx database fs_watcher chronoshare',
-          includes = "ccnx scheduler src executor gui fs-watcher",
+          use = 'BOOST_TEST BOOST_FILESYSTEM BOOST_DATE_TIME LOG4CXX SQLITE3 QTCORE QTGUI ndnx database fs_watcher chronoshare',
+          includes = "ndnx scheduler src executor gui fs-watcher",
           install_prefix = None,
           )
 
@@ -220,8 +186,8 @@ def build (bld):
         features = "qt4 cxx cxxprogram html_resources",
         defines = "WAF",
         source = bld.path.ant_glob(['gui/*.cpp', 'gui/*.cc', 'gui/images.qrc']),
-        includes = "ccnx scheduler executor fs-watcher gui src adhoc server . ",
-        use = "BOOST BOOST_FILESYSTEM BOOST_DATE_TIME SQLITE3 QTCORE QTGUI LOG4CXX fs_watcher ccnx database chronoshare http_server",
+        includes = "ndnx scheduler executor fs-watcher gui src adhoc server . ",
+        use = "BOOST BOOST_FILESYSTEM BOOST_DATE_TIME SQLITE3 QTCORE QTGUI LOG4CXX fs_watcher ndnx database chronoshare http_server",
 
         html_resources = bld.path.find_dir ("gui/html").ant_glob([
                 '**/*.js', '**/*.png', '**/*.css',
@@ -283,16 +249,16 @@ def build (bld):
 	features = "qt4 cxx cxxprogram",
 	defines = "WAF",
 	source = "cmd/csd.cc",
-	includes = "ccnx scheduler executor gui fs-watcher src . ",
-	use = "BOOST BOOST_FILESYSTEM BOOST_DATE_TIME SQLITE3 QTCORE QTGUI LOG4CXX fs_watcher ccnx database chronoshare"
+	includes = "ndnx scheduler executor gui fs-watcher src . ",
+	use = "BOOST BOOST_FILESYSTEM BOOST_DATE_TIME SQLITE3 QTCORE QTGUI LOG4CXX fs_watcher ndnx database chronoshare"
 	)
 
     dump_db = bld (
         target = "dump-db",
         features = "cxx cxxprogram",
 	source = "cmd/dump-db.cc",
-	includes = "ccnx scheduler executor gui fs-watcher src . ",
-	use = "BOOST BOOST_FILESYSTEM BOOST_DATE_TIME SQLITE3 QTCORE LOG4CXX fs_watcher ccnx database chronoshare"
+	includes = "ndnx scheduler executor gui fs-watcher src . ",
+	use = "BOOST BOOST_FILESYSTEM BOOST_DATE_TIME SQLITE3 QTCORE LOG4CXX fs_watcher ndnx database chronoshare"
         )
 
 from waflib import TaskGen
@@ -342,18 +308,3 @@ class html_resources(Task.Task):
 
         src_out.write (bld_out.read(), 'w')
         return 0
-
-@Configure.conf
-def add_supported_cxxflags(self, cxxflags):
-    """
-    Check which cxxflags are supported by compiler and add them to env.CXXFLAGS variable
-    """
-    self.start_msg('Checking allowed flags for c++ compiler')
-
-    supportedFlags = []
-    for flag in cxxflags:
-        if self.check_cxx (cxxflags=[flag], mandatory=False):
-            supportedFlags += [flag]
-
-    self.end_msg (' '.join (supportedFlags))
-    self.env.CXXFLAGS += supportedFlags

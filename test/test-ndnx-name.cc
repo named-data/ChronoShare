@@ -1,17 +1,17 @@
 
-#include "ccnx-name.h"
+#include "ndnx-name.h"
 
 #define BOOST_TEST_MAIN 1
 
 #include <boost/test/unit_test.hpp>
 
-using namespace Ccnx;
+using namespace Ndnx;
 using namespace std;
 using namespace boost;
 
-BOOST_AUTO_TEST_SUITE(CcnxNameTests)
+BOOST_AUTO_TEST_SUITE(NdnxNameTests)
 
-BOOST_AUTO_TEST_CASE (CcnxNameTest)
+BOOST_AUTO_TEST_CASE (NdnxNameTest)
 {
   Name empty = Name();
   Name root = Name("/");

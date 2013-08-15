@@ -21,7 +21,7 @@
 
 #include "fetcher.h"
 #include "fetch-manager.h"
-#include "ccnx-pco.h"
+#include "ndnx-pco.h"
 #include "logging.h"
 
 #include <boost/make_shared.hpp>
@@ -33,17 +33,17 @@ INIT_LOGGER ("Fetcher");
 
 using namespace boost;
 using namespace std;
-using namespace Ccnx;
+using namespace Ndnx;
 
-Fetcher::Fetcher (Ccnx::CcnxWrapperPtr ccnx,
+Fetcher::Fetcher (Ndnx::NdnxWrapperPtr ndnx,
                   ExecutorPtr executor,
                   const SegmentCallback &segmentCallback,
                   const FinishCallback &finishCallback,
                   OnFetchCompleteCallback onFetchComplete, OnFetchFailedCallback onFetchFailed,
-                  const Ccnx::Name &deviceName, const Ccnx::Name &name, int64_t minSeqNo, int64_t maxSeqNo,
+                  const Ndnx::Name &deviceName, const Ndnx::Name &name, int64_t minSeqNo, int64_t maxSeqNo,
                   boost::posix_time::time_duration timeout/* = boost::posix_time::seconds (30)*/,
-                  const Ccnx::Name &forwardingHint/* = Ccnx::Name ()*/)
-  : m_ccnx (ccnx)
+                  const Ndnx::Name &forwardingHint/* = Ndnx::Name ()*/)
+  : m_ndnx (ndnx)
 
   , m_segmentCallback (segmentCallback)
   , m_onFetchComplete (onFetchComplete)
@@ -93,7 +93,7 @@ Fetcher::RestartPipeline ()
 }
 
 void
-Fetcher::SetForwardingHint (const Ccnx::Name &forwardingHint)
+Fetcher::SetForwardingHint (const Ndnx::Name &forwardingHint)
 {
   m_forwardingHint = forwardingHint;
 }
@@ -116,7 +116,7 @@ Fetcher::FillPipeline ()
       _LOG_DEBUG (" >>> i " << Name (m_forwardingHint)(m_name) << ", seq = " << (m_minSendSeqNo + 1 ));
 
       // cout << ">>> " << m_minSendSeqNo+1 << endl;
-      m_ccnx->sendInterest (Name (m_forwardingHint)(m_name)(m_minSendSeqNo+1),
+      m_ndnx->sendInterest (Name (m_forwardingHint)(m_name)(m_minSendSeqNo+1),
                             Closure (bind(&Fetcher::OnData, this, m_minSendSeqNo+1, _1, _2),
                                      bind(&Fetcher::OnTimeout, this, m_minSendSeqNo+1, _1, _2, _3)),
                             Selectors().interestLifetime (m_rto)); // Alex: this lifetime should be changed to RTO
@@ -127,13 +127,13 @@ Fetcher::FillPipeline ()
 }
 
 void
-Fetcher::OnData (uint64_t seqno, const Ccnx::Name &name, PcoPtr data)
+Fetcher::OnData (uint64_t seqno, const Ndnx::Name &name, PcoPtr data)
 {
   m_executor->execute (bind (&Fetcher::OnData_Execute, this, seqno, name, data));
 }
 
 void
-Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
+Fetcher::OnData_Execute (uint64_t seqno, Ndnx::Name name, Ndnx::PcoPtr data)
 {
   _LOG_DEBUG (" <<< d " << name.getPartialName (0, name.size () - 1) << ", seq = " << seqno);
 
@@ -156,7 +156,7 @@ Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
   }
   else
     {
-      // in this case we don't care whether "data" is verified,  in fact, we expect it is unverified
+      // in this case we don't care whether "data" is verified, in fact, we expect it is unverified
       try {
         PcoPtr pco = make_shared<ParsedContentObject> (*data->contentPtr ());
 
@@ -260,14 +260,14 @@ Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
 }
 
 void
-Fetcher::OnTimeout (uint64_t seqno, const Ccnx::Name &name, const Closure &closure, Selectors selectors)
+Fetcher::OnTimeout (uint64_t seqno, const Ndnx::Name &name, const Closure &closure, Selectors selectors)
 {
   _LOG_DEBUG (this << ", " << m_executor.get ());
   m_executor->execute (bind (&Fetcher::OnTimeout_Execute, this, seqno, name, closure, selectors));
 }
 
 void
-Fetcher::OnTimeout_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::Closure closure, Ccnx::Selectors selectors)
+Fetcher::OnTimeout_Execute (uint64_t seqno, Ndnx::Name name, Ndnx::Closure closure, Ndnx::Selectors selectors)
 {
   _LOG_DEBUG (" <<< :( timeout " << name.getPartialName (0, name.size () - 1) << ", seq = " << seqno);
 
@@ -318,11 +318,11 @@ Fetcher::OnTimeout_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::Closure closu
           {
             m_rto = m_maxRto;
             _LOG_DEBUG ("RTO is max: " << m_rto);
-          }
+    }
         else
           {
             _LOG_DEBUG ("RTO is doubled: " << m_rto);
-          }
+}
       }
 
       {
@@ -333,6 +333,6 @@ Fetcher::OnTimeout_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::Closure closu
         m_slowStart = true;
       }
 
-      m_ccnx->sendInterest (name, closure, selectors.interestLifetime (m_rto));
+      m_ndnx->sendInterest (name, closure, selectors.interestLifetime (m_rto));
     }
 }

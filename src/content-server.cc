@@ -30,18 +30,18 @@
 
 INIT_LOGGER ("ContentServer");
 
-using namespace Ccnx;
+using namespace Ndnx;
 using namespace std;
 using namespace boost;
 
 static const int DB_CACHE_LIFETIME = 60;
 
-ContentServer::ContentServer(CcnxWrapperPtr ccnx, ActionLogPtr actionLog,
+ContentServer::ContentServer(NdnxWrapperPtr ndnx, ActionLogPtr actionLog,
                              const boost::filesystem::path &rootDir,
-                             const Ccnx::Name &userName, const std::string &sharedFolderName,
+                             const Ndnx::Name &userName, const std::string &sharedFolderName,
                              const std::string &appName,
                              int freshness)
-  : m_ccnx(ccnx)
+  : m_ndnx(ndnx)
   , m_actionLog(actionLog)
   , m_dbFolder(rootDir / ".chronoshare")
   , m_freshness(freshness)
@@ -62,7 +62,7 @@ ContentServer::~ContentServer()
   ScopedLock lock (m_mutex);
   for (PrefixIt forwardingHint = m_prefixes.begin(); forwardingHint != m_prefixes.end(); ++forwardingHint)
   {
-    m_ccnx->clearInterestFilter (*forwardingHint);
+    m_ndnx->clearInterestFilter (*forwardingHint);
   }
 
   m_prefixes.clear ();
@@ -76,7 +76,7 @@ ContentServer::registerPrefix(const Name &forwardingHint)
 
   _LOG_DEBUG (">> content server: register " << forwardingHint);
 
-  m_ccnx->setInterestFilter (forwardingHint, bind(&ContentServer::filterAndServe, this, forwardingHint, _1));
+  m_ndnx->setInterestFilter (forwardingHint, bind(&ContentServer::filterAndServe, this, forwardingHint, _1));
 
   ScopedLock lock (m_mutex);
   m_prefixes.insert(forwardingHint);
@@ -86,7 +86,7 @@ void
 ContentServer::deregisterPrefix (const Name &forwardingHint)
 {
   _LOG_DEBUG ("<< content server: deregister " << forwardingHint);
-  m_ccnx->clearInterestFilter(forwardingHint);
+  m_ndnx->clearInterestFilter(forwardingHint);
 
   ScopedLock lock (m_mutex);
   m_prefixes.erase (forwardingHint);
@@ -121,10 +121,10 @@ ContentServer::filterAndServeImpl (const Name &forwardingHint, const Name &name,
             }
         }
     }
-  catch (Ccnx::NameException &ne)
+  catch (Ndnx::NameException &ne)
     {
       // ignore any unexpected interests and errors
-      _LOG_ERROR(boost::get_error_info<Ccnx::error_info_str>(ne));
+      _LOG_ERROR(boost::get_error_info<Ndnx::error_info_str>(ne));
     }
 }
 
@@ -142,10 +142,10 @@ ContentServer::filterAndServe (Name forwardingHint, const Name &interest)
 
       filterAndServeImpl (forwardingHint, interest.getPartialName (forwardingHint.size()), interest); // always try with hint... :( have to
     }
-  catch (Ccnx::NameException &ne)
+  catch (Ndnx::NameException &ne)
     {
       // ignore any unexpected interests and errors
-      _LOG_ERROR(boost::get_error_info<Ccnx::error_info_str>(ne));
+      _LOG_ERROR(boost::get_error_info<Ndnx::error_info_str>(ne));
     }
 }
 
@@ -154,7 +154,7 @@ ContentServer::serve_Action (const Name &forwardingHint, const Name &name, const
 {
   _LOG_DEBUG (">> content server serving ACTION, hint: " << forwardingHint << ", interest: " << interest);
   m_scheduler->scheduleOneTimeTask (m_scheduler, 0, bind (&ContentServer::serve_Action_Execute, this, forwardingHint, name, interest), boost::lexical_cast<string>(name));
-  // need to unlock ccnx mutex... or at least don't lock it
+  // need to unlock ndnx mutex... or at least don't lock it
 }
 
 void
@@ -163,7 +163,7 @@ ContentServer::serve_File (const Name &forwardingHint, const Name &name, const N
   _LOG_DEBUG (">> content server serving FILE, hint: " << forwardingHint << ", interest: " << interest);
 
   m_scheduler->scheduleOneTimeTask (m_scheduler, 0, bind (&ContentServer::serve_File_Execute, this, forwardingHint, name, interest), boost::lexical_cast<string>(name));
-  // need to unlock ccnx mutex... or at least don't lock it
+  // need to unlock ndnx mutex... or at least don't lock it
 }
 
 void
@@ -212,17 +212,17 @@ ContentServer::serve_File_Execute (const Name &forwardingHint, const Name &name,
         if (forwardingHint.size () == 0)
           {
             _LOG_DEBUG (ParsedContentObject (*co).name ());
-            m_ccnx->putToCcnd (*co);
+            m_ndnx->putToNdnd (*co);
           }
         else
           {
             if (m_freshness > 0)
               {
-                m_ccnx->publishData(interest, *co, m_freshness);
+                m_ndnx->publishData(interest, *co, m_freshness);
               }
             else
               {
-                m_ccnx->publishData(interest, *co);
+                m_ndnx->publishData(interest, *co);
               }
           }
 
@@ -252,18 +252,18 @@ ContentServer::serve_Action_Execute (const Name &forwardingHint, const Name &nam
     {
       if (forwardingHint.size () == 0)
         {
-          m_ccnx->putToCcnd (pco->buf ());
+          m_ndnx->putToNdnd (pco->buf ());
         }
       else
         {
           const Bytes &content = pco->buf ();
           if (m_freshness > 0)
             {
-              m_ccnx->publishData(interest, content, m_freshness);
+              m_ndnx->publishData(interest, content, m_freshness);
             }
           else
             {
-              m_ccnx->publishData(interest, content);
+              m_ndnx->publishData(interest, content);
             }
         }
     }

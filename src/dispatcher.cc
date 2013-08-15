@@ -21,13 +21,13 @@
 
 #include "dispatcher.h"
 #include "logging.h"
-#include "ccnx-discovery.h"
+#include "ndnx-discovery.h"
 #include "fetch-task-db.h"
 
 #include <boost/make_shared.hpp>
 #include <boost/lexical_cast.hpp>
 
-using namespace Ccnx;
+using namespace Ndnx;
 using namespace std;
 using namespace boost;
 
@@ -42,21 +42,21 @@ const static double DEFAULT_SYNC_INTEREST_INTERVAL = 10.0; // seconds;
 Dispatcher::Dispatcher(const std::string &localUserName
                        , const std::string &sharedFolder
                        , const filesystem::path &rootDir
-                       , Ccnx::CcnxWrapperPtr ccnx
+                       , Ndnx::NdnxWrapperPtr ndnx
                        , bool enablePrefixDiscovery
                        )
-           : m_ccnx(ccnx)
+           : m_ndnx(ndnx)
            , m_core(NULL)
            , m_rootDir(rootDir)
            , m_executor(1) // creates problems with file assembly. need to ensure somehow that FinishExectute is called after all Segment_Execute finished
-           , m_objectManager(ccnx, rootDir, CHRONOSHARE_APP)
+           , m_objectManager(ndnx, rootDir, CHRONOSHARE_APP)
            , m_localUserName(localUserName)
            , m_sharedFolder(sharedFolder)
            , m_server(NULL)
            , m_enablePrefixDiscovery(enablePrefixDiscovery)
 {
   m_syncLog = make_shared<SyncLog>(m_rootDir, localUserName);
-  m_actionLog = make_shared<ActionLog>(m_ccnx, m_rootDir, m_syncLog, sharedFolder, CHRONOSHARE_APP,
+  m_actionLog = make_shared<ActionLog>(m_ndnx, m_rootDir, m_syncLog, sharedFolder, CHRONOSHARE_APP,
                                        // bind (&Dispatcher::Did_ActionLog_ActionApply_AddOrModify, this, _1, _2, _3, _4, _5, _6, _7),
                                        ActionLog::OnFileAddedOrChangedCallback (), // don't really need this callback
                                        bind (&Dispatcher::Did_ActionLog_ActionApply_Delete, this, _1));
@@ -65,25 +65,25 @@ Dispatcher::Dispatcher(const std::string &localUserName
 
   Name syncPrefix = Name(BROADCAST_DOMAIN)(CHRONOSHARE_APP)(sharedFolder);
 
-  // m_server needs a different ccnx face
-  m_server = new ContentServer(make_shared<CcnxWrapper>(), m_actionLog, rootDir, m_localUserName, m_sharedFolder, CHRONOSHARE_APP, CONTENT_FRESHNESS);
+  // m_server needs a different ndnx face
+  m_server = new ContentServer(make_shared<NdnxWrapper>(), m_actionLog, rootDir, m_localUserName, m_sharedFolder, CHRONOSHARE_APP, CONTENT_FRESHNESS);
   m_server->registerPrefix(Name("/"));
   m_server->registerPrefix(Name(BROADCAST_DOMAIN));
 
-  m_stateServer = new StateServer (make_shared<CcnxWrapper>(), m_actionLog, rootDir, m_localUserName, m_sharedFolder, CHRONOSHARE_APP, m_objectManager, CONTENT_FRESHNESS);
+  m_stateServer = new StateServer (make_shared<NdnxWrapper>(), m_actionLog, rootDir, m_localUserName, m_sharedFolder, CHRONOSHARE_APP, m_objectManager, CONTENT_FRESHNESS);
   // no need to register, right now only listening on localhost prefix
 
   m_core = new SyncCore (m_syncLog, localUserName, Name("/"), syncPrefix,
-                         bind(&Dispatcher::Did_SyncLog_StateChange, this, _1), ccnx, DEFAULT_SYNC_INTEREST_INTERVAL);
+                         bind(&Dispatcher::Did_SyncLog_StateChange, this, _1), ndnx, DEFAULT_SYNC_INTEREST_INTERVAL);
 
   FetchTaskDbPtr actionTaskDb = make_shared<FetchTaskDb>(m_rootDir, "action");
-  m_actionFetcher = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1),
+  m_actionFetcher = make_shared<FetchManager> (m_ndnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1),
                                                Name(BROADCAST_DOMAIN), // no appname suffix now
                                                3,
                                                bind (&Dispatcher::Did_FetchManager_ActionFetch, this, _1, _2, _3, _4), FetchManager::FinishCallback(), actionTaskDb);
 
   FetchTaskDbPtr fileTaskDb = make_shared<FetchTaskDb>(m_rootDir, "file");
-  m_fileFetcher  = make_shared<FetchManager> (m_ccnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1),
+  m_fileFetcher  = make_shared<FetchManager> (m_ndnx, bind (&SyncLog::LookupLocator, &*m_syncLog, _1),
                                               Name(BROADCAST_DOMAIN), // no appname suffix now
                                               3,
                                               bind (&Dispatcher::Did_FetchManager_FileSegmentFetch, this, _1, _2, _3, _4),
@@ -95,7 +95,7 @@ Dispatcher::Dispatcher(const std::string &localUserName
   {
     _LOG_DEBUG("registering prefix discovery in Dispatcher");
     string tag = "dispatcher" + m_localUserName.toString();
-    Ccnx::CcnxDiscovery::registerCallback (TaggedFunction (bind (&Dispatcher::Did_LocalPrefix_Updated, this, _1), tag));
+    Ndnx::NdnxDiscovery::registerCallback (TaggedFunction (bind (&Dispatcher::Did_LocalPrefix_Updated, this, _1), tag));
   }
 
   m_executor.start ();
@@ -112,7 +112,7 @@ Dispatcher::~Dispatcher()
   {
     _LOG_DEBUG("deregistering prefix discovery in Dispatcher");
     string tag = "dispatcher" + m_localUserName.toString();
-    Ccnx::CcnxDiscovery::deregisterCallback (TaggedFunction (bind (&Dispatcher::Did_LocalPrefix_Updated, this, _1), tag));
+    Ndnx::NdnxDiscovery::deregisterCallback (TaggedFunction (bind (&Dispatcher::Did_LocalPrefix_Updated, this, _1), tag));
   }
 
   if (m_core != NULL)
@@ -135,7 +135,7 @@ Dispatcher::~Dispatcher()
 }
 
 void
-Dispatcher::Did_LocalPrefix_Updated (const Ccnx::Name &forwardingHint)
+Dispatcher::Did_LocalPrefix_Updated (const Ndnx::Name &forwardingHint)
 {
   Name effectiveForwardingHint;
   if (m_localUserName.size () >= forwardingHint.size () &&
@@ -323,7 +323,7 @@ Dispatcher::Did_SyncLog_StateChange_Execute (SyncStateMsgPtr stateMsg)
 
 
 void
-Dispatcher::Did_FetchManager_ActionFetch (const Ccnx::Name &deviceName, const Ccnx::Name &actionBaseName, uint32_t seqno, Ccnx::PcoPtr actionPco)
+Dispatcher::Did_FetchManager_ActionFetch (const Ndnx::Name &deviceName, const Ndnx::Name &actionBaseName, uint32_t seqno, Ndnx::PcoPtr actionPco)
 {
   /// @todo Errors and exception checking
   _LOG_DEBUG ("Received action deviceName: " << deviceName << ", actionBaseName: " << actionBaseName << ", seqno: " << seqno);
@@ -406,13 +406,13 @@ Dispatcher::Did_ActionLog_ActionApply_Delete_Execute (std::string filename)
 }
 
 void
-Dispatcher::Did_FetchManager_FileSegmentFetch (const Ccnx::Name &deviceName, const Ccnx::Name &fileSegmentBaseName, uint32_t segment, Ccnx::PcoPtr fileSegmentPco)
+Dispatcher::Did_FetchManager_FileSegmentFetch (const Ndnx::Name &deviceName, const Ndnx::Name &fileSegmentBaseName, uint32_t segment, Ndnx::PcoPtr fileSegmentPco)
 {
   m_executor.execute (bind (&Dispatcher::Did_FetchManager_FileSegmentFetch_Execute, this, deviceName, fileSegmentBaseName, segment, fileSegmentPco));
 }
 
 void
-Dispatcher::Did_FetchManager_FileSegmentFetch_Execute (Ccnx::Name deviceName, Ccnx::Name fileSegmentBaseName, uint32_t segment, Ccnx::PcoPtr fileSegmentPco)
+Dispatcher::Did_FetchManager_FileSegmentFetch_Execute (Ndnx::Name deviceName, Ndnx::Name fileSegmentBaseName, uint32_t segment, Ndnx::PcoPtr fileSegmentPco)
 {
   // fileSegmentBaseName:  /<device_name>/<appname>/file/<hash>
 
@@ -438,13 +438,13 @@ Dispatcher::Did_FetchManager_FileSegmentFetch_Execute (Ccnx::Name deviceName, Cc
 }
 
 void
-Dispatcher::Did_FetchManager_FileFetchComplete (const Ccnx::Name &deviceName, const Ccnx::Name &fileBaseName)
+Dispatcher::Did_FetchManager_FileFetchComplete (const Ndnx::Name &deviceName, const Ndnx::Name &fileBaseName)
 {
   m_executor.execute (bind (&Dispatcher::Did_FetchManager_FileFetchComplete_Execute, this, deviceName, fileBaseName));
 }
 
 void
-Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, Ccnx::Name fileBaseName)
+Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ndnx::Name deviceName, Ndnx::Name fileBaseName)
 {
   // fileBaseName:  /<device_name>/<appname>/file/<hash>
 
@@ -472,7 +472,7 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
     {
       m_fileStateCow->UpdateFile (file->filename(), file->version(),
                                   Hash(file->file_hash ().c_str(), file->file_hash ().size ()), 
-                                  CcnxCharbuf (file->device_name().c_str(), file->device_name().size()), file->seq_no(),
+                                  NdnxCharbuf (file->device_name().c_str(), file->device_name().size()), file->seq_no(),
                                   file->mtime(), file->mtime(), file->mtime(), 
                                   file->mode(), file->seg_num());
 

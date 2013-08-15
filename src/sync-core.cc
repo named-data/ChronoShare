@@ -41,11 +41,11 @@ const std::string SYNC_INTEREST_TAG2 = "send-sync-interest2";
 const std::string LOCAL_STATE_CHANGE_DELAYED_TAG = "local-state-changed";
 
 using namespace boost;
-using namespace Ccnx;
+using namespace Ndnx;
 
 SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPrefix, const Name &syncPrefix,
-                   const StateMsgCallback &callback, CcnxWrapperPtr ccnx, double syncInterestInterval/*= -1.0*/)
-  : m_ccnx (ccnx)
+                   const StateMsgCallback &callback, NdnxWrapperPtr ndnx, double syncInterestInterval/*= -1.0*/)
+  : m_ndnx (ndnx)
   , m_log(syncLog)
   , m_scheduler(new Scheduler ())
   , m_stateMsgCallback(callback)
@@ -55,7 +55,7 @@ SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPr
 {
   m_rootHash = m_log->RememberStateInStateLog();
 
-  m_ccnx->setInterestFilter(m_syncPrefix, boost::bind(&SyncCore::handleInterest, this, _1));
+  m_ndnx->setInterestFilter(m_syncPrefix, boost::bind(&SyncCore::handleInterest, this, _1));
   // m_log->initYP(m_yp);
   m_log->UpdateLocalLocator (localPrefix);
 
@@ -92,7 +92,7 @@ SyncCore::localStateChanged()
   Name syncName = Name (m_syncPrefix)(oldHash->GetHash(), oldHash->GetHashBytes());
   BytesPtr syncData = serializeGZipMsg (*msg);
 
-  m_ccnx->publishData(syncName, *syncData, FRESHNESS);
+  m_ndnx->publishData(syncName, *syncData, FRESHNESS);
   _LOG_DEBUG ("[" << m_log->GetLocalName () << "] localStateChanged ");
   _LOG_TRACE ("[" << m_log->GetLocalName () << "] publishes: " << oldHash->shortHash ());
   // _LOG_TRACE (msg);
@@ -147,7 +147,7 @@ SyncCore::handleRecoverInterest(const Name &name)
     SyncStateMsgPtr msg = m_log->FindStateDifferences(*(Hash::Origin), *m_rootHash);
 
     BytesPtr syncData = serializeGZipMsg (*msg);
-    m_ccnx->publishData(name, *syncData, FRESHNESS);
+    m_ndnx->publishData(name, *syncData, FRESHNESS);
     _LOG_TRACE ("[" << m_log->GetLocalName () << "] publishes " << hash.shortHash ());
     // _LOG_TRACE (msg);
   }
@@ -177,7 +177,7 @@ SyncCore::handleSyncInterest(const Name &name)
     SyncStateMsgPtr msg = m_log->FindStateDifferences(*hash, *m_rootHash);
 
     BytesPtr syncData = serializeGZipMsg (*msg);
-    m_ccnx->publishData(name, *syncData, FRESHNESS);
+    m_ndnx->publishData(name, *syncData, FRESHNESS);
     _LOG_TRACE (m_log->GetLocalName () << " publishes: " << hash->shortHash ());
     _LOG_TRACE (msg);
   }
@@ -322,7 +322,7 @@ SyncCore::sendSyncInterest()
   {
     selectors.interestLifetime(m_syncInterestInterval);
   }
-  m_ccnx->sendInterest(syncInterest,
+  m_ndnx->sendInterest(syncInterest,
                          Closure (boost::bind(&SyncCore::handleSyncData, this, _1, _2),
                                   boost::bind(&SyncCore::handleSyncInterestTimeout, this, _1, _2, _3)),
                           selectors);
@@ -347,7 +347,7 @@ SyncCore::recover(HashPtr hash)
 
     _LOG_DEBUG ("[" << m_log->GetLocalName () << "] >>> RECOVER Interests for " << hash->shortHash ());
 
-    m_ccnx->sendInterest(recoverInterest,
+    m_ndnx->sendInterest(recoverInterest,
                          Closure (boost::bind(&SyncCore::handleRecoverData, this, _1, _2),
                                   boost::bind(&SyncCore::handleRecoverInterestTimeout, this, _1, _2, _3)));
 

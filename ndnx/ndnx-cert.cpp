@@ -18,16 +18,16 @@
  * Author: Zhenkai Zhu <zhenkai@cs.ucla.edu>
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
-#include "ccnx-cert.h"
+#include "ndnx-cert.h"
 #include <tinyxml.h>
 #include <boost/lexical_cast.hpp>
 #include "logging.h"
 
-INIT_LOGGER ("Ccnx.Cert");
+INIT_LOGGER ("Ndnx.Cert");
 
 using namespace std;
 
-namespace Ccnx {
+namespace Ndnx {
 
 Cert::Cert()
     : m_pkey(0)
@@ -42,7 +42,7 @@ Cert::Cert(const PcoPtr &keyObject, const PcoPtr &metaObject = PcoPtr())
   m_name = keyObject->name();
   m_rawKeyBytes = keyObject->content();
   m_keyHash = *(Hash::FromBytes(m_rawKeyBytes));
-  m_pkey = ccn_d2i_pubkey(head(m_rawKeyBytes), m_rawKeyBytes.size());
+  m_pkey = ndn_d2i_pubkey(head(m_rawKeyBytes), m_rawKeyBytes.size());
   updateMeta(metaObject);
 }
 
@@ -50,7 +50,7 @@ Cert::~Cert()
 {
   if (m_pkey != 0)
   {
-    ccn_pubkey_free(m_pkey);
+    ndn_pubkey_free(m_pkey);
     m_pkey = 0;
   }
 }
@@ -124,4 +124,4 @@ Cert::validity()
   return WITHIN_VALID_TIME_SPAN;
 }
 
-} // Ccnx
+} // Ndnx

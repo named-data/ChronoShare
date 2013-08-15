@@ -33,7 +33,7 @@
 
 INIT_LOGGER ("Test.ObjectManager");
 
-using namespace Ccnx;
+using namespace Ndnx;
 using namespace std;
 using namespace boost;
 namespace fs = boost::filesystem;
@@ -48,8 +48,8 @@ BOOST_AUTO_TEST_CASE (ObjectManagerTest)
   _LOG_DEBUG ("tmpdir: " << tmpdir);
   Name deviceName ("/device");
 
-  CcnxWrapperPtr ccnx = make_shared<CcnxWrapper> ();
-  ObjectManager manager (ccnx, tmpdir, "test-chronoshare");
+  NdnxWrapperPtr ndnx = make_shared<NdnxWrapper> ();
+  ObjectManager manager (ndnx, tmpdir, "test-chronoshare");
 
   tuple<HashPtr,int> hash_semgents = manager.localFileToObjects (fs::path("test") / "test-object-manager.cc", deviceName);
 

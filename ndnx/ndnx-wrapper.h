@@ -19,34 +19,34 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#ifndef CCNX_WRAPPER_H
-#define CCNX_WRAPPER_H
+#ifndef NDNX_WRAPPER_H
+#define NDNX_WRAPPER_H
 
 #include <boost/thread/locks.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #include <boost/thread/thread.hpp>
 
-#include "ccnx-common.h"
-#include "ccnx-name.h"
-#include "ccnx-selectors.h"
-#include "ccnx-closure.h"
-#include "ccnx-pco.h"
+#include "ndnx-common.h"
+#include "ndnx-name.h"
+#include "ndnx-selectors.h"
+#include "ndnx-closure.h"
+#include "ndnx-pco.h"
 #include "executor.h"
 
-namespace Ccnx {
+namespace Ndnx {
 
-struct CcnxOperationException : boost::exception, std::exception { };
+struct NdnxOperationException : boost::exception, std::exception { };
 
 class Verifier;
-class CcnxWrapper
+class NdnxWrapper
 {
 public:
-  const static int MAX_FRESHNESS = 2147; // max value for ccnx
+  const static int MAX_FRESHNESS = 2147; // max value for ndnx
   const static int DEFAULT_FRESHNESS = 60;
   typedef boost::function<void (Name, Selectors)> InterestCallback;
 
-  CcnxWrapper();
-  ~CcnxWrapper();
+  NdnxWrapper();
+  ~NdnxWrapper();
 
   void
   start (); // called automatically in constructor
@@ -91,7 +91,7 @@ public:
   createContentObject(const Name &name, const void *buf, size_t len, int freshness = DEFAULT_FRESHNESS, const Name &keyNameParam=Name());
 
   int
-  putToCcnd (const Bytes &contentObject);
+  putToNdnd (const Bytes &contentObject);
 
   bool
   verify(PcoPtr &pco, double maxWait = 1 /*seconds*/);
@@ -100,15 +100,15 @@ public:
   get (const Name &interest, const Selectors &selector = Selectors(), double maxWait = 4.0/*seconds*/);
 
 private:
-  CcnxWrapper(const CcnxWrapper &other) {}
+  NdnxWrapper(const NdnxWrapper &other) {}
 
 protected:
   void
-  connectCcnd();
+  connectNdnd();
 
   /// @cond include_hidden
   void
-  ccnLoop ();
+  ndnLoop ();
 
   /// @endcond
 
@@ -120,7 +120,7 @@ protected:
   typedef boost::recursive_mutex RecLock;
   typedef boost::unique_lock<RecLock> UniqueRecLock;
 
-  ccn* m_handle;
+  ndn* m_handle;
   RecLock m_mutex;
   boost::thread m_thread;
   bool m_running;
@@ -130,33 +130,33 @@ protected:
   Verifier *m_verifier;
 };
 
-typedef boost::shared_ptr<CcnxWrapper> CcnxWrapperPtr;
+typedef boost::shared_ptr<NdnxWrapper> NdnxWrapperPtr;
 
 inline int
-CcnxWrapper::publishData (const Name &name, const Bytes &content, int freshness, const Name &keyName)
+NdnxWrapper::publishData (const Name &name, const Bytes &content, int freshness, const Name &keyName)
 {
   return publishData(name, head(content), content.size(), freshness, keyName);
 }
 
 inline int
-CcnxWrapper::publishData (const Name &name, const std::string &content, int freshness, const Name &keyName)
+NdnxWrapper::publishData (const Name &name, const std::string &content, int freshness, const Name &keyName)
 {
   return publishData(name, reinterpret_cast<const unsigned char *> (content.c_str ()), content.size (), freshness, keyName);
 }
 
 inline int
-CcnxWrapper::publishUnsignedData(const Name &name, const Bytes &content, int freshness)
+NdnxWrapper::publishUnsignedData(const Name &name, const Bytes &content, int freshness)
 {
   return publishUnsignedData(name, head(content), content.size(), freshness);
 }
 
 inline int
-CcnxWrapper::publishUnsignedData(const Name &name, const std::string &content, int freshness)
+NdnxWrapper::publishUnsignedData(const Name &name, const std::string &content, int freshness)
 {
   return publishUnsignedData(name, reinterpret_cast<const unsigned char *> (content.c_str ()), content.size (), freshness);
 }
 
 
-} // Ccnx
+} // Ndnx
 
 #endif

@@ -32,7 +32,7 @@
 
 using namespace std;
 using namespace boost;
-using namespace Ccnx;
+using namespace Ndnx;
 namespace fs = boost::filesystem;
 
 BOOST_AUTO_TEST_SUITE(TestActionLog)
@@ -45,9 +45,9 @@ BOOST_AUTO_TEST_CASE (ActionLogTest)
 
   fs::path tmpdir = fs::unique_path (fs::temp_directory_path () / "%%%%-%%%%-%%%%-%%%%");
   SyncLogPtr syncLog = make_shared<SyncLog> (tmpdir, localName);
-  CcnxWrapperPtr ccnx = make_shared<CcnxWrapper> ();
+  NdnxWrapperPtr ndnx = make_shared<NdnxWrapper> ();
 
-  ActionLogPtr actionLog = make_shared<ActionLog> (ccnx, tmpdir, syncLog, "top-secret", "test-chronoshare",
+  ActionLogPtr actionLog = make_shared<ActionLog> (ndnx, tmpdir, syncLog, "top-secret", "test-chronoshare",
                                                    ActionLog::OnFileAddedOrChangedCallback(), ActionLog::OnFileRemovedCallback ());
 
 // const std::string &filename,
@@ -129,7 +129,7 @@ BOOST_AUTO_TEST_CASE (ActionLogTest)
 
   BytesPtr item_msg = serializeMsg (item);
   Name actionName = Name ("/")(Name("/zhenkai/test"))("test-chronoshare")("action")("top-secret")(1);
-  Bytes actionData = ccnx->createContentObject (actionName, head (*item_msg), item_msg->size ());
+  Bytes actionData = ndnx->createContentObject (actionName, head (*item_msg), item_msg->size ());
 
   pco = make_shared<ParsedContentObject> (actionData);
   BOOST_CHECK_EQUAL ((bool)actionLog->AddRemoteAction (pco), true);

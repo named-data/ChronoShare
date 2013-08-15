@@ -1,4 +1,4 @@
-#include "ccnx-discovery.h"
+#include "ndnx-discovery.h"
 #include "simple-interval-generator.h"
 #include "task.h"
 #include "periodic-task.h"
@@ -6,7 +6,7 @@
 #include <boost/make_shared.hpp>
 #include <boost/bind.hpp>
 
-using namespace Ccnx;
+using namespace Ndnx;
 using namespace std;
 
 const string
@@ -41,40 +41,40 @@ TaggedFunction::operator()(const Name &name)
 }
 
 const double
-CcnxDiscovery::INTERVAL = 15.0;
+NdnxDiscovery::INTERVAL = 15.0;
 
-CcnxDiscovery *
-CcnxDiscovery::instance = NULL;
+NdnxDiscovery *
+NdnxDiscovery::instance = NULL;
 
 boost::mutex
-CcnxDiscovery::mutex;
+NdnxDiscovery::mutex;
 
-CcnxDiscovery::CcnxDiscovery()
+NdnxDiscovery::NdnxDiscovery()
               : m_scheduler(new Scheduler())
               , m_localPrefix("/")
 {
   m_scheduler->start();
 
   Scheduler::scheduleOneTimeTask (m_scheduler, 0,
-                                  boost::bind(&CcnxDiscovery::poll, this), "Initial-Local-Prefix-Check");
+                                  boost::bind(&NdnxDiscovery::poll, this), "Initial-Local-Prefix-Check");
   Scheduler::schedulePeriodicTask (m_scheduler,
                                    boost::make_shared<SimpleIntervalGenerator>(INTERVAL),
-                                   boost::bind(&CcnxDiscovery::poll, this), "Local-Prefix-Check");
+                                   boost::bind(&NdnxDiscovery::poll, this), "Local-Prefix-Check");
 }
 
-CcnxDiscovery::~CcnxDiscovery()
+NdnxDiscovery::~NdnxDiscovery()
 {
   m_scheduler->shutdown();
 }
 
 void
-CcnxDiscovery::addCallback(const TaggedFunction &callback)
+NdnxDiscovery::addCallback(const TaggedFunction &callback)
 {
   m_callbacks.push_back(callback);
 }
 
 int
-CcnxDiscovery::deleteCallback(const TaggedFunction &callback)
+NdnxDiscovery::deleteCallback(const TaggedFunction &callback)
 {
   List::iterator it = m_callbacks.begin();
   while (it != m_callbacks.end())
@@ -92,9 +92,9 @@ CcnxDiscovery::deleteCallback(const TaggedFunction &callback)
 }
 
 void
-CcnxDiscovery::poll()
+NdnxDiscovery::poll()
 {
-  Name localPrefix = CcnxWrapper::getLocalPrefix();
+  Name localPrefix = NdnxWrapper::getLocalPrefix();
   if (localPrefix != m_localPrefix)
   {
     Lock lock(mutex);
@@ -107,24 +107,24 @@ CcnxDiscovery::poll()
 }
 
 void
-CcnxDiscovery::registerCallback(const TaggedFunction &callback)
+NdnxDiscovery::registerCallback(const TaggedFunction &callback)
 {
   Lock lock(mutex);
   if (instance == NULL)
   {
-    instance = new CcnxDiscovery();
+    instance = new NdnxDiscovery();
   }
 
   instance->addCallback(callback);
 }
 
 void
-CcnxDiscovery::deregisterCallback(const TaggedFunction &callback)
+NdnxDiscovery::deregisterCallback(const TaggedFunction &callback)
 {
   Lock lock(mutex);
   if (instance == NULL)
   {
-    cerr << "CcnxDiscovery::deregisterCallback called without instance" << endl;
+    cerr << "NdnxDiscovery::deregisterCallback called without instance" << endl;
   }
   else
   {

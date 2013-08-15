@@ -20,9 +20,9 @@
  */
 
 #include "object-manager.h"
-#include "ccnx-name.h"
-#include "ccnx-common.h"
-#include "ccnx-pco.h"
+#include "ndnx-name.h"
+#include "ndnx-common.h"
+#include "ndnx-pco.h"
 #include "object-db.h"
 #include "logging.h"
 
@@ -35,15 +35,15 @@
 
 INIT_LOGGER ("Object.Manager");
 
-using namespace Ccnx;
+using namespace Ndnx;
 using namespace boost;
 using namespace std;
 namespace fs = boost::filesystem;
 
 const int MAX_FILE_SEGMENT_SIZE = 1024;
 
-ObjectManager::ObjectManager (Ccnx::CcnxWrapperPtr ccnx, const fs::path &folder, const std::string &appName)
-  : m_ccnx (ccnx)
+ObjectManager::ObjectManager (Ndnx::NdnxWrapperPtr ndnx, const fs::path &folder, const std::string &appName)
+  : m_ndnx (ndnx)
   , m_folder (folder / ".chronoshare")
   , m_appName (appName)
 {
@@ -56,7 +56,7 @@ ObjectManager::~ObjectManager ()
 
 // /<devicename>/<appname>/file/<hash>/<segment>
 boost::tuple<HashPtr /*object-db name*/, size_t /* number of segments*/>
-ObjectManager::localFileToObjects (const fs::path &file, const Ccnx::Name &deviceName)
+ObjectManager::localFileToObjects (const fs::path &file, const Ndnx::Name &deviceName)
 {
   HashPtr fileHash = Hash::FromFileContent (file);
   ObjectDb fileDb (m_folder, lexical_cast<string> (*fileHash));
@@ -79,7 +79,7 @@ ObjectManager::localFileToObjects (const fs::path &file, const Ccnx::Name &devic
       // cout << name << endl;
       //_LOG_DEBUG ("Read " << iff.gcount () << " from " << file << " for segment " << segment);
 
-      Bytes data = m_ccnx->createContentObject (name, buf, iff.gcount ());
+      Bytes data = m_ndnx->createContentObject (name, buf, iff.gcount ());
       fileDb.saveContentObject (deviceName, segment, data);
 
       segment ++;
@@ -87,7 +87,7 @@ ObjectManager::localFileToObjects (const fs::path &file, const Ccnx::Name &devic
   if (segment == 0) // handle empty files
     {
       Name name = Name ("/")(m_appName)("file")(fileHash->GetHash (), fileHash->GetHashBytes ())(deviceName)(0);
-      Bytes data = m_ccnx->createContentObject (name, 0, 0);
+      Bytes data = m_ndnx->createContentObject (name, 0, 0);
       fileDb.saveContentObject (deviceName, 0, data);
 
       segment ++;
@@ -97,7 +97,7 @@ ObjectManager::localFileToObjects (const fs::path &file, const Ccnx::Name &devic
 }
 
 bool
-ObjectManager::objectsToLocalFile (/*in*/const Ccnx::Name &deviceName, /*in*/const Hash &fileHash, /*out*/ const fs::path &file)
+ObjectManager::objectsToLocalFile (/*in*/const Ndnx::Name &deviceName, /*in*/const Hash &fileHash, /*out*/ const fs::path &file)
 {
   string hashStr = lexical_cast<string> (fileHash);
   if (!ObjectDb::DoesExist (m_folder, deviceName, hashStr))

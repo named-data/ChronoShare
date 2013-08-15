@@ -22,7 +22,7 @@
 #ifndef STATE_SERVER_H
 #define STATE_SERVER_H
 
-#include "ccnx-wrapper.h"
+#include "ndnx-wrapper.h"
 #include "object-manager.h"
 #include "object-db.h"
 #include "action-log.h"
@@ -152,33 +152,33 @@
 class StateServer
 {
 public:
-  StateServer(Ccnx::CcnxWrapperPtr ccnx, ActionLogPtr actionLog, const boost::filesystem::path &rootDir,
-              const Ccnx::Name &userName, const std::string &sharedFolderName, const std::string &appName,
+  StateServer(Ndnx::NdnxWrapperPtr ndnx, ActionLogPtr actionLog, const boost::filesystem::path &rootDir,
+              const Ndnx::Name &userName, const std::string &sharedFolderName, const std::string &appName,
               ObjectManager &objectManager,
               int freshness = -1);
   ~StateServer();
 
 private:
   void
-  info_actions_folder (const Ccnx::Name &interest);
+  info_actions_folder (const Ndnx::Name &interest);
 
   void
-  info_actions_file (const Ccnx::Name &interest);
+  info_actions_file (const Ndnx::Name &interest);
 
   void
-  info_actions_fileOrFolder_Execute (const Ccnx::Name &interest, bool isFolder = true);
+  info_actions_fileOrFolder_Execute (const Ndnx::Name &interest, bool isFolder = true);
 
   void
-  info_files_folder (const Ccnx::Name &interest);
+  info_files_folder (const Ndnx::Name &interest);
 
   void
-  info_files_folder_Execute (const Ccnx::Name &interest);
+  info_files_folder_Execute (const Ndnx::Name &interest);
 
   void
-  cmd_restore_file (const Ccnx::Name &interest);
+  cmd_restore_file (const Ndnx::Name &interest);
 
   void
-  cmd_restore_file_Execute (const Ccnx::Name &interest);
+  cmd_restore_file_Execute (const Ndnx::Name &interest);
 
 private:
   void
@@ -188,25 +188,25 @@ private:
   deregisterPrefixes ();
 
   static void
-  formatActionJson (json_spirit::Array &actions, const Ccnx::Name &name, sqlite3_int64 seq_no, const ActionItem &action);
+  formatActionJson (json_spirit::Array &actions, const Ndnx::Name &name, sqlite3_int64 seq_no, const ActionItem &action);
 
   static void
   formatFilestateJson (json_spirit::Array &files, const FileItem &file);
 
 private:
-  Ccnx::CcnxWrapperPtr m_ccnx;
+  Ndnx::NdnxWrapperPtr m_ndnx;
   ActionLogPtr m_actionLog;
   ObjectManager &m_objectManager;
 
-  Ccnx::Name m_PREFIX_INFO;
-  Ccnx::Name m_PREFIX_CMD;
+  Ndnx::Name m_PREFIX_INFO;
+  Ndnx::Name m_PREFIX_CMD;
 
   boost::filesystem::path m_rootDir;
   int m_freshness;
 
   Executor    m_executor;
 
-  Ccnx::Name  m_userName;
+  Ndnx::Name  m_userName;
   std::string m_sharedFolderName;
   std::string m_appName;
 };

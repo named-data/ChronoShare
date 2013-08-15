@@ -26,12 +26,12 @@
 #include <unistd.h>
 #include "action-log.h"
 #include <iostream>
-#include <ccnx-name.h>
+#include <ndnx-name.h>
 #include <boost/filesystem.hpp>
 
 using namespace std;
 using namespace boost;
-using namespace Ccnx;
+using namespace Ndnx;
 namespace fs = boost::filesystem;
 
 BOOST_AUTO_TEST_SUITE(TestSyncLog)

@@ -19,15 +19,17 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#ifndef CCNX_CONTENT_OBJECT_H
-#define CCNX_CONTENT_OBJECT_H
+#ifndef NDNX_CONTENT_OBJECT_H
+#define NDNX_CONTENT_OBJECT_H
 
-#include "ccnx-wrapper.h"
-#include "ccnx-common.h"
-#include "ccnx-name.h"
-#include "hash-helper.h"
+#include "ndnx-wrapper.h"
+#include "ndnx-common.h"
+#include "ndnx-name.h"
 
-namespace Ccnx {
+class Hash;
+typedef boost::shared_ptr<Hash> HashPtr;
+
+namespace Ndnx {
 
 struct MisformedContentObjectException : virtual boost::exception, virtual std::exception { };
 
@@ -44,7 +46,7 @@ public:
     OTHER
   };
   ParsedContentObject(const unsigned char *data, size_t len, bool verified = false);
-  ParsedContentObject(const unsigned char *data, const ccn_parsed_ContentObject &pco, bool verified = false);
+  ParsedContentObject(const unsigned char *data, const ndn_parsed_ContentObject &pco, bool verified = false);
   ParsedContentObject(const Bytes &bytes, bool verified = false);
   ParsedContentObject(const ParsedContentObject &other, bool verified = false);
   virtual ~ParsedContentObject();
@@ -79,7 +81,7 @@ public:
   const unsigned char *
   msg() const { return head(m_bytes); }
 
-  const ccn_parsed_ContentObject *
+  const ndn_parsed_ContentObject *
   pco() const { return &m_pco; }
 
 private:
@@ -87,8 +89,8 @@ private:
   init(const unsigned char *data, size_t len);
 
 protected:
-  ccn_parsed_ContentObject m_pco;
-  ccn_indexbuf *m_comps;
+  ndn_parsed_ContentObject m_pco;
+  ndn_indexbuf *m_comps;
   Bytes m_bytes;
   bool m_verified;
   bool m_integrityChecked;
@@ -105,4 +107,4 @@ typedef boost::shared_ptr<ParsedContentObject> PcoPtr;
 
 }
 
-#endif // CCNX_CONTENT_OBJECT_H
+#endif // NDNX_CONTENT_OBJECT_H

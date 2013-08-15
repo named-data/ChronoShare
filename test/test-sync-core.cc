@@ -6,7 +6,7 @@
 #include <boost/make_shared.hpp>
 
 using namespace std;
-using namespace Ccnx;
+using namespace Ndnx;
 using namespace boost;
 using namespace boost::filesystem;
 
@@ -56,8 +56,8 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   Name user2("/darkknight");
   Name loc2("/gotham2");
   Name syncPrefix("/broadcast/darkknight");
-  CcnxWrapperPtr c1(new CcnxWrapper());
-  CcnxWrapperPtr c2(new CcnxWrapper());
+  NdnxWrapperPtr c1(new NdnxWrapper());
+  NdnxWrapperPtr c2(new NdnxWrapper());
   SyncLogPtr log1(new SyncLog(dir1, user1.toString()));
   SyncLogPtr log2(new SyncLog(dir2, user2.toString()));
 

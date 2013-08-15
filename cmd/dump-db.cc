@@ -21,14 +21,14 @@
 #include "dispatcher.h"
 #include "fs-watcher.h"
 #include "logging.h"
-#include "ccnx-wrapper.h"
+#include "ndnx-wrapper.h"
 
 #include <boost/make_shared.hpp>
 #include <boost/lexical_cast.hpp>
 
 using namespace boost;
 using namespace std;
-using namespace Ccnx;
+using namespace Ndnx;
 
 INIT_LOGGER ("DumpDb");
 
@@ -174,18 +174,18 @@ public:
   }
 
   void
-  DumpActionData(const Ccnx::Name &deviceName, int64_t seqno)
+  DumpActionData(const Ndnx::Name &deviceName, int64_t seqno)
   {
     sqlite3_stmt *stmt;
     sqlite3_prepare_v2 (m_db, "SELECT action_content_object, action_name FROM ActionLog WHERE device_name = ? and seq_no = ?", -1, &stmt, 0);
-    Ccnx::CcnxCharbufPtr device_name = deviceName.toCcnxCharbuf();
+    Ndnx::NdnxCharbufPtr device_name = deviceName.toNdnxCharbuf();
     sqlite3_bind_blob (stmt, 1, device_name->buf(), device_name->length(), SQLITE_STATIC);
     sqlite3_bind_int64 (stmt, 2, seqno);
     cout << "Dumping action data for: [" << deviceName << ", " << seqno << "]" <<endl;
     if (sqlite3_step(stmt) == SQLITE_ROW)
     {
       PcoPtr pco = make_shared<ParsedContentObject> (reinterpret_cast<const unsigned char *> (sqlite3_column_blob (stmt, 0)), sqlite3_column_bytes (stmt, 0));
-      Ccnx::Name actionName = Ccnx::Name(sqlite3_column_blob(stmt, 1), sqlite3_column_bytes(stmt, 0));
+      Ndnx::Name actionName = Ndnx::Name(sqlite3_column_blob(stmt, 1), sqlite3_column_bytes(stmt, 0));
       if (pco)
       {
         ActionItemPtr action = deserializeMsg<ActionItem> (pco->content());

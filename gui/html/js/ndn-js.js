@@ -2,7 +2,7 @@
  * @author: Jeff Thompson
  * See COPYING for copyright and distribution information.
  * Provide the callback closure for the async communication methods in the NDN class.
- * This is a port of Closure.py from PyCCN, written by: 
+ * This is a port of Closure.py from PyNDN, written by: 
  * Derek Kulinski <takeda@takeda.tk>
  * Jeff Burke <jburke@ucla.edu>
  */
@@ -126,7 +126,7 @@ WebSocketTransport.prototype.connect = function(ndn, onopenCallback) {
 		if (LOG > 3) console.log(ev);
 		if (LOG > 3) console.log('ws.onopen: WebSocket connection opened.');
 		if (LOG > 3) console.log('ws.onopen: ReadyState: ' + this.readyState);
-        // NDN.registerPrefix will fetch the ccndid when needed.
+        // NDN.registerPrefix will fetch the ndndid when needed.
         
         onopenCallback();
 	}
@@ -171,11 +171,11 @@ WebSocketTransport.prototype.send = function(data) {
 /**
  * @author: Meki Cheraoui
  * See COPYING for copyright and distribution information.
- * This class contains all CCNx tags
+ * This class contains all NDNx tags
  */
 
 
-var CCNProtocolDTags = {
+var NDNProtocolDTags = {
 
 	/**
 	 * Note if you add one of these, add it to the reverse string map as well.
@@ -292,11 +292,11 @@ var CCNProtocolDTags = {
 	 ConfigSliceOp : 126,
 
 	// Remember to keep in sync with schema/tagnames.csvsdict
-	 CCNProtocolDataUnit : 17702112,
-	 CCNPROTOCOL_DATA_UNIT : "CCNProtocolDataUnit"
+	 NDNProtocolDataUnit : 17702112,
+	 NDNPROTOCOL_DATA_UNIT : "NDNProtocolDataUnit"
 };
 
-var CCNProtocolDTagsStrings = [
+var NDNProtocolDTagsStrings = [
 	null, null, null, null, null, null, null, null, null, null, null,
 	null, null,
 	"Any", "Name", "Component", "Certificate", "Collection", "CompleteName",
@@ -322,15 +322,15 @@ var CCNProtocolDTagsStrings = [
 
 
 //TESTING
-//console.log(exports.CCNProtocolDTagsStrings[17]);
+//console.log(exports.NDNProtocolDTagsStrings[17]);
 
 /**
  * @author: Meki Cheraoui
  * See COPYING for copyright and distribution information.
- * This class represents CCNTime Objects
+ * This class represents NDNTime Objects
  */
 
-var CCNTime = function CCNTime(
+var NDNTime = function NDNTime(
                                
 		input) {
 
@@ -354,23 +354,23 @@ var CCNTime = function CCNTime(
 };
 
 
-CCNTime.prototype.getJavascriptDate = function(){
+NDNTime.prototype.getJavascriptDate = function(){
 	var d = new Date();
 	d.setTime( this.msec );
 	return d
 };
 
 	/**
-	 * Create a CCNTime
+	 * Create a NDNTime
 	 * @param timestamp source timestamp to initialize from, some precision will be lost
 	 */
 
 
 	/**
-	 * Create a CCNTime from its binary encoding
-	 * @param binaryTime12 the binary representation of a CCNTime
+	 * Create a NDNTime from its binary encoding
+	 * @param binaryTime12 the binary representation of a NDNTime
 	 */
-/*CCNTime.prototype.setDateBinary = function(
+/*NDNTime.prototype.setDateBinary = function(
 	//byte [] 
 		binaryTime12) {
 
@@ -392,7 +392,7 @@ CCNTime.prototype.getJavascriptDate = function(){
 };
 
 //byte[]
-CCNTime.prototype.toBinaryTime = function() {
+NDNTime.prototype.toBinaryTime = function() {
 
 	return this.msec; //unsignedLongToByteArray(this.date.getTime());
 
@@ -567,20 +567,20 @@ Name.createNameArray = function(name) {
 }
 
 
-Name.prototype.from_ccnb = function(/*XMLDecoder*/ decoder)  {
+Name.prototype.from_ndnb = function(/*XMLDecoder*/ decoder)  {
 		decoder.readStartElement(this.getElementLabel());
 
 
 		this.components = new Array(); //new ArrayList<byte []>();
 
-		while (decoder.peekStartElement(CCNProtocolDTags.Component)) {
-			this.add(decoder.readBinaryElement(CCNProtocolDTags.Component));
+		while (decoder.peekStartElement(NDNProtocolDTags.Component)) {
+			this.add(decoder.readBinaryElement(NDNProtocolDTags.Component));
 		}
 
 		decoder.readEndElement();
 };
 
-Name.prototype.to_ccnb = function(/*XMLEncoder*/ encoder)  {
+Name.prototype.to_ndnb = function(/*XMLEncoder*/ encoder)  {
 
 		if( this.components ==null )
 			throw new Error("CANNOT ENCODE EMPTY CONTENT NAME");
@@ -588,13 +588,13 @@ Name.prototype.to_ccnb = function(/*XMLEncoder*/ encoder)  {
 		encoder.writeStartElement(this.getElementLabel());
 		var count = this.components.length;
 		for (var i=0; i < count; i++) {
-			encoder.writeElement(CCNProtocolDTags.Component, this.components[i]);
+			encoder.writeElement(NDNProtocolDTags.Component, this.components[i]);
 		}
 		encoder.writeEndElement();
 };
 
 Name.prototype.getElementLabel = function(){
-	return CCNProtocolDTags.Name;
+	return NDNProtocolDTags.Name;
 };
 
 /*
@@ -671,7 +671,7 @@ Name.prototype.addSegment = function(number) {
     return this;
 }
 
-// Return the escaped name string according to "CCNx URI Scheme".
+// Return the escaped name string according to "NDNx URI Scheme".
 Name.prototype.to_uri = function() {
     if (this.components.length == 0)
         return "/";
@@ -803,7 +803,7 @@ Name.ContentDigestPrefix = new Uint8Array([0xc1, 0x2e, 0x4d, 0x2e, 0x47, 0xc1, 0
 Name.ContentDigestSuffix = new Uint8Array([0x00]);
 
 /*
- * Return component as an escaped string according to "CCNx URI Scheme".
+ * Return component as an escaped string according to "NDNx URI Scheme".
  * We can't use encodeURIComponent because that doesn't encode all the characters we want to.
  */
 Name.toEscapedString = function(component) {
@@ -837,7 +837,7 @@ Name.toEscapedString = function(component) {
 };
 
 /*
- * Return component as a Uint8Array by decoding the escapedString according to "CCNx URI Scheme".
+ * Return component as a Uint8Array by decoding the escapedString according to "NDNx URI Scheme".
  * If escapedString is "", "." or ".." then return null, which means to skip the component in the name.
  */
 Name.fromEscapedString = function(escapedString) {
@@ -961,7 +961,7 @@ ContentObject.prototype.sign = function(){
 ContentObject.prototype.encodeObject = function encodeObject(obj){
 	var enc = new BinaryXMLEncoder();
  
-	obj.to_ccnb(enc);
+	obj.to_ndnb(enc);
 	
 	var num = enc.getReducedOstream();
 
@@ -973,7 +973,7 @@ ContentObject.prototype.encodeObject = function encodeObject(obj){
 ContentObject.prototype.encodeContent = function encodeContent(obj){
 	var enc = new BinaryXMLEncoder();
 	 
-	enc.writeElement(CCNProtocolDTags.Content, this.content);
+	enc.writeElement(NDNProtocolDTags.Content, this.content);
 
 	var num = enc.getReducedOstream();
 
@@ -989,16 +989,16 @@ ContentObject.prototype.saveRawData = function(bytes){
 	this.rawSignatureData = sigBits;
 };
 
-ContentObject.prototype.from_ccnb = function(/*XMLDecoder*/ decoder) {
+ContentObject.prototype.from_ndnb = function(/*XMLDecoder*/ decoder) {
 
 	// TODO VALIDATE THAT ALL FIELDS EXCEPT SIGNATURE ARE PRESENT
 
 		decoder.readStartElement(this.getElementLabel());
 
 
-		if( decoder.peekStartElement(CCNProtocolDTags.Signature) ){
+		if( decoder.peekStartElement(NDNProtocolDTags.Signature) ){
 			this.signature = new Signature();
-			this.signature.from_ccnb(decoder);
+			this.signature.from_ndnb(decoder);
 		}
 		
 		//this.endSIG = decoder.offset;
@@ -1006,17 +1006,17 @@ ContentObject.prototype.from_ccnb = function(/*XMLDecoder*/ decoder) {
 		this.startSIG = decoder.offset;
 
 		this.name = new Name();
-		this.name.from_ccnb(decoder);
+		this.name.from_ndnb(decoder);
 		
 		//this.startSignedInfo = decoder.offset;
 	
 		
-		if( decoder.peekStartElement(CCNProtocolDTags.SignedInfo) ){
+		if( decoder.peekStartElement(NDNProtocolDTags.SignedInfo) ){
 			this.signedInfo = new SignedInfo();
-			this.signedInfo.from_ccnb(decoder);
+			this.signedInfo.from_ndnb(decoder);
 		}
 		
-		this.content = decoder.readBinaryElement(CCNProtocolDTags.Content);
+		this.content = decoder.readBinaryElement(NDNProtocolDTags.Content);
 
 		
 		//this.endContent = decoder.offset;
@@ -1028,7 +1028,7 @@ ContentObject.prototype.from_ccnb = function(/*XMLDecoder*/ decoder) {
 		this.saveRawData(decoder.istream);
 };
 
-ContentObject.prototype.to_ccnb = function(/*XMLEncoder*/ encoder)  {
+ContentObject.prototype.to_ndnb = function(/*XMLEncoder*/ encoder)  {
 
 	//TODO verify name, SignedInfo and Signature is present
 
@@ -1038,21 +1038,21 @@ ContentObject.prototype.to_ccnb = function(/*XMLEncoder*/ encoder)  {
 	
 
 
-	if(null!=this.signature) this.signature.to_ccnb(encoder);
+	if(null!=this.signature) this.signature.to_ndnb(encoder);
 	
 	
 	this.startSIG = encoder.offset;
 	
 
-	if(null!=this.name) this.name.to_ccnb(encoder);
+	if(null!=this.name) this.name.to_ndnb(encoder);
 	
 	//this.endSIG = encoder.offset;
 	//this.startSignedInfo = encoder.offset;
 	
 	
-	if(null!=this.signedInfo) this.signedInfo.to_ccnb(encoder);
+	if(null!=this.signedInfo) this.signedInfo.to_ndnb(encoder);
 
-	encoder.writeElement(CCNProtocolDTags.Content, this.content);
+	encoder.writeElement(NDNProtocolDTags.Content, this.content);
 
 	
 	this.endSIG = encoder.offset;
@@ -1066,7 +1066,7 @@ ContentObject.prototype.to_ccnb = function(/*XMLEncoder*/ encoder)  {
 	
 };
 
-ContentObject.prototype.getElementLabel= function(){return CCNProtocolDTags.ContentObject;};
+ContentObject.prototype.getElementLabel= function(){return NDNProtocolDTags.ContentObject;};
 
 /**
  * Signature
@@ -1078,31 +1078,31 @@ var Signature = function Signature(_witness,_signature,_digestAlgorithm) {
 	this.digestAlgorithm = _digestAlgorithm//String _digestAlgorithm;
 };
 
-Signature.prototype.from_ccnb =function( decoder) {
+Signature.prototype.from_ndnb =function( decoder) {
 		decoder.readStartElement(this.getElementLabel());
 		
 		if(LOG>4)console.log('STARTED DECODING SIGNATURE');
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.DigestAlgorithm)) {
+		if (decoder.peekStartElement(NDNProtocolDTags.DigestAlgorithm)) {
 			if(LOG>4)console.log('DIGIEST ALGORITHM FOUND');
-			this.digestAlgorithm = decoder.readUTF8Element(CCNProtocolDTags.DigestAlgorithm); 
+			this.digestAlgorithm = decoder.readUTF8Element(NDNProtocolDTags.DigestAlgorithm); 
 		}
-		if (decoder.peekStartElement(CCNProtocolDTags.Witness)) {
+		if (decoder.peekStartElement(NDNProtocolDTags.Witness)) {
 			if(LOG>4)console.log('WITNESS FOUND');
-			this.Witness = decoder.readBinaryElement(CCNProtocolDTags.Witness); 
+			this.Witness = decoder.readBinaryElement(NDNProtocolDTags.Witness); 
 		}
 		
 		//FORCE TO READ A SIGNATURE
 
 			if(LOG>4)console.log('SIGNATURE FOUND');
-			this.signature = decoder.readBinaryElement(CCNProtocolDTags.SignatureBits);
+			this.signature = decoder.readBinaryElement(NDNProtocolDTags.SignatureBits);
 
 		decoder.readEndElement();
 	
 };
 
 
-Signature.prototype.to_ccnb= function( encoder){
+Signature.prototype.to_ndnb= function( encoder){
     	
 	if (!this.validate()) {
 		throw new Error("Cannot encode: field values missing.");
@@ -1110,21 +1110,21 @@ Signature.prototype.to_ccnb= function( encoder){
 	
 	encoder.writeStartElement(this.getElementLabel());
 	
-	if ((null != this.digestAlgorithm) && (!this.digestAlgorithm.equals(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM))) {
-		encoder.writeElement(CCNProtocolDTags.DigestAlgorithm, OIDLookup.getDigestOID(this.DigestAlgorithm));
+	if ((null != this.digestAlgorithm) && (!this.digestAlgorithm.equals(NDNDigestHelper.DEFAULT_DIGEST_ALGORITHM))) {
+		encoder.writeElement(NDNProtocolDTags.DigestAlgorithm, OIDLookup.getDigestOID(this.DigestAlgorithm));
 	}
 	
 	if (null != this.Witness) {
 		// needs to handle null witness
-		encoder.writeElement(CCNProtocolDTags.Witness, this.Witness);
+		encoder.writeElement(NDNProtocolDTags.Witness, this.Witness);
 	}
 
-	encoder.writeElement(CCNProtocolDTags.SignatureBits, this.signature);
+	encoder.writeElement(NDNProtocolDTags.SignatureBits, this.signature);
 
 	encoder.writeEndElement();   		
 };
 
-Signature.prototype.getElementLabel = function() { return CCNProtocolDTags.Signature; };
+Signature.prototype.getElementLabel = function() { return NDNProtocolDTags.Signature; };
 
 
 Signature.prototype.validate = function() {
@@ -1144,7 +1144,7 @@ var SignedInfo = function SignedInfo(_publisher,_timestamp,_type,_locator,_fresh
 	//TODO, Check types
 
     this.publisher = _publisher; //publisherPublicKeyDigest
-    this.timestamp=_timestamp; // CCN Time
+    this.timestamp=_timestamp; // NDN Time
     this.type=_type; // ContentType
     this.locator =_locator;//KeyLocator
     this.freshnessSeconds =_freshnessSeconds; // Integer
@@ -1190,7 +1190,7 @@ SignedInfo.prototype.setFields = function(){
 	var time = d.getTime();
 	
 
-    this.timestamp = new CCNTime( time );
+    this.timestamp = new NDNTime( time );
     
     if(LOG>4)console.log('TIME msec is');
 
@@ -1210,23 +1210,23 @@ SignedInfo.prototype.setFields = function(){
 
 };
 
-SignedInfo.prototype.from_ccnb = function( decoder){
+SignedInfo.prototype.from_ndnb = function( decoder){
 
 		decoder.readStartElement( this.getElementLabel() );
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.PublisherPublicKeyDigest)) {
+		if (decoder.peekStartElement(NDNProtocolDTags.PublisherPublicKeyDigest)) {
 			if(LOG>4)console.log('DECODING PUBLISHER KEY');
 			this.publisher = new PublisherPublicKeyDigest();
-			this.publisher.from_ccnb(decoder);
+			this.publisher.from_ndnb(decoder);
 		}
 
-		if (decoder.peekStartElement(CCNProtocolDTags.Timestamp)) {
+		if (decoder.peekStartElement(NDNProtocolDTags.Timestamp)) {
 			if(LOG>4)console.log('DECODING TIMESTAMP');
-			this.timestamp = decoder.readDateTime(CCNProtocolDTags.Timestamp);
+			this.timestamp = decoder.readDateTime(NDNProtocolDTags.Timestamp);
 		}
 
-		if (decoder.peekStartElement(CCNProtocolDTags.Type)) {
-			var binType = decoder.readBinaryElement(CCNProtocolDTags.Type);//byte [] 
+		if (decoder.peekStartElement(NDNProtocolDTags.Type)) {
+			var binType = decoder.readBinaryElement(NDNProtocolDTags.Type);//byte [] 
 		
 			
 			//TODO Implement type of Key Reading
@@ -1247,26 +1247,26 @@ SignedInfo.prototype.from_ccnb = function( decoder){
 			this.type = ContentType.DATA; // default
 		}
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.FreshnessSeconds)) {
-			this.freshnessSeconds = decoder.readIntegerElement(CCNProtocolDTags.FreshnessSeconds);
+		if (decoder.peekStartElement(NDNProtocolDTags.FreshnessSeconds)) {
+			this.freshnessSeconds = decoder.readIntegerElement(NDNProtocolDTags.FreshnessSeconds);
 			if(LOG>4)console.log('FRESHNESS IN SECONDS IS '+ this.freshnessSeconds);
 		}
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.FinalBlockID)) {
+		if (decoder.peekStartElement(NDNProtocolDTags.FinalBlockID)) {
 			if(LOG>4)console.log('DECODING FINAL BLOCKID');
-			this.finalBlockID = decoder.readBinaryElement(CCNProtocolDTags.FinalBlockID);
+			this.finalBlockID = decoder.readBinaryElement(NDNProtocolDTags.FinalBlockID);
 		}
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.KeyLocator)) {
+		if (decoder.peekStartElement(NDNProtocolDTags.KeyLocator)) {
 			if(LOG>4)console.log('DECODING KEY LOCATOR');
 			this.locator = new KeyLocator();
-			this.locator.from_ccnb(decoder);
+			this.locator.from_ndnb(decoder);
 		}
 				
 		decoder.readEndElement();
 };
 
-SignedInfo.prototype.to_ccnb = function( encoder)  {
+SignedInfo.prototype.to_ndnb = function( encoder)  {
 		if (!this.validate()) {
 			throw new Error("Cannot encode : field values missing.");
 		}
@@ -1275,28 +1275,28 @@ SignedInfo.prototype.to_ccnb = function( encoder)  {
 		if (null!=this.publisher) {
 			if(LOG>3) console.log('ENCODING PUBLISHER KEY' + this.publisher.publisherPublicKeyDigest);
 
-			this.publisher.to_ccnb(encoder);
+			this.publisher.to_ndnb(encoder);
 		}
 
 		if (null!=this.timestamp) {
-			encoder.writeDateTime(CCNProtocolDTags.Timestamp, this.timestamp );
+			encoder.writeDateTime(NDNProtocolDTags.Timestamp, this.timestamp );
 		}
 		
 		if (null!=this.type && this.type !=0) {
 			
-			encoder.writeElement(CCNProtocolDTags.type, this.type);
+			encoder.writeElement(NDNProtocolDTags.type, this.type);
 		}
 		
 		if (null!=this.freshnessSeconds) {
-			encoder.writeElement(CCNProtocolDTags.FreshnessSeconds, this.freshnessSeconds);
+			encoder.writeElement(NDNProtocolDTags.FreshnessSeconds, this.freshnessSeconds);
 		}
 
 		if (null!=this.finalBlockID) {
-			encoder.writeElement(CCNProtocolDTags.FinalBlockID, this.finalBlockID);
+			encoder.writeElement(NDNProtocolDTags.FinalBlockID, this.finalBlockID);
 		}
 
 		if (null!=this.locator) {
-			this.locator.to_ccnb(encoder);
+			this.locator.to_ndnb(encoder);
 		}
 
 		encoder.writeEndElement();   		
@@ -1312,7 +1312,7 @@ SignedInfo.prototype.valueToType = function(){
 };
 
 SignedInfo.prototype.getElementLabel = function() { 
-	return CCNProtocolDTags.SignedInfo;
+	return NDNProtocolDTags.SignedInfo;
 };
 
 SignedInfo.prototype.validate = function() {
@@ -1484,82 +1484,82 @@ Interest.MARK_STALE = 16;		// Must have scope 0.  Michael calls this a "hack"
 Interest.DEFAULT_ANSWER_ORIGIN_KIND = Interest.ANSWER_CONTENT_STORE | Interest.ANSWER_GENERATED;
 
 
-Interest.prototype.from_ccnb = function(/*XMLDecoder*/ decoder) {
+Interest.prototype.from_ndnb = function(/*XMLDecoder*/ decoder) {
 
-		decoder.readStartElement(CCNProtocolDTags.Interest);
+		decoder.readStartElement(NDNProtocolDTags.Interest);
 
 		this.name = new Name();
-		this.name.from_ccnb(decoder);
+		this.name.from_ndnb(decoder);
 
-		if (decoder.peekStartElement(CCNProtocolDTags.MinSuffixComponents))
-			this.minSuffixComponents = decoder.readIntegerElement(CCNProtocolDTags.MinSuffixComponents);
+		if (decoder.peekStartElement(NDNProtocolDTags.MinSuffixComponents))
+			this.minSuffixComponents = decoder.readIntegerElement(NDNProtocolDTags.MinSuffixComponents);
 
-		if (decoder.peekStartElement(CCNProtocolDTags.MaxSuffixComponents)) 
-			this.maxSuffixComponents = decoder.readIntegerElement(CCNProtocolDTags.MaxSuffixComponents);
+		if (decoder.peekStartElement(NDNProtocolDTags.MaxSuffixComponents)) 
+			this.maxSuffixComponents = decoder.readIntegerElement(NDNProtocolDTags.MaxSuffixComponents);
 			
-		if (decoder.peekStartElement(CCNProtocolDTags.PublisherPublicKeyDigest)) {
+		if (decoder.peekStartElement(NDNProtocolDTags.PublisherPublicKeyDigest)) {
 			this.publisherPublicKeyDigest = new PublisherPublicKeyDigest();
-			this.publisherPublicKeyDigest.from_ccnb(decoder);
+			this.publisherPublicKeyDigest.from_ndnb(decoder);
 		}
 
-		if (decoder.peekStartElement(CCNProtocolDTags.Exclude)) {
+		if (decoder.peekStartElement(NDNProtocolDTags.Exclude)) {
 			this.exclude = new Exclude();
-			this.exclude.from_ccnb(decoder);
+			this.exclude.from_ndnb(decoder);
 		}
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.ChildSelector))
-			this.childSelector = decoder.readIntegerElement(CCNProtocolDTags.ChildSelector);
+		if (decoder.peekStartElement(NDNProtocolDTags.ChildSelector))
+			this.childSelector = decoder.readIntegerElement(NDNProtocolDTags.ChildSelector);
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.AnswerOriginKind))
-			this.answerOriginKind = decoder.readIntegerElement(CCNProtocolDTags.AnswerOriginKind);
+		if (decoder.peekStartElement(NDNProtocolDTags.AnswerOriginKind))
+			this.answerOriginKind = decoder.readIntegerElement(NDNProtocolDTags.AnswerOriginKind);
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.Scope))
-			this.scope = decoder.readIntegerElement(CCNProtocolDTags.Scope);
+		if (decoder.peekStartElement(NDNProtocolDTags.Scope))
+			this.scope = decoder.readIntegerElement(NDNProtocolDTags.Scope);
 
-		if (decoder.peekStartElement(CCNProtocolDTags.InterestLifetime))
+		if (decoder.peekStartElement(NDNProtocolDTags.InterestLifetime))
 			this.interestLifetime = 1000.0 * DataUtils.bigEndianToUnsignedInt
-                (decoder.readBinaryElement(CCNProtocolDTags.InterestLifetime)) / 4096;
+                (decoder.readBinaryElement(NDNProtocolDTags.InterestLifetime)) / 4096;
 		
-		if (decoder.peekStartElement(CCNProtocolDTags.Nonce))
-			this.nonce = decoder.readBinaryElement(CCNProtocolDTags.Nonce);
+		if (decoder.peekStartElement(NDNProtocolDTags.Nonce))
+			this.nonce = decoder.readBinaryElement(NDNProtocolDTags.Nonce);
 		
 		decoder.readEndElement();
 };
 
-Interest.prototype.to_ccnb = function(/*XMLEncoder*/ encoder){
+Interest.prototype.to_ndnb = function(/*XMLEncoder*/ encoder){
 		//Could check if name is present
 		
-		encoder.writeStartElement(CCNProtocolDTags.Interest);
+		encoder.writeStartElement(NDNProtocolDTags.Interest);
 		
-		this.name.to_ccnb(encoder);
+		this.name.to_ndnb(encoder);
 	
 		if (null != this.minSuffixComponents) 
-			encoder.writeElement(CCNProtocolDTags.MinSuffixComponents, this.minSuffixComponents);	
+			encoder.writeElement(NDNProtocolDTags.MinSuffixComponents, this.minSuffixComponents);	
 
 		if (null != this.maxSuffixComponents) 
-			encoder.writeElement(CCNProtocolDTags.MaxSuffixComponents, this.maxSuffixComponents);
+			encoder.writeElement(NDNProtocolDTags.MaxSuffixComponents, this.maxSuffixComponents);
 
 		if (null != this.publisherPublicKeyDigest)
-			this.publisherPublicKeyDigest.to_ccnb(encoder);
+			this.publisherPublicKeyDigest.to_ndnb(encoder);
 		
 		if (null != this.exclude)
-			this.exclude.to_ccnb(encoder);
+			this.exclude.to_ndnb(encoder);
 		
 		if (null != this.childSelector) 
-			encoder.writeElement(CCNProtocolDTags.ChildSelector, this.childSelector);
+			encoder.writeElement(NDNProtocolDTags.ChildSelector, this.childSelector);
 
 		if (this.DEFAULT_ANSWER_ORIGIN_KIND != this.answerOriginKind && this.answerOriginKind!=null) 
-			encoder.writeElement(CCNProtocolDTags.AnswerOriginKind, this.answerOriginKind);
+			encoder.writeElement(NDNProtocolDTags.AnswerOriginKind, this.answerOriginKind);
 		
 		if (null != this.scope) 
-			encoder.writeElement(CCNProtocolDTags.Scope, this.scope);
+			encoder.writeElement(NDNProtocolDTags.Scope, this.scope);
 		
 		if (null != this.interestLifetime) 
-			encoder.writeElement(CCNProtocolDTags.InterestLifetime, 
+			encoder.writeElement(NDNProtocolDTags.InterestLifetime, 
                 DataUtils.nonNegativeIntToBigEndian((this.interestLifetime / 1000.0) * 4096));
 		
 		if (null != this.nonce)
-			encoder.writeElement(CCNProtocolDTags.Nonce, this.nonce);
+			encoder.writeElement(NDNProtocolDTags.Nonce, this.nonce);
 		
 		encoder.writeEndElement();
 
@@ -1608,20 +1608,20 @@ var Exclude = function Exclude(_values) {
 
 Exclude.ANY = "*";
 
-Exclude.prototype.from_ccnb = function(/*XMLDecoder*/ decoder) {
-	decoder.readStartElement(CCNProtocolDTags.Exclude);
+Exclude.prototype.from_ndnb = function(/*XMLDecoder*/ decoder) {
+	decoder.readStartElement(NDNProtocolDTags.Exclude);
 
 	while (true) {
-        if (decoder.peekStartElement(CCNProtocolDTags.Component))
-            this.values.push(decoder.readBinaryElement(CCNProtocolDTags.Component));
-        else if (decoder.peekStartElement(CCNProtocolDTags.Any)) {
-            decoder.readStartElement(CCNProtocolDTags.Any);
+        if (decoder.peekStartElement(NDNProtocolDTags.Component))
+            this.values.push(decoder.readBinaryElement(NDNProtocolDTags.Component));
+        else if (decoder.peekStartElement(NDNProtocolDTags.Any)) {
+            decoder.readStartElement(NDNProtocolDTags.Any);
             decoder.readEndElement();
             this.values.push(Exclude.ANY);
         }
-        else if (decoder.peekStartElement(CCNProtocolDTags.Bloom)) {
+        else if (decoder.peekStartElement(NDNProtocolDTags.Bloom)) {
             // Skip the Bloom and treat it as Any.
-            decoder.readBinaryElement(CCNProtocolDTags.Bloom);
+            decoder.readBinaryElement(NDNProtocolDTags.Bloom);
             this.values.push(Exclude.ANY);
         }
         else
@@ -1631,20 +1631,20 @@ Exclude.prototype.from_ccnb = function(/*XMLDecoder*/ decoder) {
     decoder.readEndElement();
 };
 
-Exclude.prototype.to_ccnb = function(/*XMLEncoder*/ encoder)  {
+Exclude.prototype.to_ndnb = function(/*XMLEncoder*/ encoder)  {
 	if (this.values == null || this.values.length == 0)
 		return;
 
-	encoder.writeStartElement(CCNProtocolDTags.Exclude);
+	encoder.writeStartElement(NDNProtocolDTags.Exclude);
     
     // TODO: Do we want to order the components (except for ANY)?
     for (var i = 0; i < this.values.length; ++i) {
         if (this.values[i] == Exclude.ANY) {
-            encoder.writeStartElement(CCNProtocolDTags.Any);
+            encoder.writeStartElement(NDNProtocolDTags.Any);
             encoder.writeEndElement();
         }
         else
-            encoder.writeElement(CCNProtocolDTags.Component, this.values[i]);
+            encoder.writeElement(NDNProtocolDTags.Component, this.values[i]);
     }
 
 	encoder.writeEndElement();
@@ -1751,7 +1751,7 @@ Exclude.compareComponents = function(/*Uint8Array*/ component1, /*Uint8Array*/ c
  */
 
 var Key = function Key(){
-    /* TODO: Port from PyCCN:
+    /* TODO: Port from PyNDN:
 	generateRSA()
 	privateToDER()
 	publicToDER()
@@ -1790,13 +1790,13 @@ var KeyLocator = function KeyLocator(_input,_type){
 
 };
 
-KeyLocator.prototype.from_ccnb = function(decoder) {
+KeyLocator.prototype.from_ndnb = function(decoder) {
 
 	decoder.readStartElement(this.getElementLabel());
 
-	if (decoder.peekStartElement(CCNProtocolDTags.Key)) {
+	if (decoder.peekStartElement(NDNProtocolDTags.Key)) {
 		try {
-			var encodedKey = decoder.readBinaryElement(CCNProtocolDTags.Key);
+			var encodedKey = decoder.readBinaryElement(NDNProtocolDTags.Key);
 			// This is a DER-encoded SubjectPublicKeyInfo.
 			
 			//TODO FIX THIS, This should create a Key Object instead of keeping bytes
@@ -1817,9 +1817,9 @@ KeyLocator.prototype.from_ccnb = function(decoder) {
 			throw new Error("Cannot parse key: ");
 		}
 
-	} else if ( decoder.peekStartElement(CCNProtocolDTags.Certificate)) {
+	} else if ( decoder.peekStartElement(NDNProtocolDTags.Certificate)) {
 		try {
-			var encodedCert = decoder.readBinaryElement(CCNProtocolDTags.Certificate);
+			var encodedCert = decoder.readBinaryElement(NDNProtocolDTags.Certificate);
 			
 			/*
 			 * Certificates not yet working
@@ -1844,13 +1844,13 @@ KeyLocator.prototype.from_ccnb = function(decoder) {
 		this.type = KeyLocatorType.KEYNAME;
 		
 		this.keyName = new KeyName();
-		this.keyName.from_ccnb(decoder);
+		this.keyName.from_ndnb(decoder);
 	}
 	decoder.readEndElement();
 };
 	
 
-KeyLocator.prototype.to_ccnb = function( encoder) {
+KeyLocator.prototype.to_ndnb = function( encoder) {
 	
 	if(LOG>4) console.log('type is is ' + this.type);
 	//TODO Check if Name is missing
@@ -1864,26 +1864,26 @@ KeyLocator.prototype.to_ccnb = function( encoder) {
 	
 	if (this.type == KeyLocatorType.KEY) {
 		if(LOG>5)console.log('About to encode a public key' +this.publicKey);
-		encoder.writeElement(CCNProtocolDTags.Key, this.publicKey);
+		encoder.writeElement(NDNProtocolDTags.Key, this.publicKey);
 		
 	} else if (this.type == KeyLocatorType.CERTIFICATE) {
 		
 		try {
-			encoder.writeElement(CCNProtocolDTags.Certificate, this.certificate);
+			encoder.writeElement(NDNProtocolDTags.Certificate, this.certificate);
 		} catch ( e) {
 			throw new Error("CertificateEncodingException attempting to write key locator: " + e);
 		}
 		
 	} else if (this.type == KeyLocatorType.KEYNAME) {
 		
-		this.keyName.to_ccnb(encoder);
+		this.keyName.to_ndnb(encoder);
 	}
 	encoder.writeEndElement();
 	
 };
 
 KeyLocator.prototype.getElementLabel = function() {
-	return CCNProtocolDTags.KeyLocator; 
+	return NDNProtocolDTags.KeyLocator; 
 };
 
 KeyLocator.prototype.validate = function() {
@@ -1899,39 +1899,39 @@ var KeyName = function KeyName() {
 
 };
 
-KeyName.prototype.from_ccnb=function( decoder){
+KeyName.prototype.from_ndnb=function( decoder){
 	
 
 	decoder.readStartElement(this.getElementLabel());
 
 	this.contentName = new Name();
-	this.contentName.from_ccnb(decoder);
+	this.contentName.from_ndnb(decoder);
 	
 	if(LOG>4) console.log('KEY NAME FOUND: ');
 	
 	if ( PublisherID.peek(decoder) ) {
 		this.publisherID = new PublisherID();
-		this.publisherID.from_ccnb(decoder);
+		this.publisherID.from_ndnb(decoder);
 	}
 	
 	decoder.readEndElement();
 };
 
-KeyName.prototype.to_ccnb = function( encoder) {
+KeyName.prototype.to_ndnb = function( encoder) {
 	if (!this.validate()) {
 		throw new Error("Cannot encode : field values missing.");
 	}
 	
 	encoder.writeStartElement(this.getElementLabel());
 	
-	this.contentName.to_ccnb(encoder);
+	this.contentName.to_ndnb(encoder);
 	if (null != this.publisherID)
-		this.publisherID.to_ccnb(encoder);
+		this.publisherID.to_ndnb(encoder);
 
 	encoder.writeEndElement();   		
 };
 	
-KeyName.prototype.getElementLabel = function() { return CCNProtocolDTags.KeyName; };
+KeyName.prototype.getElementLabel = function() { return NDNProtocolDTags.KeyName; };
 
 KeyName.prototype.validate = function() {
 		// DKS -- do we do recursive validation?
@@ -1947,19 +1947,19 @@ KeyName.prototype.validate = function() {
 
 
 var PublisherType = function PublisherType(_tag){
-    	this.KEY =(CCNProtocolDTags.PublisherPublicKeyDigest);
-    	this.CERTIFICATE= (CCNProtocolDTags.PublisherCertificateDigest);
-    	this.ISSUER_KEY=	(CCNProtocolDTags.PublisherIssuerKeyDigest);
-    	this.ISSUER_CERTIFICATE	=(CCNProtocolDTags.PublisherIssuerCertificateDigest);
+    	this.KEY =(NDNProtocolDTags.PublisherPublicKeyDigest);
+    	this.CERTIFICATE= (NDNProtocolDTags.PublisherCertificateDigest);
+    	this.ISSUER_KEY=	(NDNProtocolDTags.PublisherIssuerKeyDigest);
+    	this.ISSUER_CERTIFICATE	=(NDNProtocolDTags.PublisherIssuerCertificateDigest);
 
     	this.Tag = _tag;
 }; 
 
 var isTypeTagVal = function(tagVal) {
-		if ((tagVal == CCNProtocolDTags.PublisherPublicKeyDigest) ||
-			(tagVal == CCNProtocolDTags.PublisherCertificateDigest) ||
-			(tagVal == CCNProtocolDTags.PublisherIssuerKeyDigest) ||
-			(tagVal == CCNProtocolDTags.PublisherIssuerCertificateDigest)) {
+		if ((tagVal == NDNProtocolDTags.PublisherPublicKeyDigest) ||
+			(tagVal == NDNProtocolDTags.PublisherCertificateDigest) ||
+			(tagVal == NDNProtocolDTags.PublisherIssuerKeyDigest) ||
+			(tagVal == NDNProtocolDTags.PublisherIssuerCertificateDigest)) {
 			return true;
 		}
 		return false;
@@ -1985,7 +1985,7 @@ var PublisherID = function PublisherID() {
 };
 
 
-PublisherID.prototype.from_ccnb = function(decoder) {
+PublisherID.prototype.from_ndnb = function(decoder) {
 		
 		// We have a choice here of one of 4 binary element types.
 		var nextTag = decoder.peekStartElementAsLong();
@@ -2005,7 +2005,7 @@ PublisherID.prototype.from_ccnb = function(decoder) {
 		}
 };
 
-PublisherID.prototype.to_ccnb = function(encoder) {
+PublisherID.prototype.to_ndnb = function(encoder) {
 	if (!this.validate()) {
 		throw new Error("Cannot encode " + this.getClass().getName() + ": field values missing.");
 	}
@@ -2052,7 +2052,7 @@ var PublisherPublicKeyDigest = function PublisherPublicKeyDigest(_pkd){
     
 };
 
-PublisherPublicKeyDigest.prototype.from_ccnb = function( decoder) {		
+PublisherPublicKeyDigest.prototype.from_ndnb = function( decoder) {		
 
 		this.publisherPublicKeyDigest = decoder.readBinaryElement(this.getElementLabel());
 		
@@ -2072,7 +2072,7 @@ PublisherPublicKeyDigest.prototype.from_ccnb = function( decoder) {
 		}
 	};
 
-PublisherPublicKeyDigest.prototype.to_ccnb= function( encoder) {
+PublisherPublicKeyDigest.prototype.to_ndnb= function( encoder) {
 		//TODO Check that the ByteArray for the key is present
 		if (!this.validate()) {
 			throw new Error("Cannot encode : field values missing.");
@@ -2081,7 +2081,7 @@ PublisherPublicKeyDigest.prototype.to_ccnb= function( encoder) {
 		encoder.writeElement(this.getElementLabel(), this.publisherPublicKeyDigest);
 };
 	
-PublisherPublicKeyDigest.prototype.getElementLabel = function() { return CCNProtocolDTags.PublisherPublicKeyDigest; };
+PublisherPublicKeyDigest.prototype.getElementLabel = function() { return NDNProtocolDTags.PublisherPublicKeyDigest; };
 
 PublisherPublicKeyDigest.prototype.validate =function() {
 		return (null != this.publisherPublicKeyDigest);
@@ -2131,31 +2131,31 @@ var FaceInstance  = function FaceInstance(
 /**
  * Used by NetworkObject to decode the object from a network stream.
  */
-FaceInstance.prototype.from_ccnb = function(//XMLDecoder 
+FaceInstance.prototype.from_ndnb = function(//XMLDecoder 
 	decoder) {
 
 	decoder.readStartElement(this.getElementLabel());
 	
-	if (decoder.peekStartElement(CCNProtocolDTags.Action)) {
+	if (decoder.peekStartElement(NDNProtocolDTags.Action)) {
 		
-		this.action = decoder.readUTF8Element(CCNProtocolDTags.Action);
+		this.action = decoder.readUTF8Element(NDNProtocolDTags.Action);
 		
 	}
-	if (decoder.peekStartElement(CCNProtocolDTags.PublisherPublicKeyDigest)) {
+	if (decoder.peekStartElement(NDNProtocolDTags.PublisherPublicKeyDigest)) {
 		
 		this.publisherPublicKeyDigest = new PublisherPublicKeyDigest();
-		this.publisherPublicKeyDigest.from_ccnb(decoder);
+		this.publisherPublicKeyDigest.from_ndnb(decoder);
 		
 	}
-	if (decoder.peekStartElement(CCNProtocolDTags.FaceID)) {
+	if (decoder.peekStartElement(NDNProtocolDTags.FaceID)) {
 		
-		this.faceID = decoder.readIntegerElement(CCNProtocolDTags.FaceID);
+		this.faceID = decoder.readIntegerElement(NDNProtocolDTags.FaceID);
 		
 	}
-	if (decoder.peekStartElement(CCNProtocolDTags.IPProto)) {
+	if (decoder.peekStartElement(NDNProtocolDTags.IPProto)) {
 		
 		//int
-		var pI = decoder.readIntegerElement(CCNProtocolDTags.IPProto);
+		var pI = decoder.readIntegerElement(NDNProtocolDTags.IPProto);
 		
 		this.ipProto = null;
 		
@@ -2170,31 +2170,31 @@ FaceInstance.prototype.from_ccnb = function(//XMLDecoder
 		} else {
 			
 			throw new Error("FaceInstance.decoder.  Invalid " + 
-					CCNProtocolDTags.tagToString(CCNProtocolDTags.IPProto) + " field: " + pI);
+					NDNProtocolDTags.tagToString(NDNProtocolDTags.IPProto) + " field: " + pI);
 			
 		}
 	}
 	
-	if (decoder.peekStartElement(CCNProtocolDTags.Host)) {
+	if (decoder.peekStartElement(NDNProtocolDTags.Host)) {
 		
-		this.host = decoder.readUTF8Element(CCNProtocolDTags.Host);
+		this.host = decoder.readUTF8Element(NDNProtocolDTags.Host);
 		
 	}
 	
-	if (decoder.peekStartElement(CCNProtocolDTags.Port)) {
-		this.Port = decoder.readIntegerElement(CCNProtocolDTags.Port); 
+	if (decoder.peekStartElement(NDNProtocolDTags.Port)) {
+		this.Port = decoder.readIntegerElement(NDNProtocolDTags.Port); 
 	}
 	
-	if (decoder.peekStartElement(CCNProtocolDTags.MulticastInterface)) {
-		this.multicastInterface = decoder.readUTF8Element(CCNProtocolDTags.MulticastInterface); 
+	if (decoder.peekStartElement(NDNProtocolDTags.MulticastInterface)) {
+		this.multicastInterface = decoder.readUTF8Element(NDNProtocolDTags.MulticastInterface); 
 	}
 	
-	if (decoder.peekStartElement(CCNProtocolDTags.MulticastTTL)) {
-		this.multicastTTL = decoder.readIntegerElement(CCNProtocolDTags.MulticastTTL); 
+	if (decoder.peekStartElement(NDNProtocolDTags.MulticastTTL)) {
+		this.multicastTTL = decoder.readIntegerElement(NDNProtocolDTags.MulticastTTL); 
 	}
 	
-	if (decoder.peekStartElement(CCNProtocolDTags.FreshnessSeconds)) {
-		this.freshnessSeconds = decoder.readIntegerElement(CCNProtocolDTags.FreshnessSeconds); 
+	if (decoder.peekStartElement(NDNProtocolDTags.FreshnessSeconds)) {
+		this.freshnessSeconds = decoder.readIntegerElement(NDNProtocolDTags.FreshnessSeconds); 
 	}
 	decoder.readEndElement();
 }
@@ -2202,7 +2202,7 @@ FaceInstance.prototype.from_ccnb = function(//XMLDecoder
 /**
  * Used by NetworkObject to encode the object to a network stream.
  */
-FaceInstance.prototype.to_ccnb = function(//XMLEncoder
+FaceInstance.prototype.to_ndnb = function(//XMLEncoder
 	encoder){
 
 	//if (!this.validate()) {
@@ -2212,38 +2212,38 @@ FaceInstance.prototype.to_ccnb = function(//XMLEncoder
 	encoder.writeStartElement(this.getElementLabel());
 	
 	if (null != this.action && this.action.length != 0)
-		encoder.writeElement(CCNProtocolDTags.Action, this.action);	
+		encoder.writeElement(NDNProtocolDTags.Action, this.action);	
 	
 	if (null != this.publisherPublicKeyDigest) {
-		this.publisherPublicKeyDigest.to_ccnb(encoder);
+		this.publisherPublicKeyDigest.to_ndnb(encoder);
 	}
 	if (null != this.faceID) {
-		encoder.writeElement(CCNProtocolDTags.FaceID, this.faceID);
+		encoder.writeElement(NDNProtocolDTags.FaceID, this.faceID);
 	}
 	if (null != this.ipProto) {
-		//encoder.writeElement(CCNProtocolDTags.IPProto, this.IpProto.value());
-		encoder.writeElement(CCNProtocolDTags.IPProto, this.ipProto);
+		//encoder.writeElement(NDNProtocolDTags.IPProto, this.IpProto.value());
+		encoder.writeElement(NDNProtocolDTags.IPProto, this.ipProto);
 	}
 	if (null != this.host && this.host.length != 0) {
-		encoder.writeElement(CCNProtocolDTags.Host, this.host);	
+		encoder.writeElement(NDNProtocolDTags.Host, this.host);	
 	}
 	if (null != this.Port) {
-		encoder.writeElement(CCNProtocolDTags.Port, this.Port);
+		encoder.writeElement(NDNProtocolDTags.Port, this.Port);
 	}
 	if (null != this.multicastInterface && this.multicastInterface.length != 0) {
-		encoder.writeElement(CCNProtocolDTags.MulticastInterface, this.multicastInterface);
+		encoder.writeElement(NDNProtocolDTags.MulticastInterface, this.multicastInterface);
 	}
 	if (null !=  this.multicastTTL) {
-		encoder.writeElement(CCNProtocolDTags.MulticastTTL, this.multicastTTL);
+		encoder.writeElement(NDNProtocolDTags.MulticastTTL, this.multicastTTL);
 	}
 	if (null != this.freshnessSeconds) {
-		encoder.writeElement(CCNProtocolDTags.FreshnessSeconds, this.freshnessSeconds);
+		encoder.writeElement(NDNProtocolDTags.FreshnessSeconds, this.freshnessSeconds);
 	}
 	encoder.writeEndElement();   			
 }
 
 
-FaceInstance.prototype.getElementLabel= function(){return CCNProtocolDTags.FaceInstance;};
+FaceInstance.prototype.getElementLabel= function(){return NDNProtocolDTags.FaceInstance;};
 
 /**
  * @author: Meki Cheraoui
@@ -2257,7 +2257,7 @@ var ForwardingEntry = function ForwardingEntry(
 		//Name 
 		_prefixName, 
 		//PublisherPublicKeyDigest
-		_ccndId, 
+		_ndndId, 
 		//Integer 
 		_faceID, 
 		//Integer 
@@ -2272,7 +2272,7 @@ var ForwardingEntry = function ForwardingEntry(
 		//Name\
 	this.prefixName = _prefixName;
 		//PublisherPublicKeyDigest 
-	this.ccndID = _ccndId;
+	this.ndndID = _ndndId;
 		//Integer		
 	this.faceID = _faceID;
 		//Integer		
@@ -2282,31 +2282,31 @@ var ForwardingEntry = function ForwardingEntry(
 
 };
 
-ForwardingEntry.prototype.from_ccnb =function(
+ForwardingEntry.prototype.from_ndnb =function(
 	//XMLDecoder 
 	decoder) 
 	//throws ContentDecodingException
 	{
 			decoder.readStartElement(this.getElementLabel());
-			if (decoder.peekStartElement(CCNProtocolDTags.Action)) {
-				this.action = decoder.readUTF8Element(CCNProtocolDTags.Action); 
+			if (decoder.peekStartElement(NDNProtocolDTags.Action)) {
+				this.action = decoder.readUTF8Element(NDNProtocolDTags.Action); 
 			}
-			if (decoder.peekStartElement(CCNProtocolDTags.Name)) {
+			if (decoder.peekStartElement(NDNProtocolDTags.Name)) {
 				this.prefixName = new Name();
-				this.prefixName.from_ccnb(decoder) ;
+				this.prefixName.from_ndnb(decoder) ;
 			}
-			if (decoder.peekStartElement(CCNProtocolDTags.PublisherPublicKeyDigest)) {
-				this.CcndId = new PublisherPublicKeyDigest();
-				this.CcndId.from_ccnb(decoder);
+			if (decoder.peekStartElement(NDNProtocolDTags.PublisherPublicKeyDigest)) {
+				this.NdndId = new PublisherPublicKeyDigest();
+				this.NdndId.from_ndnb(decoder);
 			}
-			if (decoder.peekStartElement(CCNProtocolDTags.FaceID)) {
-				this.faceID = decoder.readIntegerElement(CCNProtocolDTags.FaceID); 
+			if (decoder.peekStartElement(NDNProtocolDTags.FaceID)) {
+				this.faceID = decoder.readIntegerElement(NDNProtocolDTags.FaceID); 
 			}
-			if (decoder.peekStartElement(CCNProtocolDTags.ForwardingFlags)) {
-				this.flags = decoder.readIntegerElement(CCNProtocolDTags.ForwardingFlags); 
+			if (decoder.peekStartElement(NDNProtocolDTags.ForwardingFlags)) {
+				this.flags = decoder.readIntegerElement(NDNProtocolDTags.ForwardingFlags); 
 			}
-			if (decoder.peekStartElement(CCNProtocolDTags.FreshnessSeconds)) {
-				this.lifetime = decoder.readIntegerElement(CCNProtocolDTags.FreshnessSeconds); 
+			if (decoder.peekStartElement(NDNProtocolDTags.FreshnessSeconds)) {
+				this.lifetime = decoder.readIntegerElement(NDNProtocolDTags.FreshnessSeconds); 
 			}
 			decoder.readEndElement();
 		};
@@ -2314,7 +2314,7 @@ ForwardingEntry.prototype.from_ccnb =function(
 		/**
 		 * Used by NetworkObject to encode the object to a network stream.
 		 */
-ForwardingEntry.prototype.to_ccnb =function(
+ForwardingEntry.prototype.to_ndnb =function(
 	//XMLEncoder 
 encoder) 
 {
@@ -2325,26 +2325,26 @@ encoder)
 			//}
 			encoder.writeStartElement(this.getElementLabel());
 			if (null != this.action && this.action.length != 0)
-				encoder.writeElement(CCNProtocolDTags.Action, this.action);	
+				encoder.writeElement(NDNProtocolDTags.Action, this.action);	
 			if (null != this.prefixName) {
-				this.prefixName.to_ccnb(encoder);
+				this.prefixName.to_ndnb(encoder);
 			}
-			if (null != this.CcndId) {
-				this.CcndId.to_ccnb(encoder);
+			if (null != this.NdndId) {
+				this.NdndId.to_ndnb(encoder);
 			}
 			if (null != this.faceID) {
-				encoder.writeElement(CCNProtocolDTags.FaceID, this.faceID);
+				encoder.writeElement(NDNProtocolDTags.FaceID, this.faceID);
 			}
 			if (null != this.flags) {
-				encoder.writeElement(CCNProtocolDTags.ForwardingFlags, this.flags);
+				encoder.writeElement(NDNProtocolDTags.ForwardingFlags, this.flags);
 			}
 			if (null != this.lifetime) {
-				encoder.writeElement(CCNProtocolDTags.FreshnessSeconds, this.lifetime);
+				encoder.writeElement(NDNProtocolDTags.FreshnessSeconds, this.lifetime);
 			}
 			encoder.writeEndElement();   			
 		};
 
-ForwardingEntry.prototype.getElementLabel = function() { return CCNProtocolDTags.ForwardingEntry; }
+ForwardingEntry.prototype.getElementLabel = function() { return NDNProtocolDTags.ForwardingEntry; }
 /**
  * @author: Jeff Thompson
  * See COPYING for copyright and distribution information.
@@ -2400,7 +2400,7 @@ DynamicUint8Array.prototype.subarray = function(begin, end) {
     return this.array.subarray(begin, end);
 }
 /**
- * This class is used to encode ccnb binary elements (blob, type/value pairs).
+ * This class is used to encode ndnb binary elements (blob, type/value pairs).
  * 
  * @author: Meki Cheraoui
  * See COPYING for copyright and distribution information.
@@ -2521,10 +2521,10 @@ BinaryXMLEncoder.prototype.writeAttributes = function(/*TreeMap<String,String>*/
 
 //returns a string
 stringToTag = function(/*long*/ tagVal) {
-	if ((tagVal >= 0) && (tagVal < CCNProtocolDTagsStrings.length)) {
-		return CCNProtocolDTagsStrings[tagVal];
-	} else if (tagVal == CCNProtocolDTags.CCNProtocolDataUnit) {
-		return CCNProtocolDTags.CCNPROTOCOL_DATA_UNIT;
+	if ((tagVal >= 0) && (tagVal < NDNProtocolDTagsStrings.length)) {
+		return NDNProtocolDTagsStrings[tagVal];
+	} else if (tagVal == NDNProtocolDTags.NDNProtocolDataUnit) {
+		return NDNProtocolDTags.NDNPROTOCOL_DATA_UNIT;
 	}
 	return null;
 };
@@ -2532,13 +2532,13 @@ stringToTag = function(/*long*/ tagVal) {
 //returns a Long
 tagToString =  function(/*String*/ tagName) {
 	// the slow way, but right now we don't care.... want a static lookup for the forward direction
-	for (var i=0; i < CCNProtocolDTagsStrings.length; ++i) {
-		if ((null != CCNProtocolDTagsStrings[i]) && (CCNProtocolDTagsStrings[i] == tagName)) {
+	for (var i=0; i < NDNProtocolDTagsStrings.length; ++i) {
+		if ((null != NDNProtocolDTagsStrings[i]) && (NDNProtocolDTagsStrings[i] == tagName)) {
 			return i;
 		}
 	}
-	if (CCNProtocolDTags.CCNPROTOCOL_DATA_UNIT == tagName) {
-		return CCNProtocolDTags.CCNProtocolDataUnit;
+	if (NDNProtocolDTags.NDNPROTOCOL_DATA_UNIT == tagName) {
+		return NDNProtocolDTags.NDNProtocolDataUnit;
 	}
 	return null;
 };
@@ -2720,7 +2720,7 @@ BinaryXMLEncoder.prototype.numEncodingBytes = function(
 BinaryXMLEncoder.prototype.writeDateTime = function(
 		//String 
 		tag, 
-		//CCNTime 
+		//NDNTime 
 		dateTime) {
 	
 	if(LOG>4)console.log('ENCODING DATE with LONG VALUE');
@@ -2787,7 +2787,7 @@ BinaryXMLEncoder.prototype.getReducedOstream = function() {
 };
 
 /**
- * This class is used to decode ccnb binary elements (blob, type/value pairs).
+ * This class is used to decode ndnb binary elements (blob, type/value pairs).
  * 
  * @author: Meki Cheraoui
  * See COPYING for copyright and distribution information.
@@ -2831,10 +2831,10 @@ var bits_32 = 0x0FFFFFFFF;
 
 //returns a string
 tagToString = function(/*long*/ tagVal) {
-	if ((tagVal >= 0) && (tagVal < CCNProtocolDTagsStrings.length)) {
-		return CCNProtocolDTagsStrings[tagVal];
-	} else if (tagVal == CCNProtocolDTags.CCNProtocolDataUnit) {
-		return CCNProtocolDTags.CCNPROTOCOL_DATA_UNIT;
+	if ((tagVal >= 0) && (tagVal < NDNProtocolDTagsStrings.length)) {
+		return NDNProtocolDTagsStrings[tagVal];
+	} else if (tagVal == NDNProtocolDTags.NDNProtocolDataUnit) {
+		return NDNProtocolDTags.NDNPROTOCOL_DATA_UNIT;
 	}
 	return null;
 };
@@ -2842,13 +2842,13 @@ tagToString = function(/*long*/ tagVal) {
 //returns a Long
 stringToTag =  function(/*String*/ tagName) {
 	// the slow way, but right now we don't care.... want a static lookup for the forward direction
-	for (var i=0; i < CCNProtocolDTagsStrings.length; ++i) {
-		if ((null != CCNProtocolDTagsStrings[i]) && (CCNProtocolDTagsStrings[i] == tagName)) {
+	for (var i=0; i < NDNProtocolDTagsStrings.length; ++i) {
+		if ((null != NDNProtocolDTagsStrings[i]) && (NDNProtocolDTagsStrings[i] == tagName)) {
 			return i;
 		}
 	}
-	if (CCNProtocolDTags.CCNPROTOCOL_DATA_UNIT == tagName) {
-		return CCNProtocolDTags.CCNProtocolDataUnit;
+	if (NDNProtocolDTags.NDNPROTOCOL_DATA_UNIT == tagName) {
+		return NDNProtocolDTags.NDNProtocolDataUnit;
 	}
 	return null;
 };
@@ -3182,7 +3182,7 @@ BinaryXMLDecoder.prototype.readBlob = function() {
 	};
 
 
-//CCNTime
+//NDNTime
 BinaryXMLDecoder.prototype.readDateTime = function(
 	//long 
 	startTag)  {
@@ -3205,8 +3205,8 @@ BinaryXMLDecoder.prototype.readDateTime = function(
 	if(LOG>3) console.log(lontimestamp);
 	
 
-	//CCNTime 
-	var timestamp = new CCNTime(lontimestamp);
+	//NDNTime 
+	var timestamp = new NDNTime(lontimestamp);
 	//timestamp.setDateBinary(byteTimestamp);
 	
 	if (null == timestamp) {
@@ -3409,7 +3409,7 @@ ContentDecodingException.prototype = new Error();
 ContentDecodingException.prototype.name = "ContentDecodingException";
 
 /**
- * This class uses BinaryXMLDecoder to follow the structure of a ccnb binary element to 
+ * This class uses BinaryXMLDecoder to follow the structure of a ndnb binary element to 
  * determine its end.
  * 
  * @author: Jeff Thompson
@@ -3435,7 +3435,7 @@ BinaryXMLStructureDecoder.READ_BYTES = 1;
  *   which started at offset 0 then return true, else false.
  * If this returns false, you should read more into input and call again.
  * You have to pass in input each time because the array could be reallocated.
- * This throws an exception for badly formed ccnb.
+ * This throws an exception for badly formed ndnb.
  */
 BinaryXMLStructureDecoder.prototype.findElementEnd = function(
     // Uint8Array
@@ -3512,7 +3512,7 @@ BinaryXMLStructureDecoder.prototype.findElementEnd = function(
                 var type = typeAndVal.t;
                 if (type == XML_DATTR)
                     // We already consumed the item. READ_HEADER_OR_CLOSE again.
-                    // ccnb has rules about what must follow an attribute, but we are just scanning.
+                    // ndnb has rules about what must follow an attribute, but we are just scanning.
                     this.startHeader();
                 else if (type == XML_DTAG || type == XML_EXT) {
                     // Start a new level and READ_HEADER_OR_CLOSE again.
@@ -3526,7 +3526,7 @@ BinaryXMLStructureDecoder.prototype.findElementEnd = function(
                     // Minimum tag or attribute length is 1.
                     this.nBytesToRead = typeAndVal.v + 1;
                     this.state = BinaryXMLStructureDecoder.READ_BYTES;
-                    // ccnb has rules about what must follow an attribute, but we are just scanning.
+                    // ndnb has rules about what must follow an attribute, but we are just scanning.
                 }
                 else if (type == XML_BLOB || type == XML_UDATA) {
                     this.nBytesToRead = typeAndVal.v;
@@ -4031,7 +4031,7 @@ function encodeToHexInterest(interest){
 
 function encodeToBinaryInterest(interest) {
 	var enc = new BinaryXMLEncoder();
-	interest.to_ccnb(enc);
+	interest.to_ndnb(enc);
 	
 	return enc.getReducedOstream();
 }
@@ -4043,7 +4043,7 @@ function encodeToHexContentObject(co){
 
 function encodeToBinaryContentObject(co){
 	var enc = new BinaryXMLEncoder();
-	co.to_ccnb(enc);
+	co.to_ndnb(enc);
 
 	return enc.getReducedOstream();
 }
@@ -4051,7 +4051,7 @@ function encodeToBinaryContentObject(co){
 function encodeForwardingEntry(co){
 	var enc = new BinaryXMLEncoder();
  
-	co.to_ccnb(enc);
+	co.to_ndnb(enc);
 	
 	var bytes = enc.getReducedOstream();
 
@@ -4073,7 +4073,7 @@ function decodeHexFaceInstance(result){
 
 	var faceInstance = new FaceInstance();
 
-	faceInstance.from_ccnb(decoder);
+	faceInstance.from_ndnb(decoder);
 
 	return faceInstance;
 	
@@ -4090,7 +4090,7 @@ function decodeHexInterest(result){
 
 	var interest = new Interest();
 
-	interest.from_ccnb(decoder);
+	interest.from_ndnb(decoder);
 
 	return interest;
 	
@@ -4107,7 +4107,7 @@ function decodeHexContentObject(result){
 	
 	var co = new ContentObject();
 
-	co.from_ccnb(decoder);
+	co.from_ndnb(decoder);
 
 	return co;
 	
@@ -4124,7 +4124,7 @@ function decodeHexForwardingEntry(result){
 	
 	var forwardingEntry = new ForwardingEntry();
 
-	forwardingEntry.from_ccnb(decoder);
+	forwardingEntry.from_ndnb(decoder);
 
 	return forwardingEntry;
 	
@@ -7629,12 +7629,12 @@ var NDN = function NDN(settings) {
     // Event handler
     this.onopen = (settings.onopen || function() { if (LOG > 3) console.log("NDN connection established."); });
     this.onclose = (settings.onclose || function() { if (LOG > 3) console.log("NDN connection closed."); });
-	this.ccndid = null;
+	this.ndndid = null;
 };
 
 NDN.UNOPEN = 0;  // created but not opened yet
-NDN.OPENED = 1;  // connection to ccnd opened
-NDN.CLOSED = 2;  // connection to ccnd closed
+NDN.OPENED = 1;  // connection to ndnd opened
+NDN.CLOSED = 2;  // connection to ndnd closed
 
 /*
  * Return true if necessary JavaScript support is available, else log an error and return false.
@@ -7652,7 +7652,7 @@ NDN.getSupported = function() {
 
 NDN.supported = NDN.getSupported();
 
-NDN.ccndIdFetcher = new Name('/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY');
+NDN.ndndIdFetcher = new Name('/%C1.M.S.localhost/%C1.M.SRV/ndnd/KEY');
 
 NDN.prototype.createRoute = function(host, port) {
 	this.host=host;
@@ -7847,13 +7847,13 @@ NDN.prototype.expressInterestHelper = function(interest, closure) {
 NDN.prototype.registerPrefix = function(name, closure, flag) {
     var thisNDN = this;
     var onConnected = function() {
-    	if (thisNDN.ccndid == null) {
-            // Fetch ccndid first, then register.
-            var interest = new Interest(NDN.ccndIdFetcher);
+    	if (thisNDN.ndndid == null) {
+            // Fetch ndndid first, then register.
+            var interest = new Interest(NDN.ndndIdFetcher);
     		interest.interestLifetime = 4000; // milliseconds
-            if (LOG>3) console.log('Expressing interest for ccndid from ccnd.');
+            if (LOG>3) console.log('Expressing interest for ndndid from ndnd.');
             thisNDN.reconnectAndExpressInterest
-               (interest, new NDN.FetchCcndidClosure(thisNDN, name, closure, flag));
+               (interest, new NDN.FetchNdndidClosure(thisNDN, name, closure, flag));
         }
         else
             thisNDN.registerPrefixHelper(name, closure, flag);
@@ -7870,10 +7870,10 @@ NDN.prototype.registerPrefix = function(name, closure, flag) {
 };
 
 /*
- * This is a closure to receive the ContentObject for NDN.ccndIdFetcher and call
+ * This is a closure to receive the ContentObject for NDN.ndndIdFetcher and call
  *   registerPrefixHelper(name, callerClosure, flag).
  */
-NDN.FetchCcndidClosure = function FetchCcndidClosure(ndn, name, callerClosure, flag) {
+NDN.FetchNdndidClosure = function FetchNdndidClosure(ndn, name, callerClosure, flag) {
     // Inherit from Closure.
     Closure.call(this);
 
@@ -7883,9 +7883,9 @@ NDN.FetchCcndidClosure = function FetchCcndidClosure(ndn, name, callerClosure, f
     this.flag = flag;
 };
 
-NDN.FetchCcndidClosure.prototype.upcall = function(kind, upcallInfo) {
+NDN.FetchNdndidClosure.prototype.upcall = function(kind, upcallInfo) {
     if (kind == Closure.UPCALL_INTEREST_TIMED_OUT) {
-        console.log("Timeout while requesting the ccndid.  Cannot registerPrefix for " +
+        console.log("Timeout while requesting the ndndid.  Cannot registerPrefix for " +
             this.name.to_uri() + " .");
         return Closure.RESULT_OK;
     }
@@ -7898,12 +7898,12 @@ NDN.FetchCcndidClosure.prototype.upcall = function(kind, upcallInfo) {
     if (!co.signedInfo || !co.signedInfo.publisher
 		|| !co.signedInfo.publisher.publisherPublicKeyDigest)
         console.log
-          ("ContentObject doesn't have a publisherPublicKeyDigest. Cannot set ccndid and registerPrefix for "
+          ("ContentObject doesn't have a publisherPublicKeyDigest. Cannot set ndndid and registerPrefix for "
            + this.name.to_uri() + " .");
     else {
-		if (LOG>3) console.log('Got ccndid from ccnd.');
-		this.ndn.ccndid = co.signedInfo.publisher.publisherPublicKeyDigest;
-		if (LOG>3) console.log(this.ndn.ccndid);
+		if (LOG>3) console.log('Got ndndid from ndnd.');
+		this.ndn.ndndid = co.signedInfo.publisher.publisherPublicKeyDigest;
+		if (LOG>3) console.log(this.ndn.ndndid);
 
         this.ndn.registerPrefixHelper(this.name, this.callerClosure, this.flag);
 	}
@@ -7912,7 +7912,7 @@ NDN.FetchCcndidClosure.prototype.upcall = function(kind, upcallInfo) {
 };
 
 /*
- * Do the work of registerPrefix once we know we are connected with a ccndid.
+ * Do the work of registerPrefix once we know we are connected with a ndndid.
  */
 NDN.prototype.registerPrefixHelper = function(name, closure, flag) {
 	var fe = new ForwardingEntry('selfreg', name, null, null, 3, 2147483647);
@@ -7926,8 +7926,8 @@ NDN.prototype.registerPrefixHelper = function(name, closure, flag) {
 	var coBinary = encodeToBinaryContentObject(co);
 
 	//var nodename = unescape('%00%88%E2%F4%9C%91%16%16%D6%21%8E%A0c%95%A5%A6r%11%E0%A0%82%89%A6%A9%85%AB%D6%E2%065%DB%AF');
-	var nodename = this.ccndid;
-	var interestName = new Name(['ccnx', nodename, 'selfreg', coBinary]);
+	var nodename = this.ndndid;
+	var interestName = new Name(['ndnx', nodename, 'selfreg', coBinary]);
 
 	var interest = new Interest(interestName);
 	interest.scope = 1;
@@ -7947,11 +7947,11 @@ NDN.prototype.onReceivedElement = function(element) {
     if (LOG>3) console.log('Complete element received. Length ' + element.length + '. Start decoding.');
 	var decoder = new BinaryXMLDecoder(element);
 	// Dispatch according to packet type
-	if (decoder.peekStartElement(CCNProtocolDTags.Interest)) {  // Interest packet
+	if (decoder.peekStartElement(NDNProtocolDTags.Interest)) {  // Interest packet
 		if (LOG > 3) console.log('Interest packet received.');
 
 		var interest = new Interest();
-		interest.from_ccnb(decoder);
+		interest.from_ndnb(decoder);
 		if (LOG > 3) console.log(interest);
 		var nameStr = escape(interest.name.getName());
 		if (LOG > 3) console.log(nameStr);
@@ -7964,11 +7964,11 @@ NDN.prototype.onReceivedElement = function(element) {
 			if (ret == Closure.RESULT_INTEREST_CONSUMED && info.contentObject != null)
 				this.transport.send(encodeToBinaryContentObject(info.contentObject));
 		}
-	} else if (decoder.peekStartElement(CCNProtocolDTags.ContentObject)) {  // Content packet
+	} else if (decoder.peekStartElement(NDNProtocolDTags.ContentObject)) {  // Content packet
 		if (LOG > 3) console.log('ContentObject packet received.');
 
 		var co = new ContentObject();
-		co.from_ccnb(decoder);
+		co.from_ndnb(decoder);
 
 		var pitEntry = NDN.getEntryForExpressedInterest(co.name);
 		if (pitEntry != null) {
@@ -8179,7 +8179,7 @@ var BinaryXmlElementReader = function BinaryXmlElementReader(elementListener) {
 BinaryXmlElementReader.prototype.onReceivedData = function(/* Uint8Array */ rawData) {
     // Process multiple objects in the data.
     while(true) {
-        // Scan the input to check if a whole ccnb object has been read.
+        // Scan the input to check if a whole ndnb object has been read.
         this.structureDecoder.seek(0);
         if (this.structureDecoder.findElementEnd(rawData)) {
             // Got the remainder of an object.  Report to the caller.

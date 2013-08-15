@@ -19,7 +19,7 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#include "ccnx-name.h"
+#include "ndnx-name.h"
 #include <boost/lexical_cast.hpp>
 #include <ctype.h>
 #include <boost/algorithm/string/join.hpp>
@@ -27,7 +27,7 @@
 
 using namespace std;
 
-namespace Ccnx{
+namespace Ndnx{
 
 Name::Name()
 {
@@ -61,13 +61,13 @@ Name::Name(const Name &other)
   m_comps = other.m_comps;
 }
 
-Name::Name(const unsigned char *data, const ccn_indexbuf *comps)
+Name::Name(const unsigned char *data, const ndn_indexbuf *comps)
 {
   for (unsigned int i = 0; i < comps->n - 1; i++)
   {
     const unsigned char *compPtr;
     size_t size;
-    ccn_name_comp_get(data, comps, i, &compPtr, &size);
+    ndn_name_comp_get(data, comps, i, &compPtr, &size);
     Bytes comp;
     readRaw(comp, compPtr, size);
     m_comps.push_back(comp);
@@ -76,57 +76,57 @@ Name::Name(const unsigned char *data, const ccn_indexbuf *comps)
 
 Name::Name (const void *buf, const size_t length)
 {
-  ccn_indexbuf *idx = ccn_indexbuf_create();
-  const ccn_charbuf namebuf = { length, length, const_cast<unsigned char *> (reinterpret_cast<const unsigned char *> (buf)) };
-  ccn_name_split (&namebuf, idx);
+  ndn_indexbuf *idx = ndn_indexbuf_create();
+  const ndn_charbuf namebuf = { length, length, const_cast<unsigned char *> (reinterpret_cast<const unsigned char *> (buf)) };
+  ndn_name_split (&namebuf, idx);
 
   const unsigned char *compPtr = NULL;
   size_t size = 0;
   int i = 0;
-  while (ccn_name_comp_get(namebuf.buf, idx, i, &compPtr, &size) == 0)
+  while (ndn_name_comp_get(namebuf.buf, idx, i, &compPtr, &size) == 0)
     {
       Bytes comp;
       readRaw (comp, compPtr, size);
       m_comps.push_back(comp);
       i++;
     }
-  ccn_indexbuf_destroy(&idx);
+  ndn_indexbuf_destroy(&idx);
 }
 
-Name::Name (const CcnxCharbuf &buf)
+Name::Name (const NdnxCharbuf &buf)
 {
-  ccn_indexbuf *idx = ccn_indexbuf_create();
-  ccn_name_split (buf.getBuf (), idx);
+  ndn_indexbuf *idx = ndn_indexbuf_create();
+  ndn_name_split (buf.getBuf (), idx);
 
   const unsigned char *compPtr = NULL;
   size_t size = 0;
   int i = 0;
-  while (ccn_name_comp_get(buf.getBuf ()->buf, idx, i, &compPtr, &size) == 0)
+  while (ndn_name_comp_get(buf.getBuf ()->buf, idx, i, &compPtr, &size) == 0)
     {
       Bytes comp;
       readRaw (comp, compPtr, size);
       m_comps.push_back(comp);
       i++;
     }
-  ccn_indexbuf_destroy(&idx);
+  ndn_indexbuf_destroy(&idx);
 }
 
-Name::Name (const ccn_charbuf *buf)
+Name::Name (const ndn_charbuf *buf)
 {
-  ccn_indexbuf *idx = ccn_indexbuf_create();
-  ccn_name_split (buf, idx);
+  ndn_indexbuf *idx = ndn_indexbuf_create();
+  ndn_name_split (buf, idx);
 
   const unsigned char *compPtr = NULL;
   size_t size = 0;
   int i = 0;
-  while (ccn_name_comp_get(buf->buf, idx, i, &compPtr, &size) == 0)
+  while (ndn_name_comp_get(buf->buf, idx, i, &compPtr, &size) == 0)
     {
       Bytes comp;
       readRaw (comp, compPtr, size);
       m_comps.push_back(comp);
       i++;
     }
-  ccn_indexbuf_destroy(&idx);
+  ndn_indexbuf_destroy(&idx);
 }
 
 Name &
@@ -163,26 +163,26 @@ Name::toString() const
   return ss.str();
 }
 
-CcnxCharbuf*
-Name::toCcnxCharbufRaw () const
+NdnxCharbuf*
+Name::toNdnxCharbufRaw () const
 {
-  CcnxCharbuf *ptr = new CcnxCharbuf ();
+  NdnxCharbuf *ptr = new NdnxCharbuf ();
 
-  ccn_charbuf *cbuf = ptr->getBuf();
-  ccn_name_init(cbuf);
+  ndn_charbuf *cbuf = ptr->getBuf();
+  ndn_name_init(cbuf);
   int size = m_comps.size();
   for (int i = 0; i < size; i++)
   {
-    ccn_name_append(cbuf, head(m_comps[i]), m_comps[i].size());
+    ndn_name_append(cbuf, head(m_comps[i]), m_comps[i].size());
   }
   return ptr;
 }
 
 
-CcnxCharbufPtr
-Name::toCcnxCharbuf () const
+NdnxCharbufPtr
+Name::toNdnxCharbuf () const
 {
-  return CcnxCharbufPtr (toCcnxCharbufRaw ());
+  return NdnxCharbufPtr (toNdnxCharbufRaw ());
 }
 
 Name &
@@ -358,4 +358,4 @@ operator <(const Name &n1, const Name &n2)
 }
 
 
-} // Ccnx
+} // Ndnx

@@ -19,12 +19,12 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#ifndef CCNX_DISCOVERY_H
-#define CCNX_DISCOVERY_H
+#ifndef NDNX_DISCOVERY_H
+#define NDNX_DISCOVERY_H
 
-#include "ccnx-wrapper.h"
-#include "ccnx-common.h"
-#include "ccnx-name.h"
+#include "ndnx-wrapper.h"
+#include "ndnx-common.h"
+#include "ndnx-name.h"
 #include "scheduler.h"
 #include <boost/shared_ptr.hpp>
 #include <boost/function.hpp>
@@ -33,11 +33,11 @@
 #include <boost/thread/locks.hpp>
 #include <list>
 
-namespace Ccnx
+namespace Ndnx
 {
 
-class CcnxDiscovery;
-typedef boost::shared_ptr<CcnxDiscovery> CcnxDiscoveryPtr;
+class NdnxDiscovery;
+typedef boost::shared_ptr<NdnxDiscovery> NdnxDiscoveryPtr;
 
 class TaggedFunction
 {
@@ -64,7 +64,7 @@ private:
   std::string m_tag;
 };
 
-class CcnxDiscovery
+class NdnxDiscovery
 {
 public:
   const static double INTERVAL;
@@ -80,8 +80,8 @@ public:
   deregisterCallback(const TaggedFunction &callback);
 
 private:
-  CcnxDiscovery();
-  ~CcnxDiscovery();
+  NdnxDiscovery();
+  ~NdnxDiscovery();
 
   void
   poll();
@@ -97,12 +97,12 @@ private:
   typedef boost::unique_lock<Mutex> Lock;
   typedef std::list<TaggedFunction> List;
 
-  static CcnxDiscovery *instance;
+  static NdnxDiscovery *instance;
   static Mutex mutex;
   List m_callbacks;
   SchedulerPtr m_scheduler;
   Name m_localPrefix;
 };
 
-} // Ccnx
-#endif // CCNX_DISCOVERY_H
+} // Ndnx
+#endif // NDNX_DISCOVERY_H

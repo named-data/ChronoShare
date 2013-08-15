@@ -23,7 +23,7 @@
 #include <iostream>
 #include <Ice/Service.h>
 #include <Ice/Identity.h>
-#include <ccnx-wrapper.h>
+#include <ndnx-wrapper.h>
 
 #include "notify-i.h"
 #include <boost/make_shared.hpp>
@@ -31,7 +31,7 @@
 using namespace std;
 using namespace boost;
 using namespace ChronoshareClient;
-using namespace Ccnx;
+using namespace Ndnx;
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str; 
 
@@ -72,8 +72,8 @@ main (int argc, char **argv)
   try
     {
       // DbHelper db ("./", "/ndn/ucla.edu/alex");
-      CcnxWrapperPtr ccnx = make_shared<CcnxWrapper> ();
-      ActionLogPtr actionLog = make_shared<ActionLog> (ccnx, "./", "/ndn/ucla.edu/alex", "shared");
+      NdnxWrapperPtr ndnx = make_shared<NdnxWrapper> ();
+      ActionLogPtr actionLog = make_shared<ActionLog> (ndnx, "./", "/ndn/ucla.edu/alex", "shared");
 
       MyService svc (actionLog);
       status = svc.main (argc, argv);

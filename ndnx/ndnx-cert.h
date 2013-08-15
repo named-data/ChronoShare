@@ -19,16 +19,16 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#ifndef CCNX_CERT_H
-#define CCNX_CERT_H
+#ifndef NDNX_CERT_H
+#define NDNX_CERT_H
 
-#include "ccnx-common.h"
-#include "ccnx-name.h"
-#include "ccnx-pco.h"
+#include "ndnx-common.h"
+#include "ndnx-name.h"
+#include "ndnx-pco.h"
 #include "hash-helper.h"
 #include <boost/shared_ptr.hpp>
 
-namespace Ccnx {
+namespace Ndnx {
 
 class Cert
 {
@@ -63,7 +63,7 @@ public:
   std::string
   affilication() { return m_meta.affiliation; }
 
-  ccn_pkey *
+  ndn_pkey *
   pkey() { return m_pkey; }
 
   VALIDITY
@@ -88,7 +88,7 @@ private:
   Name m_name;
   Hash m_keyHash; // publisherPublicKeyHash
   Bytes m_rawKeyBytes;
-  ccn_pkey *m_pkey;
+  ndn_pkey *m_pkey;
   Meta m_meta;
 };
 
@@ -96,4 +96,4 @@ typedef boost::shared_ptr<Cert> CertPtr;
 
 }
 
-#endif // CCNX_CERT_H
+#endif // NDNX_CERT_H

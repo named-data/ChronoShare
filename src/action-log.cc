@@ -26,7 +26,7 @@
 
 using namespace boost;
 using namespace std;
-using namespace Ccnx;
+using namespace Ndnx;
 
 INIT_LOGGER ("ActionLog");
 
@@ -88,13 +88,13 @@ CREATE TRIGGER ActionLogInsert_trigger                                  \n\
 //   _LOG_TRACE ("SQLITE: " << q);
 // }
 
-ActionLog::ActionLog (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &path,
+ActionLog::ActionLog (Ndnx::NdnxWrapperPtr ndnx, const boost::filesystem::path &path,
                       SyncLogPtr syncLog,
                       const std::string &sharedFolder, const std::string &appName,
                       OnFileAddedOrChangedCallback onFileAddedOrChanged, OnFileRemovedCallback onFileRemoved)
   : DbHelper (path / ".chronoshare", "action-log.db")
   , m_syncLog (syncLog)
-  , m_ccnx (ccnx)
+  , m_ndnx (ndnx)
   , m_sharedFolderName (sharedFolder)
   , m_appName (appName)
   , m_onFileAddedOrChanged (onFileAddedOrChanged)
@@ -118,7 +118,7 @@ ActionLog::ActionLog (Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path &
   m_fileState = make_shared<FileState> (path);
 }
 
-tuple<sqlite3_int64 /*version*/, Ccnx::CcnxCharbufPtr /*device name*/, sqlite3_int64 /*seq_no*/>
+tuple<sqlite3_int64 /*version*/, Ndnx::NdnxCharbufPtr /*device name*/, sqlite3_int64 /*seq_no*/>
 ActionLog::GetLatestActionForFile (const std::string &filename)
 {
   // check if something already exists
@@ -134,7 +134,7 @@ ActionLog::GetLatestActionForFile (const std::string &filename)
     }
 
   sqlite3_int64 version = -1;
-  CcnxCharbufPtr parent_device_name;
+  NdnxCharbufPtr parent_device_name;
   sqlite3_int64 parent_seq_no = -1;
 
   sqlite3_bind_text (stmt, 1, filename.c_str (), filename.size (), SQLITE_STATIC);
@@ -144,7 +144,7 @@ ActionLog::GetLatestActionForFile (const std::string &filename)
 
       if (sqlite3_column_int (stmt, 3) == 0) // prevent "linking" if the file was previously deleted
         {
-          parent_device_name = make_shared<CcnxCharbuf> (sqlite3_column_blob (stmt, 1), sqlite3_column_bytes (stmt, 1));
+          parent_device_name = make_shared<NdnxCharbuf> (sqlite3_column_blob (stmt, 1), sqlite3_column_bytes (stmt, 1));
           parent_seq_no = sqlite3_column_int64 (stmt, 2);
         }
     }
@@ -163,10 +163,10 @@ ActionLog::AddLocalActionUpdate (const std::string &filename,
 {
   sqlite3_exec (m_db, "BEGIN TRANSACTION;", 0,0,0);
 
-  CcnxCharbufPtr device_name = m_syncLog->GetLocalName ().toCcnxCharbuf ();
+  NdnxCharbufPtr device_name = m_syncLog->GetLocalName ().toNdnxCharbuf ();
   sqlite3_int64  seq_no = m_syncLog->GetNextLocalSeqNo ();
   sqlite3_int64  version;
-  CcnxCharbufPtr parent_device_name;
+  NdnxCharbufPtr parent_device_name;
   sqlite3_int64  parent_seq_no = -1;
 
   sqlite3_int64  action_time = time (0);
@@ -245,8 +245,8 @@ ActionLog::AddLocalActionUpdate (const std::string &filename,
   Name actionName = Name ("/")(m_syncLog->GetLocalName ())(m_appName)("action")(m_sharedFolderName)(seq_no);
   _LOG_DEBUG ("ActionName: " << actionName);
 
-  Bytes actionData = m_ccnx->createContentObject (actionName, item_msg.c_str (), item_msg.size ());
-  CcnxCharbufPtr namePtr = actionName.toCcnxCharbuf ();
+  Bytes actionData = m_ndnx->createContentObject (actionName, item_msg.c_str (), item_msg.size ());
+  NdnxCharbufPtr namePtr = actionName.toNdnxCharbuf ();
 
   // _LOG_DEBUG (" >>>>>>> " << Name (namePtr->buf () << " " << namePtr->length ());
 
@@ -293,9 +293,9 @@ ActionLog::AddLocalActionDelete (const std::string &filename)
 
   sqlite3_exec (m_db, "BEGIN TRANSACTION;", 0,0,0);
 
-  CcnxCharbufPtr device_name = m_syncLog->GetLocalName ().toCcnxCharbuf ();
+  NdnxCharbufPtr device_name = m_syncLog->GetLocalName ().toNdnxCharbuf ();
   sqlite3_int64  version;
-  CcnxCharbufPtr parent_device_name;
+  NdnxCharbufPtr parent_device_name;
   sqlite3_int64  parent_seq_no = -1;
 
   sqlite3_int64 action_time = time (0);
@@ -358,8 +358,8 @@ ActionLog::AddLocalActionDelete (const std::string &filename)
   Name actionName = Name ("/")(m_syncLog->GetLocalName ())(m_appName)("action")(m_sharedFolderName)(seq_no);
   _LOG_DEBUG ("ActionName: " << actionName);
 
-  Bytes actionData = m_ccnx->createContentObject (actionName, item_msg.c_str (), item_msg.size ());
-  CcnxCharbufPtr namePtr = actionName.toCcnxCharbuf ();
+  Bytes actionData = m_ndnx->createContentObject (actionName, item_msg.c_str (), item_msg.size ());
+  NdnxCharbufPtr namePtr = actionName.toNdnxCharbuf ();
 
   sqlite3_bind_blob (stmt, 9, namePtr->buf (), namePtr->length (), SQLITE_STATIC);
   sqlite3_bind_blob (stmt, 10, &actionData[0], actionData.size (), SQLITE_STATIC);
@@ -368,7 +368,7 @@ ActionLog::AddLocalActionDelete (const std::string &filename)
 
   _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_DONE, sqlite3_errmsg (m_db));
 
-  // cout << Ccnx::Name (parent_device_name) << endl;
+  // cout << Ndnx::Name (parent_device_name) << endl;
 
   // assign name to the action, serialize action, and create content object
 
@@ -392,12 +392,12 @@ ActionLog::AddLocalActionDelete (const std::string &filename)
 
 
 PcoPtr
-ActionLog::LookupActionPco (const Ccnx::Name &deviceName, sqlite3_int64 seqno)
+ActionLog::LookupActionPco (const Ndnx::Name &deviceName, sqlite3_int64 seqno)
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "SELECT action_content_object FROM ActionLog WHERE device_name=? AND seq_no=?", -1, &stmt, 0);
 
-  CcnxCharbufPtr name = deviceName.toCcnxCharbuf ();
+  NdnxCharbufPtr name = deviceName.toNdnxCharbuf ();
 
   sqlite3_bind_blob  (stmt, 1, name->buf (), name->length (), SQLITE_STATIC);
   sqlite3_bind_int64 (stmt, 2, seqno);
@@ -419,7 +419,7 @@ ActionLog::LookupActionPco (const Ccnx::Name &deviceName, sqlite3_int64 seqno)
 }
 
 ActionItemPtr
-ActionLog::LookupAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno)
+ActionLog::LookupAction (const Ndnx::Name &deviceName, sqlite3_int64 seqno)
 {
   PcoPtr pco = LookupActionPco (deviceName, seqno);
   if (!pco) return ActionItemPtr ();
@@ -429,14 +429,14 @@ ActionLog::LookupAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno)
   return action;
 }
 
-Ccnx::PcoPtr
-ActionLog::LookupActionPco (const Ccnx::Name &actionName)
+Ndnx::PcoPtr
+ActionLog::LookupActionPco (const Ndnx::Name &actionName)
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (m_db, "SELECT action_content_object FROM ActionLog WHERE action_name=?", -1, &stmt, 0);
 
   _LOG_DEBUG (actionName);
-  CcnxCharbufPtr name = actionName.toCcnxCharbuf ();
+  NdnxCharbufPtr name = actionName.toNdnxCharbuf ();
 
   _LOG_DEBUG (" <<<<<<< " << name->buf () << " " << name->length ());
 
@@ -459,7 +459,7 @@ ActionLog::LookupActionPco (const Ccnx::Name &actionName)
 }
 
 ActionItemPtr
-ActionLog::LookupAction (const Ccnx::Name &actionName)
+ActionLog::LookupAction (const Ndnx::Name &actionName)
 {
   PcoPtr pco = LookupActionPco (actionName);
   if (!pco) return ActionItemPtr ();
@@ -508,7 +508,7 @@ ActionLog::LookupAction (const std::string &filename, sqlite3_int64 version, con
 
 
 ActionItemPtr
-ActionLog::AddRemoteAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno, Ccnx::PcoPtr actionPco)
+ActionLog::AddRemoteAction (const Ndnx::Name &deviceName, sqlite3_int64 seqno, Ndnx::PcoPtr actionPco)
 {
   if (!actionPco)
     {
@@ -537,7 +537,7 @@ ActionLog::AddRemoteAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno, C
                                 "        ?, ?);", -1, &stmt, 0);
   _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));
 
-  CcnxCharbufPtr device_name = deviceName.toCcnxCharbuf ();
+  NdnxCharbufPtr device_name = deviceName.toNdnxCharbuf ();
   sqlite3_bind_blob  (stmt, 1, device_name->buf (), device_name->length (), SQLITE_STATIC);
   sqlite3_bind_int64 (stmt, 2, seqno);
 
@@ -565,7 +565,7 @@ ActionLog::AddRemoteAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno, C
     }
 
   Name actionName = Name (deviceName)("action")(m_sharedFolderName)(seqno);
-  CcnxCharbufPtr namePtr = actionName.toCcnxCharbuf ();
+  NdnxCharbufPtr namePtr = actionName.toNdnxCharbuf ();
 
   sqlite3_bind_blob (stmt, 15, namePtr->buf (), namePtr->length (), SQLITE_STATIC);
   sqlite3_bind_blob (stmt, 16, head (actionPco->buf ()), actionPco->buf ().size (), SQLITE_STATIC);
@@ -592,7 +592,7 @@ ActionLog::AddRemoteAction (const Ccnx::Name &deviceName, sqlite3_int64 seqno, C
 }
 
 ActionItemPtr
-ActionLog::AddRemoteAction (Ccnx::PcoPtr actionPco)
+ActionLog::AddRemoteAction (Ndnx::PcoPtr actionPco)
 {
   Name name = actionPco->name ();
   // action name: /<device_name>/<appname>/action/<shared-folder>/<action-seq>
@@ -645,7 +645,7 @@ ActionLog::LogSize ()
 
 
 bool
-ActionLog::LookupActionsInFolderRecursively (const boost::function<void (const Ccnx::Name &name, sqlite3_int64 seq_no, const ActionItem &)> &visitor,
+ActionLog::LookupActionsInFolderRecursively (const boost::function<void (const Ndnx::Name &name, sqlite3_int64 seq_no, const ActionItem &)> &visitor,
                                              const std::string &folder, int offset/*=0*/, int limit/*=-1*/)
 {
   _LOG_DEBUG ("LookupActionsInFolderRecursively: [" << folder << "]");
@@ -696,7 +696,7 @@ ActionLog::LookupActionsInFolderRecursively (const boost::function<void (const C
 
       ActionItem action;
 
-      Ccnx::Name device_name (sqlite3_column_blob  (stmt, 0), sqlite3_column_bytes (stmt, 0));
+      Ndnx::Name device_name (sqlite3_column_blob  (stmt, 0), sqlite3_column_bytes (stmt, 0));
       sqlite3_int64 seq_no =  sqlite3_column_int64 (stmt, 1);
       action.set_action      (static_cast<ActionItem_ActionType> (sqlite3_column_int   (stmt, 2)));
       action.set_filename    (reinterpret_cast<const char *> (sqlite3_column_text  (stmt, 3)), sqlite3_column_bytes (stmt, 3));
@@ -732,7 +732,7 @@ ActionLog::LookupActionsInFolderRecursively (const boost::function<void (const C
  * @todo Figure out the way to minimize code duplication
  */
 bool
-ActionLog::LookupActionsForFile (const boost::function<void (const Ccnx::Name &name, sqlite3_int64 seq_no, const ActionItem &)> &visitor,
+ActionLog::LookupActionsForFile (const boost::function<void (const Ndnx::Name &name, sqlite3_int64 seq_no, const ActionItem &)> &visitor,
                                  const std::string &file, int offset/*=0*/, int limit/*=-1*/)
 {
   _LOG_DEBUG ("LookupActionsInFolderRecursively: [" << file << "]");
@@ -768,7 +768,7 @@ ActionLog::LookupActionsForFile (const boost::function<void (const Ccnx::Name &n
 
       ActionItem action;
 
-      Ccnx::Name device_name (sqlite3_column_blob  (stmt, 0), sqlite3_column_bytes (stmt, 0));
+      Ndnx::Name device_name (sqlite3_column_blob  (stmt, 0), sqlite3_column_bytes (stmt, 0));
       sqlite3_int64 seq_no =  sqlite3_column_int64 (stmt, 1);
       action.set_action      (static_cast<ActionItem_ActionType> (sqlite3_column_int   (stmt, 2)));
       action.set_filename    (reinterpret_cast<const char *> (sqlite3_column_text  (stmt, 3)), sqlite3_column_bytes (stmt, 3));
@@ -849,7 +849,7 @@ ActionLog::apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value 
       return;
     }
 
-  CcnxCharbuf device_name (sqlite3_value_blob (argv[0]), sqlite3_value_bytes (argv[0]));
+  NdnxCharbuf device_name (sqlite3_value_blob (argv[0]), sqlite3_value_bytes (argv[0]));
   sqlite3_int64 seq_no    = sqlite3_value_int64 (argv[1]);
   int action         = sqlite3_value_int  (argv[2]);
   string filename    = reinterpret_cast<const char*> (sqlite3_value_text (argv[3]));

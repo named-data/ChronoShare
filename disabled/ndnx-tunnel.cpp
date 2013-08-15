@@ -19,41 +19,41 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#include "ccnx-tunnel.h"
-#include "ccnx-pco.h"
+#include "ndnx-tunnel.h"
+#include "ndnx-pco.h"
 
-namespace Ccnx
+namespace Ndnx
 {
 
-CcnxTunnel::CcnxTunnel()
-  : CcnxWrapper()
+NdnxTunnel::NdnxTunnel()
+  : NdnxWrapper()
   , m_localPrefix("/")
 {
   refreshLocalPrefix();
 }
 
-CcnxTunnel::~CcnxTunnel()
+NdnxTunnel::~NdnxTunnel()
 {
 }
 
 void
-CcnxTunnel::refreshLocalPrefix()
+NdnxTunnel::refreshLocalPrefix()
 {
   Name newPrefix = getLocalPrefix();
   if (!newPrefix.toString().empty() && m_localPrefix != newPrefix)
   {
-    CcnxWrapper::clearInterestFilter(m_localPrefix);
-    CcnxWrapper::setInterestFilter(newPrefix, bind(&CcnxTunnel::handleTunneledInterest, this, _1));
+    NdnxWrapper::clearInterestFilter(m_localPrefix);
+    NdnxWrapper::setInterestFilter(newPrefix, bind(&NdnxTunnel::handleTunneledInterest, this, _1));
     m_localPrefix = newPrefix;
   }
 }
 
 int
-CcnxTunnel::sendInterest (const Name &interest, const Closure &closure, const Selectors &selectors)
+NdnxTunnel::sendInterest (const Name &interest, const Closure &closure, const Selectors &selectors)
 {
   Name tunneledInterest = queryRoutableName(interest);
 
-  CcnxWrapper::sendInterest(tunneledInterest,
+  NdnxWrapper::sendInterest(tunneledInterest,
                             TunnelClosure(closure, *this, interest),
                             selectors);
 
@@ -61,14 +61,14 @@ CcnxTunnel::sendInterest (const Name &interest, const Closure &closure, const Se
 }
 
 void
-CcnxTunnel::handleTunneledData(const Name &name, const Bytes &tunneledData, const Closure::DataCallback &originalDataCallback)
+NdnxTunnel::handleTunneledData(const Name &name, const Bytes &tunneledData, const Closure::DataCallback &originalDataCallback)
 {
   ParsedContentObject pco(tunneledData);
   originalDataCallback(pco.name(), pco.content());
 }
 
 int
-CcnxTunnel::publishData(const Name &name, const unsigned char *buf, size_t len, int freshness)
+NdnxTunnel::publishData(const Name &name, const unsigned char *buf, size_t len, int freshness)
 {
   Bytes content = createContentObject(name, buf, len, freshness);
   storeContentObject(name, content);
@@ -77,17 +77,17 @@ CcnxTunnel::publishData(const Name &name, const unsigned char *buf, size_t len, 
 }
 
 int
-CcnxTunnel::publishContentObject(const Name &name, const Bytes &contentObject, int freshness)
+NdnxTunnel::publishContentObject(const Name &name, const Bytes &contentObject, int freshness)
 {
   Name tunneledName = m_localPrefix + name;
   Bytes tunneledCo = createContentObject(tunneledName, head(contentObject), contentObject.size(), freshness);
-  return putToCcnd(tunneledCo);
+  return putToNdnd(tunneledCo);
 }
 
 void
-CcnxTunnel::handleTunneledInterest(const Name &tunneledInterest)
+NdnxTunnel::handleTunneledInterest(const Name &tunneledInterest)
 {
-  // The interest must have m_localPrefix as a prefix (component-wise), otherwise ccnd would not deliver it to us
+  // The interest must have m_localPrefix as a prefix (component-wise), otherwise ndnd would not deliver it to us
   Name interest = tunneledInterest.getPartialName(m_localPrefix.size());
 
   ReadLock lock(m_ritLock);
@@ -104,7 +104,7 @@ CcnxTunnel::handleTunneledInterest(const Name &tunneledInterest)
 }
 
 bool
-CcnxTunnel::isPrefix(const Name &prefix, const Name &name)
+NdnxTunnel::isPrefix(const Name &prefix, const Name &name)
 {
   if (prefix.size() > name.size())
   {
@@ -124,7 +124,7 @@ CcnxTunnel::isPrefix(const Name &prefix, const Name &name)
 }
 
 int
-CcnxTunnel::setInterestFilter(const Name &prefix, const InterestCallback &interestCallback)
+NdnxTunnel::setInterestFilter(const Name &prefix, const InterestCallback &interestCallback)
 {
   WriteLock lock(m_ritLock);
   // make sure copy constructor for boost::function works properly
@@ -133,14 +133,14 @@ CcnxTunnel::setInterestFilter(const Name &prefix, const InterestCallback &intere
 }
 
 void
-CcnxTunnel::clearInterestFilter(const Name &prefix)
+NdnxTunnel::clearInterestFilter(const Name &prefix)
 {
   WriteLock lock(m_ritLock);
   // remove all
   m_rit.erase(prefix);
 }
 
-TunnelClosure::TunnelClosure(const DataCallback &dataCallback, CcnxTunnel &tunnel,
+TunnelClosure::TunnelClosure(const DataCallback &dataCallback, NdnxTunnel &tunnel,
                              const Name &originalInterest, const TimeoutCallback &timeoutCallback)
   : Closure(dataCallback, timeoutCallback)
   , m_tunnel(tunnel)
@@ -148,7 +148,7 @@ TunnelClosure::TunnelClosure(const DataCallback &dataCallback, CcnxTunnel &tunne
 {
 }
 
-TunnelClosure::TunnelClosure(const Closure &closure, CcnxTunnel &tunnel, const Name &originalInterest)
+TunnelClosure::TunnelClosure(const Closure &closure, NdnxTunnel &tunnel, const Name &originalInterest)
   : Closure(closure)
   , m_tunnel(tunnel)
 {
@@ -172,4 +172,4 @@ TunnelClosure::runTimeoutCallback(const Name &interest)
   return Closure::runTimeoutCallback(m_originalInterest);
 }
 
-} // Ccnx
+} // Ndnx

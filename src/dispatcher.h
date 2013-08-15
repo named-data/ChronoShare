@@ -24,7 +24,7 @@
 
 #include "action-log.h"
 #include "sync-core.h"
-#include "ccnx-wrapper.h"
+#include "ndnx-wrapper.h"
 #include "executor.h"
 #include "object-db.h"
 #include "object-manager.h"
@@ -50,7 +50,7 @@ public:
   Dispatcher(const std::string &localUserName
              , const std::string &sharedFolder
              , const boost::filesystem::path &rootDir
-             , Ccnx::CcnxWrapperPtr ccnx
+             , Ndnx::NdnxWrapperPtr ndnx
              , bool enablePrefixDiscovery = true
              );
   ~Dispatcher();
@@ -113,7 +113,7 @@ private:
   Did_SyncLog_StateChange_Execute (SyncStateMsgPtr stateMsg);
 
   void
-  Did_FetchManager_ActionFetch (const Ccnx::Name &deviceName, const Ccnx::Name &actionName, uint32_t seqno, Ccnx::PcoPtr actionPco);
+  Did_FetchManager_ActionFetch (const Ndnx::Name &deviceName, const Ndnx::Name &actionName, uint32_t seqno, Ndnx::PcoPtr actionPco);
 
   void
   Did_ActionLog_ActionApply_Delete (const std::string &filename);
@@ -122,27 +122,27 @@ private:
   Did_ActionLog_ActionApply_Delete_Execute (std::string filename);
 
   // void
-  // Did_ActionLog_ActionApply_AddOrModify (const std::string &filename, Ccnx::Name device_name, sqlite3_int64 seq_no,
+  // Did_ActionLog_ActionApply_AddOrModify (const std::string &filename, Ndnx::Name device_name, sqlite3_int64 seq_no,
   //                                        HashPtr hash, time_t m_time, int mode, int seg_num);
 
   void
-  Did_FetchManager_FileSegmentFetch (const Ccnx::Name &deviceName, const Ccnx::Name &fileSegmentName, uint32_t segment, Ccnx::PcoPtr fileSegmentPco);
+  Did_FetchManager_FileSegmentFetch (const Ndnx::Name &deviceName, const Ndnx::Name &fileSegmentName, uint32_t segment, Ndnx::PcoPtr fileSegmentPco);
 
   void
-  Did_FetchManager_FileSegmentFetch_Execute (Ccnx::Name deviceName, Ccnx::Name fileSegmentName, uint32_t segment, Ccnx::PcoPtr fileSegmentPco);
+  Did_FetchManager_FileSegmentFetch_Execute (Ndnx::Name deviceName, Ndnx::Name fileSegmentName, uint32_t segment, Ndnx::PcoPtr fileSegmentPco);
 
   void
-  Did_FetchManager_FileFetchComplete (const Ccnx::Name &deviceName, const Ccnx::Name &fileBaseName);
+  Did_FetchManager_FileFetchComplete (const Ndnx::Name &deviceName, const Ndnx::Name &fileBaseName);
 
   void
-  Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, Ccnx::Name fileBaseName);
+  Did_FetchManager_FileFetchComplete_Execute (Ndnx::Name deviceName, Ndnx::Name fileBaseName);
 
   void
-  Did_LocalPrefix_Updated (const Ccnx::Name &prefix);
+  Did_LocalPrefix_Updated (const Ndnx::Name &prefix);
 
 private:
   void
-  AssembleFile_Execute (const Ccnx::Name &deviceName, const Hash &filehash, const boost::filesystem::path &relativeFilepath);
+  AssembleFile_Execute (const Ndnx::Name &deviceName, const Hash &filehash, const boost::filesystem::path &relativeFilepath);
 
   // void
   // fileChanged(const boost::filesystem::path &relativeFilepath, ActionType type);
@@ -154,13 +154,13 @@ private:
   // actionReceived(const ActionItemPtr &actionItem);
 
   // void
-  // fileSegmentReceived(const Ccnx::Name &name, const Ccnx::Bytes &content);
+  // fileSegmentReceived(const Ndnx::Name &name, const Ndnx::Bytes &content);
 
   // void
-  // fileReady(const Ccnx::Name &fileNamePrefix);
+  // fileReady(const Ndnx::Name &fileNamePrefix);
 
 private:
-  Ccnx::CcnxWrapperPtr m_ccnx;
+  Ndnx::NdnxWrapperPtr m_ndnx;
   SyncCore *m_core;
   SyncLogPtr   m_syncLog;
   ActionLogPtr m_actionLog;
@@ -170,7 +170,7 @@ private:
   boost::filesystem::path m_rootDir;
   Executor m_executor;
   ObjectManager m_objectManager;
-  Ccnx::Name m_localUserName;
+  Ndnx::Name m_localUserName;
   // maintain object db ptrs so that we don't need to create them
   // for every fetched segment of a file
 

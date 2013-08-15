@@ -19,16 +19,16 @@
  *	   Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#ifndef CCNX_COMMON_H
-#define CCNX_COMMON_H
+#ifndef NDNX_COMMON_H
+#define NDNX_COMMON_H
 
 extern "C" {
-#include <ccn/ccn.h>
-#include <ccn/charbuf.h>
-#include <ccn/keystore.h>
-#include <ccn/uri.h>
-#include <ccn/bloom.h>
-#include <ccn/signing.h>
+#include <ndn/ndn.h>
+#include <ndn/charbuf.h>
+#include <ndn/keystore.h>
+#include <ndn/uri.h>
+#include <ndn/bloom.h>
+#include <ndn/signing.h>
 }
 #include <vector>
 #include <boost/shared_ptr.hpp>
@@ -47,7 +47,7 @@ extern "C" {
 
 namespace io = boost::iostreams;
 
-namespace Ccnx {
+namespace Ndnx {
 typedef std::vector<unsigned char> Bytes;
 typedef std::vector<std::string>Comps;
 
@@ -172,5 +172,5 @@ deserializeGZipMsg(const Bytes &bytes)
 // Exceptions
 typedef boost::error_info<struct tag_errmsg, std::string> error_info_str;
 
-} // Ccnx
-#endif // CCNX_COMMON_H
+} // Ndnx
+#endif // NDNX_COMMON_H

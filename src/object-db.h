@@ -24,8 +24,8 @@
 
 #include <string>
 #include <sqlite3.h>
-#include <ccnx-common.h>
-#include <ccnx-name.h>
+#include <ndnx-common.h>
+#include <ndnx-name.h>
 #include <boost/filesystem.hpp>
 #include <boost/shared_ptr.hpp>
 #include <ctime>
@@ -39,19 +39,19 @@ public:
   ~ObjectDb ();
 
   void
-  saveContentObject (const Ccnx::Name &deviceName, sqlite3_int64 segment, const Ccnx::Bytes &data);
+  saveContentObject (const Ndnx::Name &deviceName, sqlite3_int64 segment, const Ndnx::Bytes &data);
 
-  Ccnx::BytesPtr
-  fetchSegment (const Ccnx::Name &deviceName, sqlite3_int64 segment);
+  Ndnx::BytesPtr
+  fetchSegment (const Ndnx::Name &deviceName, sqlite3_int64 segment);
 
   // sqlite3_int64
-  // getNumberOfSegments (const Ccnx::Name &deviceName);
+  // getNumberOfSegments (const Ndnx::Name &deviceName);
 
   time_t
   secondsSinceLastUse();
 
   static bool
-  DoesExist (const boost::filesystem::path &folder, const Ccnx::Name &deviceName, const std::string &hash);
+  DoesExist (const boost::filesystem::path &folder, const Ndnx::Name &deviceName, const std::string &hash);
 
 private:
   void

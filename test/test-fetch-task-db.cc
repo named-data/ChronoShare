@@ -37,7 +37,7 @@
 
 INIT_LOGGER ("Test.FetchTaskDb");
 
-using namespace Ccnx;
+using namespace Ndnx;
 using namespace std;
 using namespace boost;
 namespace fs = boost::filesystem;

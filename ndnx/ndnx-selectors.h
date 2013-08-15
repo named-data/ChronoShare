@@ -18,13 +18,13 @@
  * Author: Zhenkai Zhu <zhenkai@cs.ucla.edu>
  *	   Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
-#ifndef CCNX_SELECTORS_H
-#define CCNX_SELECTORS_H
+#ifndef NDNX_SELECTORS_H
+#define NDNX_SELECTORS_H
 
-#include "ccnx-common.h"
-#include "ccnx-name.h"
+#include "ndnx-common.h"
+#include "ndnx-name.h"
 
-namespace Ccnx {
+namespace Ndnx {
 
 struct InterestSelectorException:
     virtual boost::exception, virtual std::exception {};
@@ -33,7 +33,7 @@ class Selectors
 {
 public:
   Selectors();
-  Selectors(const ccn_parsed_interest *);
+  Selectors(const ndn_parsed_interest *);
   Selectors(const Selectors &other);
   ~Selectors(){};
 
@@ -56,7 +56,7 @@ public:
   enum Scope
     {
       NO_SCOPE = -1,
-      SCOPE_LOCAL_CCND = 0,
+      SCOPE_LOCAL_NDND = 0,
       SCOPE_LOCAL_HOST = 1,
       SCOPE_NEXT_HOST = 2
     };
@@ -83,8 +83,8 @@ public:
   inline Selectors &
   publisherPublicKeyDigest(const Bytes &digest) {m_publisherPublicKeyDigest = digest; return *this;}
 
-  CcnxCharbufPtr
-  toCcnxCharbuf() const;
+  NdnxCharbufPtr
+  toNdnxCharbuf() const;
 
   bool
   isEmpty() const;
@@ -103,6 +103,6 @@ private:
   Bytes m_publisherPublicKeyDigest;
 };
 
-} // Ccnx
+} // Ndnx
 
 #endif

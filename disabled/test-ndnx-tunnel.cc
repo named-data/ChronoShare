@@ -1,19 +1,19 @@
-#include "ccnx-tunnel.h"
-#include "ccnx-closure.h"
-#include "ccnx-name.h"
-#include "ccnx-pco.h"
+#include "ndnx-tunnel.h"
+#include "ndnx-closure.h"
+#include "ndnx-name.h"
+#include "ndnx-pco.h"
 #include <unistd.h>
 
 #include <boost/test/unit_test.hpp>
 
 
-using namespace Ccnx;
+using namespace Ndnx;
 using namespace std;
 using namespace boost;
 
-BOOST_AUTO_TEST_SUITE(CcnxTunnelTests)
+BOOST_AUTO_TEST_SUITE(NdnxTunnelTests)
 
-class DummyTunnel : public CcnxTunnel
+class DummyTunnel : public NdnxTunnel
 {
 public:
   DummyTunnel();
@@ -27,7 +27,7 @@ public:
 
 };
 
-DummyTunnel::DummyTunnel() : CcnxTunnel()
+DummyTunnel::DummyTunnel() : NdnxTunnel()
 {
   m_localPrefix = Name("/local");
 }
@@ -35,7 +35,7 @@ DummyTunnel::DummyTunnel() : CcnxTunnel()
 void
 DummyTunnel::overridePrefix()
 {
-  CcnxWrapper::setInterestFilter(m_localPrefix, bind(&DummyTunnel::handleTunneledInterest, this, _1));
+  NdnxWrapper::setInterestFilter(m_localPrefix, bind(&DummyTunnel::handleTunneledInterest, this, _1));
 }
 
 Name
@@ -44,9 +44,9 @@ DummyTunnel::queryRoutableName (const Name &name)
   return Name("/local") + name;
 }
 
-CcnxWrapperPtr t1(new DummyTunnel());
-CcnxWrapperPtr t2(new DummyTunnel());
-CcnxWrapperPtr c1(new CcnxWrapper());
+NdnxWrapperPtr t1(new DummyTunnel());
+NdnxWrapperPtr t2(new DummyTunnel());
+NdnxWrapperPtr c1(new NdnxWrapper());
 
 DummyTunnel t3;
 
@@ -74,7 +74,7 @@ void interestCallback(const Name &name)
   g_ic++;
 }
 
-BOOST_AUTO_TEST_CASE (CcnxTunnelTest)
+BOOST_AUTO_TEST_CASE (NdnxTunnelTest)
 {
   // test publish
   string inner = "/hello";
@@ -94,7 +94,7 @@ BOOST_AUTO_TEST_CASE (CcnxTunnelTest)
   BOOST_CHECK_EQUAL(g_dc_i, 1);
 }
 
-BOOST_AUTO_TEST_CASE (CcnxTunnelRegister)
+BOOST_AUTO_TEST_CASE (NdnxTunnelRegister)
 {
 
   g_ic = 0;

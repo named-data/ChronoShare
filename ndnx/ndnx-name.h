@@ -19,13 +19,13 @@
  *	   Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#ifndef CCNX_NAME_H
-#define CCNX_NAME_H
+#ifndef NDNX_NAME_H
+#define NDNX_NAME_H
 #include <boost/shared_ptr.hpp>
-#include "ccnx-common.h"
-#include "ccnx-charbuf.h"
+#include "ndnx-common.h"
+#include "ndnx-charbuf.h"
 
-namespace Ccnx {
+namespace Ndnx {
 
 struct NameException:
     virtual boost::exception, virtual std::exception {};
@@ -37,19 +37,19 @@ public:
   Name(const std::string &name);
   Name(const std::vector<Bytes> &comps);
   Name(const Name &other);
-  Name(const unsigned char *data, const ccn_indexbuf *comps);
+  Name(const unsigned char *data, const ndn_indexbuf *comps);
   Name (const void *buf, const size_t length);
-  Name (const CcnxCharbuf &buf);
-  Name (const ccn_charbuf *buf);
+  Name (const NdnxCharbuf &buf);
+  Name (const ndn_charbuf *buf);
   virtual ~Name() {}
 
-  CcnxCharbufPtr
-  toCcnxCharbuf() const;
+  NdnxCharbufPtr
+  toNdnxCharbuf() const;
 
-  CcnxCharbuf*
-  toCcnxCharbufRaw () const;
+  NdnxCharbuf*
+  toNdnxCharbufRaw () const;
 
-  operator CcnxCharbufPtr () const { return toCcnxCharbuf (); }
+  operator NdnxCharbufPtr () const { return toNdnxCharbuf (); }
 
   Name &
   appendComp(const Name &comp);
@@ -169,5 +169,5 @@ Name::getCompFromBack (int index) const
 }
 
 
-} // Ccnx
+} // Ndnx
 #endif

@@ -19,33 +19,33 @@
  *	   Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#ifndef CCNX_CCNX_CHARBUF_H
-#define CCNX_CCNX_CHARBUF_H
+#ifndef NDNX_NDNX_CHARBUF_H
+#define NDNX_NDNX_CHARBUF_H
 
-#include "ccnx-common.h"
+#include "ndnx-common.h"
 #include <boost/shared_ptr.hpp>
 
-namespace Ccnx {
+namespace Ndnx {
 
-class CcnxCharbuf;
-typedef boost::shared_ptr<CcnxCharbuf> CcnxCharbufPtr;
+class NdnxCharbuf;
+typedef boost::shared_ptr<NdnxCharbuf> NdnxCharbufPtr;
 
-//  This class is mostly used in CcnxWrapper; users should not be directly using this class
+//  This class is mostly used in NdnxWrapper; users should not be directly using this class
 // The main purpose of this class to is avoid manually create and destroy charbuf everytime
-class CcnxCharbuf
+class NdnxCharbuf
 {
 public:
-  CcnxCharbuf();
-  CcnxCharbuf(ccn_charbuf *buf);
-  CcnxCharbuf(const CcnxCharbuf &other);
-  CcnxCharbuf(const void *buf, size_t length);
-  ~CcnxCharbuf();
+  NdnxCharbuf();
+  NdnxCharbuf(ndn_charbuf *buf);
+  NdnxCharbuf(const NdnxCharbuf &other);
+  NdnxCharbuf(const void *buf, size_t length);
+  ~NdnxCharbuf();
 
   // expose internal data structure, use with caution!!
-  ccn_charbuf *
+  ndn_charbuf *
   getBuf() { return m_buf; }
 
-  const ccn_charbuf *
+  const ndn_charbuf *
   getBuf() const { return m_buf; }
 
   const unsigned char *
@@ -57,12 +57,12 @@ public:
   { return m_buf->length; }
 
 private:
-  void init(ccn_charbuf *buf);
+  void init(ndn_charbuf *buf);
 
 protected:
-  ccn_charbuf *m_buf;
+  ndn_charbuf *m_buf;
 };
 
 }
 
-#endif // CCNX_CCNX_CHARBUF_H
+#endif // NDNX_NDNX_CHARBUF_H

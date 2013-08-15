@@ -20,8 +20,8 @@
  */
 
 #include "fetch-manager.h"
-#include "ccnx-wrapper.h"
-#include "ccnx-common.h"
+#include "ndnx-wrapper.h"
+#include "ndnx-common.h"
 #include "scheduler.h"
 #include "object-db.h"
 #include "object-manager.h"
@@ -40,7 +40,7 @@
 
 INIT_LOGGER("Test.ServerAndFetch");
 
-using namespace Ccnx;
+using namespace Ndnx;
 using namespace std;
 using namespace boost;
 using namespace boost::filesystem;
@@ -122,9 +122,9 @@ BOOST_AUTO_TEST_CASE (TestServeAndFetch)
   _LOG_DEBUG ("Setting up test environment ...");
   setup();
 
-  CcnxWrapperPtr ccnx_serve = make_shared<CcnxWrapper>();
+  NdnxWrapperPtr ndnx_serve = make_shared<NdnxWrapper>();
   usleep(1000);
-  CcnxWrapperPtr ccnx_fetch = make_shared<CcnxWrapper>();
+  NdnxWrapperPtr ndnx_fetch = make_shared<NdnxWrapper>();
 
   Name deviceName("/test/device");
   Name localPrefix("/local");
@@ -135,17 +135,17 @@ BOOST_AUTO_TEST_CASE (TestServeAndFetch)
   time_t start = time(NULL);
   _LOG_DEBUG ("At time " << start << ", publish local file to database, this is extremely slow ...");
   // publish file to db
-  ObjectManager om(ccnx_serve, root, APPNAME);
+  ObjectManager om(ndnx_serve, root, APPNAME);
   tuple<HashPtr, size_t> pub = om.localFileToObjects(filePath, deviceName);
   time_t end = time(NULL);
   _LOG_DEBUG ("At time " << end <<", publish finally finished, used " << end - start << " seconds ...");
 
   ActionLogPtr dummyLog;
-  ContentServer server(ccnx_serve, dummyLog, root, deviceName, "pentagon's secrets", APPNAME, 5);
+  ContentServer server(ndnx_serve, dummyLog, root, deviceName, "pentagon's secrets", APPNAME, 5);
   server.registerPrefix(localPrefix);
   server.registerPrefix(broadcastPrefix);
 
-  FetchManager fm(ccnx_fetch, bind(simpleMap, _1), Name("/local/broadcast"));
+  FetchManager fm(ndnx_fetch, bind(simpleMap, _1), Name("/local/broadcast"));
   HashPtr hash = pub.get<0> ();
   Name baseName = Name ("/")(deviceName)(APPNAME)("file")(hash->GetHash(), hash->GetHashBytes());
 
@@ -161,8 +161,8 @@ BOOST_AUTO_TEST_CASE (TestServeAndFetch)
           break;
         }
     }
-  ccnx_fetch->shutdown ();
-  ccnx_serve->shutdown ();
+  ndnx_fetch->shutdown ();
+  ndnx_serve->shutdown ();
 
   _LOG_DEBUG ("Finish");
   usleep(100000);

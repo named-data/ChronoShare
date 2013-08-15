@@ -21,7 +21,7 @@
 
 #include "fetch-manager.h"
 #include "fetcher.h"
-#include "ccnx-wrapper.h"
+#include "ndnx-wrapper.h"
 #include <boost/test/unit_test.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/thread/thread.hpp>
@@ -30,7 +30,7 @@
 
 INIT_LOGGER ("Test.FetchManager");
 
-using namespace Ccnx;
+using namespace Ndnx;
 using namespace std;
 using namespace boost;
 
@@ -54,7 +54,7 @@ struct FetcherTestData
   }
 
   void
-  onData (const Ccnx::Name &deviceName, const Ccnx::Name &basename, uint64_t seqno, Ccnx::PcoPtr pco)
+  onData (const Ndnx::Name &deviceName, const Ndnx::Name &basename, uint64_t seqno, Ndnx::PcoPtr pco)
   {
     _LOG_TRACE ("onData: " << seqno);
 
@@ -75,7 +75,7 @@ struct FetcherTestData
   }
 
   void
-  finish(const Ccnx::Name &deviceName, const Ccnx::Name &baseName)
+  finish(const Ndnx::Name &deviceName, const Ndnx::Name &baseName)
   {
   }
 
@@ -96,7 +96,7 @@ struct FetcherTestData
 
 void run()
 {
-  CcnxWrapperPtr ccnx = make_shared<CcnxWrapper> ();
+  NdnxWrapperPtr ndnx = make_shared<NdnxWrapper> ();
 
   Name baseName ("/base");
   Name deviceName ("/device");
@@ -104,13 +104,13 @@ void run()
   for (int i = 0; i < 10; i++)
     {
       usleep(100000);
-      ccnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 30);
+      ndnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 30);
     }
 
   for (int i = 11; i < 50; i++)
     {
       usleep(100000);
-      ccnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 30);
+      ndnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 30);
     }
 
 }
@@ -119,7 +119,7 @@ BOOST_AUTO_TEST_CASE (TestFetcher)
 {
   INIT_LOGGERS ();
 
-  CcnxWrapperPtr ccnx = make_shared<CcnxWrapper> ();
+  NdnxWrapperPtr ndnx = make_shared<NdnxWrapper> ();
 
   Name baseName ("/base");
   Name deviceName ("/device");
@@ -127,22 +127,22 @@ BOOST_AUTO_TEST_CASE (TestFetcher)
   // this will allow us to test our pipeline of 6
   for (int i = 0; i < 10; i++)
     {
-      ccnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 30);
+      ndnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 30);
     }
 
   for (int i = 15; i < 25; i++)
     {
-      ccnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 30);
+      ndnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 30);
     }
 
   int oneMore = 26;
-  ccnx->publishData (Name (baseName)(oneMore), reinterpret_cast<const unsigned char*> (&oneMore), sizeof(int), 30);
+  ndnx->publishData (Name (baseName)(oneMore), reinterpret_cast<const unsigned char*> (&oneMore), sizeof(int), 30);
 
   FetcherTestData data;
   ExecutorPtr executor = make_shared<Executor>(1);
   executor->start ();
 
-  Fetcher fetcher (ccnx,
+  Fetcher fetcher (ndnx,
                    executor,
                    bind (&FetcherTestData::onData, &data, _1, _2, _3, _4),
                    bind (&FetcherTestData::finish, &data, _1, _2),
@@ -185,7 +185,7 @@ BOOST_AUTO_TEST_CASE (TestFetcher)
   // publishing missing pieces
   for (int i = 0; i < 27; i++)
     {
-      ccnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 1);
+      ndnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 1);
     }
   BOOST_CHECK_EQUAL (fetcher.IsActive (), false);
   fetcher.RestartPipeline ();
@@ -215,7 +215,7 @@ BOOST_AUTO_TEST_CASE (TestFetcher2)
 {
   INIT_LOGGERS ();
 
-  CcnxWrapperPtr ccnx = make_shared<CcnxWrapper> ();
+  NdnxWrapperPtr ndnx = make_shared<NdnxWrapper> ();
 
   Name baseName ("/base");
   Name deviceName ("/device");
@@ -226,7 +226,7 @@ BOOST_AUTO_TEST_CASE (TestFetcher2)
   ExecutorPtr executor = make_shared<Executor>(1);
   executor->start ();
 
-  Fetcher fetcher (ccnx,
+  Fetcher fetcher (ndnx,
                    executor,
                    bind (&FetcherTestData::onData, &data, _1, _2, _3, _4),
                    bind (&FetcherTestData::finish, &data, _1, _2),
@@ -247,7 +247,7 @@ BOOST_AUTO_TEST_CASE (TestFetcher2)
 
 
 
-// BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)
+// BOOST_AUTO_TEST_CASE (NdnxWrapperSelector)
 // {
 
 //   Closure closure (bind(dataCallback, _1, _2), bind(timeout, _1));

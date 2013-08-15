@@ -19,7 +19,7 @@
  *          Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#include "ccnx-wrapper.h"
+#include "ndnx-wrapper.h"
 #include "logging.h"
 #include "dispatcher.h"
 #include <boost/test/unit_test.hpp>
@@ -28,7 +28,7 @@
 #include <fstream>
 #include <cassert>
 
-using namespace Ccnx;
+using namespace Ndnx;
 using namespace std;
 using namespace boost;
 namespace fs = boost::filesystem;
@@ -63,17 +63,17 @@ BOOST_AUTO_TEST_CASE(DispatcherTest)
 
   string folder = "who-is-president";
 
-  CcnxWrapperPtr ccnx1 = make_shared<CcnxWrapper>();
+  NdnxWrapperPtr ndnx1 = make_shared<NdnxWrapper>();
   usleep(100);
-  CcnxWrapperPtr ccnx2 = make_shared<CcnxWrapper>();
+  NdnxWrapperPtr ndnx2 = make_shared<NdnxWrapper>();
   usleep(100);
 
   cleanDir(dir1);
   cleanDir(dir2);
 
-  Dispatcher d1(user1, folder, dir1, ccnx1, false);
+  Dispatcher d1(user1, folder, dir1, ndnx1, false);
   usleep(100);
-  Dispatcher d2(user2, folder, dir2, ccnx2, false);
+  Dispatcher d2(user2, folder, dir2, ndnx2, false);
 
   usleep(14900000);
 

@@ -19,19 +19,19 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#include "ccnx-verifier.h"
-#include "ccnx-wrapper.h"
+#include "ndnx-verifier.h"
+#include "ndnx-wrapper.h"
 
-INIT_LOGGER ("Ccnx.Verifier");
-namespace Ccnx {
+INIT_LOGGER ("Ndnx.Verifier");
+namespace Ndnx {
 
 static const size_t ROOT_KEY_DIGEST_LEN = 32;  // SHA-256
 static const unsigned char ROOT_KEY_DIGEST[ROOT_KEY_DIGEST_LEN] = {0xa7, 0xd9, 0x8b, 0x81, 0xde, 0x13, 0xfc,
 0x56, 0xc5, 0xa6, 0x92, 0xb4, 0x44, 0x93, 0x6e, 0x56, 0x70, 0x9d, 0x52, 0x6f, 0x70,
 0xed, 0x39, 0xef, 0xb5, 0xe2, 0x3, 0x29, 0xa5, 0x53, 0x3e, 0x68};
 
-Verifier::Verifier(CcnxWrapper *ccnx)
-         : m_ccnx(ccnx)
+Verifier::Verifier(NdnxWrapper *ndnx)
+         : m_ndnx(ndnx)
          , m_rootKeyDigest(ROOT_KEY_DIGEST, ROOT_KEY_DIGEST_LEN)
 {
 }
@@ -99,8 +99,8 @@ Verifier::verify(const PcoPtr &pco, double maxWait)
   selectors.childSelector(Selectors::RIGHT)
            .interestLifetime(maxWait);
 
-  PcoPtr keyObject = m_ccnx->get(keyName, selectors, maxWait);
-  PcoPtr metaObject = m_ccnx->get(metaName, selectors, maxWait);
+  PcoPtr keyObject = m_ndnx->get(keyName, selectors, maxWait);
+  PcoPtr metaObject = m_ndnx->get(metaName, selectors, maxWait);
   if (!keyObject || !metaObject )
   {
     _LOG_ERROR("can not fetch key or meta");
@@ -124,7 +124,7 @@ Verifier::verify(const PcoPtr &pco, double maxWait)
     return false;
   }
 
-  // check pco is actually signed by this key (i.e. we don't trust the publisherPublicKeyDigest given by ccnx c lib)
+  // check pco is actually signed by this key (i.e. we don't trust the publisherPublicKeyDigest given by ndnx c lib)
   if (! (*pco->publisherPublicKeyDigest() == cert->keyDigest()))
   {
     _LOG_ERROR("key digest does not match the publisher public key digest of the content object");
@@ -166,4 +166,4 @@ Verifier::verify(const PcoPtr &pco, double maxWait)
   return pco->verified();
 }
 
-} // Ccnx
+} // Ndnx
