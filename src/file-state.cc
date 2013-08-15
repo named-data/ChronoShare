@@ -52,8 +52,8 @@ CREATE INDEX FileState_device_name_seq_no ON FileState (device_name, seq_no); \n
 CREATE INDEX FileState_type_file_hash ON FileState (type, file_hash);   \n\
 ";
 
-FileState::FileState (const boost::filesystem::path &path)
-  : DbHelper (path / ".chronoshare", "file-state.db")
+FileState::FileState (const boost::filesystem::path &path, bool cow)
+  : DbHelper (path / ".chronoshare",  (cow ? "file-state-tmp.db" : "file-state.db"))
 {
   sqlite3_exec (m_db, INIT_DATABASE.c_str (), NULL, NULL, NULL);
   _LOG_DEBUG_COND (sqlite3_errcode (m_db) != SQLITE_OK, sqlite3_errmsg (m_db));

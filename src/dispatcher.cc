@@ -61,6 +61,7 @@ Dispatcher::Dispatcher(const std::string &localUserName
                                        ActionLog::OnFileAddedOrChangedCallback (), // don't really need this callback
                                        bind (&Dispatcher::Did_ActionLog_ActionApply_Delete, this, _1));
   m_fileState = m_actionLog->GetFileState ();
+  m_fileStateCow = make_shared<FileState> (m_rootDir, true);
 
   Name syncPrefix = Name(BROADCAST_DOMAIN)(CHRONOSHARE_APP)(sharedFolder);
 
@@ -206,7 +207,10 @@ Dispatcher::Did_LocalFile_AddOrModify_Execute (filesystem::path relativeFilePath
       return;
     }
 
-  FileItemPtr currentFile = m_fileState->LookupFile (relativeFilePath.generic_string ());
+  FileItemPtr currentFile = m_fileStateCow->LookupFile (relativeFilePath.generic_string ());
+  if(!currentFile)
+    currentFile = m_fileState->LookupFile (relativeFilePath.generic_string ());
+
   if (currentFile &&
       *Hash::FromFileContent (absolutePath) == Hash (currentFile->file_hash ().c_str (), currentFile->file_hash ().size ())
       // The following two are commented out to prevent front end from reporting intermediate files
@@ -216,13 +220,6 @@ Dispatcher::Did_LocalFile_AddOrModify_Execute (filesystem::path relativeFilePath
       )
     {
       _LOG_ERROR ("Got notification about the same file [" << relativeFilePath << "]");
-      return;
-    }
-
-  if (currentFile &&
-      !currentFile->is_complete ())
-    {
-      _LOG_ERROR ("Got notification about incomplete file [" << relativeFilePath << "]");
       return;
     }
 
@@ -473,6 +470,12 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
        file != filesToAssemble->end ();
        file++)
     {
+      m_fileStateCow->UpdateFile (file->filename(), file->version(),
+                                  Hash(file->file_hash ().c_str(), file->file_hash ().size ()), 
+                                  CcnxCharbuf (file->device_name().c_str(), file->device_name().size()), file->seq_no(),
+                                  file->mtime(), file->mtime(), file->mtime(), 
+                                  file->mode(), file->seg_num());
+
       boost::filesystem::path filePath = m_rootDir / file->filename ();
 
       try
@@ -504,6 +507,7 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute (Ccnx::Name deviceName, C
 #endif
 
             m_fileState->SetFileComplete (file->filename ());
+            m_fileStateCow->DeleteFile(file->filename());
           }
         else
           {

@@ -41,7 +41,7 @@ typedef boost::shared_ptr<FileItems> FileItemsPtr;
 class FileState : public DbHelper
 {
 public:
-  FileState (const boost::filesystem::path &path);
+  FileState (const boost::filesystem::path &path, bool cow = false);
   ~FileState ();
 
   /**

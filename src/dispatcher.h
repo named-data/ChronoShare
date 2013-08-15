@@ -165,6 +165,7 @@ private:
   SyncLogPtr   m_syncLog;
   ActionLogPtr m_actionLog;
   FileStatePtr m_fileState;
+  FileStatePtr m_fileStateCow;
 
   boost::filesystem::path m_rootDir;
   Executor m_executor;
