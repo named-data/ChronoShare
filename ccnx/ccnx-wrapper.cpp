@@ -31,6 +31,7 @@ extern "C" {
 #include <boost/algorithm/string.hpp>
 #include <sstream>
 
+#include "ccnx-verifier.h"
 #include "logging.h"
 
 INIT_LOGGER ("Ccnx.Wrapper");
@@ -110,6 +111,7 @@ CcnxWrapper::CcnxWrapper()
   , m_running (true)
   , m_connected (false)
   , m_executor (new Executor(1))
+  , m_verifier(new Verifier(this))
 {
   start ();
 }
@@ -146,6 +148,11 @@ CcnxWrapper::connectCcnd()
 CcnxWrapper::~CcnxWrapper()
 {
   shutdown ();
+  if (m_verifier != 0)
+  {
+    delete m_verifier;
+    m_verifier = 0;
+  }
 }
 
 void
@@ -261,7 +268,7 @@ CcnxWrapper::ccnLoop ()
 }
 
 Bytes
-CcnxWrapper::createContentObject(const Name  &name, const void *buf, size_t len, int freshness, const Name &keyName)
+CcnxWrapper::createContentObject(const Name  &name, const void *buf, size_t len, int freshness, const Name &keyNameParam)
 {
   {
     UniqueRecLock lock(m_mutex);
@@ -279,27 +286,38 @@ CcnxWrapper::createContentObject(const Name  &name, const void *buf, size_t len,
   struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
   sp.freshness = freshness;
 
-  if (keyName.size() > 0)
+  Name keyName;
+
+  if (keyNameParam.size() == 0)
   {
-    if (sp.template_ccnb == NULL)
-    {
-      sp.template_ccnb = ccn_charbuf_create();
-      ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_SignedInfo, CCN_DTAG);
-    }
-    // no idea what the following 3 lines do, but it was there
-    else if (sp.template_ccnb->length > 0) {
-        sp.template_ccnb->length--;
-    }
-    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyLocator, CCN_DTAG);
-    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyName, CCN_DTAG);
-    CcnxCharbufPtr keyPtr = keyName.toCcnxCharbuf();
-    ccn_charbuf *keyBuf = keyPtr->getBuf();
-    ccn_charbuf_append(sp.template_ccnb, keyBuf->buf, keyBuf->length);
-    ccn_charbuf_append_closer(sp.template_ccnb); // </KeyName>
-    ccn_charbuf_append_closer(sp.template_ccnb); // </KeyLocator>
-    sp.sp_flags |= CCN_SP_TEMPL_KEY_LOCATOR;
-    ccn_charbuf_append_closer(sp.template_ccnb); // </SignedInfo>
+    // use default key name
+    CcnxCharbufPtr defaultKeyNamePtr = boost::make_shared<CcnxCharbuf>();
+    ccn_get_public_key_and_name(m_handle, &sp, NULL, NULL, defaultKeyNamePtr->getBuf());
+    keyName = Name(*defaultKeyNamePtr);
   }
+  else
+  {
+    keyName = keyNameParam;
+  }
+
+  if (sp.template_ccnb == NULL)
+  {
+    sp.template_ccnb = ccn_charbuf_create();
+    ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_SignedInfo, CCN_DTAG);
+  }
+  // no idea what the following 3 lines do, but it was there
+  else if (sp.template_ccnb->length > 0) {
+      sp.template_ccnb->length--;
+  }
+  ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyLocator, CCN_DTAG);
+  ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyName, CCN_DTAG);
+  CcnxCharbufPtr keyPtr = keyName.toCcnxCharbuf();
+  ccn_charbuf *keyBuf = keyPtr->getBuf();
+  ccn_charbuf_append(sp.template_ccnb, keyBuf->buf, keyBuf->length);
+  ccn_charbuf_append_closer(sp.template_ccnb); // </KeyName>
+  ccn_charbuf_append_closer(sp.template_ccnb); // </KeyLocator>
+  sp.sp_flags |= CCN_SP_TEMPL_KEY_LOCATOR;
+  ccn_charbuf_append_closer(sp.template_ccnb); // </SignedInfo>
 
   if (ccn_sign_content(m_handle, content, pname, &sp, buf, len) != 0)
   {
@@ -455,8 +473,6 @@ incomingData(ccn_closure *selfp,
   tuple<Closure *, ExecutorPtr, Selectors> *realData = reinterpret_cast< tuple<Closure*, ExecutorPtr, Selectors>* > (selfp->data);
   tie (cp, executor, selectors) = *realData;
 
-  bool verified = false;
-
   switch (kind)
     {
     case CCN_UPCALL_FINAL:  // effecitve in unit tests
@@ -468,10 +484,15 @@ incomingData(ccn_closure *selfp,
       return CCN_UPCALL_RESULT_OK;
 
     case CCN_UPCALL_CONTENT:
-      verified = true;
       _LOG_TRACE (">> incomingData content upcall: " << Name (info->content_ccnb, info->content_comps));
       break;
 
+    // this is the case where the intentionally unsigned packets coming (in Encapsulation case)
+    case CCN_UPCALL_CONTENT_BAD:
+      _LOG_TRACE (">> incomingData content bad upcall: " << Name (info->content_ccnb, info->content_comps));
+      break;
+
+    // always ask ccnd to try to fetch the key
     case CCN_UPCALL_CONTENT_UNVERIFIED:
       _LOG_TRACE (">> incomingData content unverified upcall: " << Name (info->content_ccnb, info->content_comps));
       break;
@@ -495,7 +516,7 @@ incomingData(ccn_closure *selfp,
       return CCN_UPCALL_RESULT_OK;
     }
 
-  PcoPtr pco = make_shared<ParsedContentObject> (info->content_ccnb, info->pco->offset[CCN_PCO_E], verified);
+  PcoPtr pco = make_shared<ParsedContentObject> (info->content_ccnb, info->pco->offset[CCN_PCO_E]);
 
   // this will be run in executor
   executor->execute (bind (&Closure::runDataCallback, cp, pco->name (), pco));
@@ -684,11 +705,9 @@ CcnxWrapper::getLocalPrefix ()
 }
 
 bool
-CcnxWrapper::verifyPco(PcoPtr &pco)
+CcnxWrapper::verify(PcoPtr &pco, double maxWait)
 {
-  bool verified = (ccn_verify_content(m_handle, pco->msg(), (ccn_parsed_ContentObject *)pco->pco()) == 0);
-  pco->setVerified(verified);
-  return verified;
+  return m_verifier->verify(pco, maxWait);
 }
 
 // This is needed just for get function implementation
@@ -707,8 +726,10 @@ struct GetState
   PcoPtr
   WaitForResult ()
   {
+    //_LOG_TRACE("GetState::WaitForResult start");
     boost::unique_lock<boost::mutex> lock (m_mutex);
     m_cond.timed_wait (lock, m_maxWait);
+    //_LOG_TRACE("GetState::WaitForResult finish");
 
     return m_retval;
   }
@@ -716,9 +737,9 @@ struct GetState
   void
   DataCallback (Name name, PcoPtr pco)
   {
-    m_retval = pco;
-
+    //_LOG_TRACE("GetState::DataCallback, Name [" << name << "]");
     boost::unique_lock<boost::mutex> lock (m_mutex);
+    m_retval = pco;
     m_cond.notify_one ();
   }
 

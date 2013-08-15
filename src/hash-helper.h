@@ -27,6 +27,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/exception/all.hpp>
 #include <boost/filesystem.hpp>
+#include "ccnx-common.h"
 
 // Other options: VP_md2, EVP_md5, EVP_sha, EVP_sha1, EVP_sha256, EVP_dss, EVP_dss1, EVP_mdc2, EVP_ripemd160
 #define HASH_FUNCTION EVP_sha256
@@ -39,6 +40,12 @@ class Hash
 public:
   static unsigned char _origin;
   static HashPtr Origin;
+
+  Hash ()
+    : m_buf(0)
+    , m_length(0)
+  {
+  }
 
   Hash (const void *buf, unsigned int length)
     : m_length (length)
@@ -65,6 +72,9 @@ public:
 
   static HashPtr
   FromFileContent (const boost::filesystem::path &fileName);
+
+  static HashPtr
+  FromBytes (const Ccnx::Bytes &bytes);
 
   ~Hash ()
   {

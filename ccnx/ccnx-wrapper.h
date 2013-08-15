@@ -37,6 +37,7 @@ namespace Ccnx {
 
 struct CcnxOperationException : boost::exception, std::exception { };
 
+class Verifier;
 class CcnxWrapper
 {
 public:
@@ -87,13 +88,13 @@ public:
   getLocalPrefix ();
 
   Bytes
-  createContentObject(const Name &name, const void *buf, size_t len, int freshness = DEFAULT_FRESHNESS, const Name &keyName=Name());
+  createContentObject(const Name &name, const void *buf, size_t len, int freshness = DEFAULT_FRESHNESS, const Name &keyNameParam=Name());
 
   int
   putToCcnd (const Bytes &contentObject);
 
   bool
-  verifyPco(PcoPtr &pco);
+  verify(PcoPtr &pco, double maxWait = 1 /*seconds*/);
 
   PcoPtr
   get (const Name &interest, const Selectors &selector = Selectors(), double maxWait = 4.0/*seconds*/);
@@ -126,6 +127,7 @@ protected:
   bool m_connected;
   std::map<Name, InterestCallback> m_registeredInterests;
   ExecutorPtr m_executor;
+  Verifier *m_verifier;
 };
 
 typedef boost::shared_ptr<CcnxWrapper> CcnxWrapperPtr;

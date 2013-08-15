@@ -167,3 +167,25 @@ Hash::FromFileContent (const fs::path &filename)
 
   return retval;
 }
+
+HashPtr
+Hash::FromBytes (const Ccnx::Bytes &bytes)
+{
+  HashPtr retval = make_shared<Hash> (reinterpret_cast<void*> (0), 0);
+  retval->m_buf = new unsigned char [EVP_MAX_MD_SIZE];
+
+  EVP_MD_CTX *hash_context = EVP_MD_CTX_create ();
+  EVP_DigestInit_ex (hash_context, HASH_FUNCTION (), 0);
+
+  // not sure whether it's bad to do so if bytes.size is huge
+  EVP_DigestUpdate(hash_context, Ccnx::head(bytes), bytes.size());
+
+  retval->m_buf = new unsigned char [EVP_MAX_MD_SIZE];
+
+  EVP_DigestFinal_ex (hash_context,
+                      retval->m_buf, &retval->m_length);
+
+  EVP_MD_CTX_destroy (hash_context);
+
+  return retval;
+}

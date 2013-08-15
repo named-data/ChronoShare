@@ -25,14 +25,24 @@
 #include "ccnx-wrapper.h"
 #include "ccnx-common.h"
 #include "ccnx-name.h"
+#include "hash-helper.h"
 
 namespace Ccnx {
 
 struct MisformedContentObjectException : virtual boost::exception, virtual std::exception { };
 
+class Cert;
+typedef boost::shared_ptr<Cert> CertPtr;
+
 class ParsedContentObject
 {
 public:
+  enum Type
+  {
+    DATA,
+    KEY,
+    OTHER
+  };
   ParsedContentObject(const unsigned char *data, size_t len, bool verified = false);
   ParsedContentObject(const unsigned char *data, const ccn_parsed_ContentObject &pco, bool verified = false);
   ParsedContentObject(const Bytes &bytes, bool verified = false);
@@ -48,6 +58,15 @@ public:
   Name
   name() const;
 
+  Name
+  keyName() const;
+
+  HashPtr
+  publisherPublicKeyDigest() const;
+
+  Type
+  type() const;
+
   inline const Bytes &
   buf () const;
 
@@ -55,7 +74,7 @@ public:
   verified() const { return m_verified; }
 
   void
-  setVerified(bool verified) { m_verified = verified; }
+  verifySignature(const CertPtr &cert);
 
   const unsigned char *
   msg() const { return head(m_bytes); }
@@ -72,6 +91,7 @@ protected:
   ccn_indexbuf *m_comps;
   Bytes m_bytes;
   bool m_verified;
+  bool m_integrityChecked;
 };
 
 const Bytes &

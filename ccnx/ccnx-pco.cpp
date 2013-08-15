@@ -20,6 +20,7 @@
  */
 
 #include "ccnx-pco.h"
+#include "ccnx-cert.h"
 
 namespace Ccnx {
 
@@ -98,6 +99,50 @@ Name
 ParsedContentObject::name() const
 {
   return Name(head(m_bytes), m_comps);
+}
+
+Name
+ParsedContentObject::keyName() const
+{
+  if (m_pco.offset[CCN_PCO_E_KeyName_Name] > m_pco.offset[CCN_PCO_B_KeyName_Name])
+  {
+    CcnxCharbufPtr ptr = boost::make_shared<CcnxCharbuf>();
+    ccn_charbuf_append(ptr->getBuf(), head(m_bytes) + m_pco.offset[CCN_PCO_B_KeyName_Name], m_pco.offset[CCN_PCO_E_KeyName_Name] - m_pco.offset[CCN_PCO_B_KeyName_Name]);
+
+    return Name(*ptr);
+  }
+  else
+  {
+    return Name();
+  }
+}
+
+HashPtr
+ParsedContentObject::publisherPublicKeyDigest() const
+{
+  const unsigned char *buf = NULL;
+  size_t size = 0;
+  ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest, head(m_bytes), m_pco.offset[CCN_PCO_B_PublisherPublicKeyDigest], m_pco.offset[CCN_PCO_E_PublisherPublicKeyDigest], &buf, &size);
+
+  return boost::make_shared<Hash>(buf, size);
+}
+
+ParsedContentObject::Type
+ParsedContentObject::type() const
+{
+  switch (m_pco.type)
+  {
+  case CCN_CONTENT_DATA: return DATA;
+  case CCN_CONTENT_KEY: return KEY;
+  default: break;
+  }
+  return OTHER;
+}
+
+void
+ParsedContentObject::verifySignature(const CertPtr &cert)
+{
+  m_verified = (ccn_verify_signature(head(m_bytes), m_pco.offset[CCN_PCO_E], &m_pco, cert->pkey()) == 1);
 }
 
 }

@@ -65,10 +65,12 @@ void dataCallback(const Name &name, Ccnx::PcoPtr pco)
 void encapCallback(const Name &name, Ccnx::PcoPtr pco)
 {
   cout << " in encap data callback" << endl;
+  BOOST_CHECK(!c1->verify(pco));
+  cout << "++++++++++++++++++ Outer content couldn't be verified, which is expected." << endl;
   PcoPtr npco = make_shared<ParsedContentObject> (*(pco->contentPtr()));
   g_dataCallback_counter ++;
   BOOST_CHECK(npco);
-  BOOST_CHECK(c1->verifyPco(npco));
+  BOOST_CHECK(c1->verify(npco));
 }
 
 void
@@ -187,7 +189,7 @@ BOOST_AUTO_TEST_CASE (TestTimeout)
   c1->sendInterest(Name(n1), closure, selectors);
   usleep(3500000);
   c2->publishData(Name(n1), (const unsigned char *)n1.c_str(), n1.size(), 1);
-  usleep(1000);
+  usleep(100000);
   BOOST_CHECK_EQUAL(g_dataCallback_counter, 1);
   BOOST_CHECK_EQUAL(g_timeout_counter, 3);
   teardown();
@@ -201,9 +203,9 @@ BOOST_AUTO_TEST_CASE (TestUnsigned)
 
   g_dataCallback_counter = 0;
   c1->sendInterest(Name(n1), closure);
-  usleep(1000);
+  usleep(100000);
   c2->publishUnsignedData(Name(n1), (const unsigned char *)n1.c_str(), n1.size(), 1);
-  usleep(1000);
+  usleep(100000);
   BOOST_CHECK_EQUAL(g_dataCallback_counter, 1);
 
   string n2 = "/xxxxxx/signed/01";
@@ -211,11 +213,13 @@ BOOST_AUTO_TEST_CASE (TestUnsigned)
   c1->publishUnsignedData(Name(n2), head(content), content.size(), 1);
   Closure encapClosure(bind(encapCallback, _1, _2), bind(timeout, _1, _2, _3));
   c2->sendInterest(Name(n2), encapClosure);
-  usleep(2000);
+  usleep(4000000);
   BOOST_CHECK_EQUAL(g_dataCallback_counter, 2);
   teardown();
 }
 
+
+ /*
  BOOST_AUTO_TEST_CASE (CcnxWrapperUnsigningTest)
  {
    setup();
@@ -243,6 +247,7 @@ BOOST_AUTO_TEST_CASE (TestUnsigned)
    cout << "Average time to publish one content object is " << (double) duration.total_milliseconds() / 100000.0 << " milliseconds" << endl;
     teardown();
  }
+ */
 
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -132,8 +132,8 @@ Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
 
   if (m_forwardingHint == Name ())
   {
-    // check whether data is verified in this case; if verified invoke callback
-    if (data->verified())
+    // TODO: check verified!!!!
+    if (true)
     {
       if (!m_segmentCallback.empty ())
       {
@@ -149,12 +149,13 @@ Fetcher::OnData_Execute (uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
   }
   else
     {
-      // in this case we don't care whether "data" is verified, in fact, we expect it is unverified
+      // in this case we don't care whether "data" is verified,  in fact, we expect it is unverified
       try {
         PcoPtr pco = make_shared<ParsedContentObject> (*data->contentPtr ());
 
         // we need to verify this pco and apply callback only when verified
-        if (m_ccnx->verifyPco(pco))
+        // TODO: check verified !!!
+        if (true)
         {
           if (!m_segmentCallback.empty ())
             {
