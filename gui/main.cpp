@@ -19,7 +19,8 @@
  */
 
 #include "chronosharegui.hpp"
-#include "logging.hpp"
+#include "core/logging.hpp"
+
 #include <QApplication>
 
 int
@@ -31,7 +32,7 @@ main(int argc, char* argv[])
   app.setQuitOnLastWindowClosed(false);
 
   // invoke gui
-  ChronoShareGui gui;
+  ndn::chronoshare::ChronoShareGui gui;
 
   return app.exec();
 }

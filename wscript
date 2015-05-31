@@ -130,26 +130,26 @@ def build(bld):
           )
 
     http_server = bld(
-          target = "http_server",
-          features = "qt5 cxx",
-          source = bld.path.ant_glob(['server/*.cpp']),
-          includes = "server src .",
-          use = 'BOOST QT5CORE',
-          )
+        target = "http_server",
+        features = "qt5 cxx",
+        source = bld.path.ant_glob(['server/*.cpp']),
+        includes = "server src .",
+        use = 'BOOST QT5CORE',
+        )
 
-#     qt = bld(
-#         target = "ChronoShare",
-#         features = "qt5 cxx cxxprogram html_resources",
-#         defines = "WAF",
-#         source = bld.path.ant_glob(['gui/*.cpp', 'gui/images.qrc']),
-#         includes = "fs-watcher gui src adhoc server . ",
-#         use = "fs_watcher chronoshare http_server QT5CORE QT5GUI QT5WIDGETS",
-
-#         html_resources = bld.path.find_dir("gui/html").ant_glob([
-#                 '**/*.js', '**/*.png', '**/*.css',
-#                 '**/*.html', '**/*.gif', '**/*.ico'
-#                 ]),
-#         )
+    qt = bld(
+        target = "ChronoShare",
+        features = "qt5 cxx cxxprogram html_resources",
+        defines = "WAF",
+        source = bld.path.ant_glob(['gui/*.cpp', 'gui/images.qrc']),
+        includes = "fs-watcher gui src adhoc server . ",
+        use = "fs-watcher chronoshare http_server QT5CORE QT5GUI QT5WIDGETS",
+        moc = "gui/chronosharegui.hpp",
+        html_resources = bld.path.find_dir("gui/html").ant_glob([
+                '**/*.js', '**/*.png', '**/*.css',
+                '**/*.html', '**/*.gif', '**/*.ico'
+                ]),
+        )
 
 #     if Utils.unversioned_sys_platform() == "darwin":
 #         app_plist = '''<?xml version="1.0" encoding="UTF-8"?>

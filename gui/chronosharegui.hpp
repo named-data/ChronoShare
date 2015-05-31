@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -18,15 +18,10 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#ifndef CHRONOSHAREGUI_H
-#define CHRONOSHAREGUI_H
+#ifndef CHRONOSHARE_GUI_CHRONOSHAREGUI_HPP
+#define CHRONOSHARE_GUI_CHRONOSHAREGUI_HPP
 
-#include "adhoc.hpp"
-
-#if __APPLE__ && HAVE_SPARKLE
-#define SPARKLE_SUPPORTED 1
-#include "sparkle-auto-update.hpp"
-#endif
+#include "core/chronoshare-common.hpp"
 
 #include <QApplication>
 #include <QCloseEvent>
@@ -38,13 +33,24 @@
 #include <QProcess>
 #include <QSettings>
 #include <QSystemTrayIcon>
-#include <QWidget>
-#include <QtGui>
+#include <QtWidgets>
 
+#ifndef Q_MOC_RUN
+#include "adhoc.hpp"
 #include "dispatcher.hpp"
 #include "fs-watcher.hpp"
 #include "server.hpp"
-#include <boost/thread/thread.hpp>
+#endif // Q_MOC_RUN
+
+#if __APPLE__ && HAVE_SPARKLE
+#define SPARKLE_SUPPORTED 1
+#include "sparkle-auto-update.hpp"
+#endif
+
+#include <thread>
+
+namespace ndn {
+namespace chronoshare {
 
 class ChronoShareGui : public QDialog
 {
@@ -86,10 +92,6 @@ private slots:
   // change chronoshare settings
   void
   changeSettings();
-
-  // click on adhoc button
-  void
-  onAdHocChange(bool state); // cannot be protected with #ifdef. otherwise something fishy with QT
 
   void
   onCheckForUpdates();
@@ -152,10 +154,8 @@ private:
   QString m_username;         // username
   QString m_sharedFolderName; // shared folder name
 
-  FsWatcher* m_watcher;
-  Dispatcher* m_dispatcher;
   http::server::server* m_httpServer;
-  boost::thread m_httpServerThread;
+  std::thread m_httpServerThread;
 
   QLabel* labelUsername;
   QPushButton* button;
@@ -167,15 +167,20 @@ private:
   QLabel* label;
   QVBoxLayout* mainLayout;
 
-#ifdef ADHOC_SUPPORTED
-  Executor m_executor;
-#endif
-
 #ifdef SPARKLE_SUPPORTED
   AutoUpdate* m_autoUpdate;
 #endif
   // QString m_settingsFilePath; // settings file path
   // QString m_settings;
+
+  std::thread m_chronoshareThread;
+  std::unique_ptr<boost::asio::io_service> m_ioService;
+  std::unique_ptr<Face> m_face;
+  std::unique_ptr<FsWatcher> m_watcher;
+  std::unique_ptr<Dispatcher> m_dispatcher;
 };
 
-#endif // CHRONOSHAREGUI_H
+} // namespace chronoshare
+} // namespace ndn
+
+#endif // CHRONOSHARE_GUI_CHRONOSHAREGUI_HPP
