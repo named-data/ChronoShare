@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -17,79 +17,129 @@
  *
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
+
 #include "fs-watcher.hpp"
+#include "test-common.hpp"
+
 #include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/thread/thread.hpp>
-#include <QtGui>
 #include <fstream>
+#include <iostream>
+#include <thread>
 #include <set>
 
+#include "fs-watcher.t.hpp"
+
 using namespace std;
-using namespace boost;
 namespace fs = boost::filesystem;
 
-BOOST_AUTO_TEST_SUITE(TestFsWatcher)
+_LOG_INIT(Test.FSWatcher);
 
-void
-onChange(set<string>& files, const fs::path& file)
+namespace ndn {
+namespace chronoshare {
+namespace tests {
+
+fsWatcherApp::fsWatcherApp(int& argc, char** argv)
+  : QCoreApplication(argc, argv)
 {
-  cerr << "onChange called" << endl;
-  files.insert(file.string());
+  connect(this, SIGNAL(stopApp()), this, SLOT(quit()), Qt::QueuedConnection);
 }
 
-void
-onDelete(set<string>& files, const fs::path& file)
-{
-  files.erase(file.string());
-}
+fsWatcherApp::~fsWatcherApp() = default;
 
-void
-create_file(const fs::path& ph, const std::string& contents)
+class TestFSWatcherFixture : public IdentityManagementFixture
 {
-  std::ofstream f(ph.string().c_str());
-  if (!f) {
-    abort();
+public:
+  TestFSWatcherFixture()
+    : dir(fs::path(UNIT_TEST_CONFIG_PATH) / "TestFsWatcher")
+    , argc(0)
+  {
+    if (fs::exists(dir)) {
+      fs::remove_all(dir);
+    }
+
+    fs::create_directory(dir);
   }
-  if (!contents.empty()) {
-    f << contents;
-  }
-}
 
-void
-run(fs::path dir, FsWatcher::LocalFile_Change_Callback c, FsWatcher::LocalFile_Change_Callback d)
-{
-  int x = 0;
-  QCoreApplication app(x, 0);
-  FsWatcher watcher(dir.string().c_str(), c, d);
-  app.exec();
-  sleep(100);
-}
+  ~TestFSWatcherFixture(){
+    // cleanup
+    if (fs::exists(dir)) {
+      _LOG_DEBUG("clean all");
+      fs::remove_all(dir);
+    }
+  }
+
+  void
+  advanceClocks(std::chrono::seconds delay)
+  {
+    std::chrono::milliseconds step = delay;
+    step /= 50;
+    for (int i = 0; i < 50; ++i) {
+      std::this_thread::sleep_for(step);
+      m_io.poll();
+      m_io.reset();
+    }
+  }
+
+  void
+  onChange(set<string>& files, const fs::path& file)
+  {
+    _LOG_DEBUG("on change, file: " << file);
+    files.insert(file.string());
+  }
+
+  void
+  onDelete(set<string>& files, const fs::path& file)
+  {
+    _LOG_DEBUG("on delete, file: " << file);
+    files.erase(file.string());
+  }
+
+  void
+  create_file(const fs::path& ph, const std::string& contents)
+  {
+    std::ofstream f(ph.string().c_str());
+    if (!f) {
+      abort();
+    }
+    if (!contents.empty()) {
+      f << contents;
+    }
+  }
+
+  void
+  run()
+  {
+    app = new fsWatcherApp(argc, nullptr);
+    new FsWatcher(m_io, dir.string().c_str(),
+                  std::bind(&TestFSWatcherFixture::onChange, this, std::ref(files), _1),
+                  std::bind(&TestFSWatcherFixture::onDelete, this, std::ref(files), _1),
+                  app);
+    app->exec();
+  }
+
+public:
+  fs::path dir;
+  set<string> files;
+  int argc;
+  fsWatcherApp* app;
+};
+
+BOOST_FIXTURE_TEST_SUITE(TestFsWatcher, TestFSWatcherFixture)
 
 BOOST_AUTO_TEST_CASE(TestFsWatcher)
 {
-  fs::path dir = fs::absolute(fs::path("TestFsWatcher"));
-  if (fs::exists(dir)) {
-    fs::remove_all(dir);
-  }
-
-  fs::create_directory(dir);
-
-  set<string> files;
-
-  FsWatcher::LocalFile_Change_Callback fileChange = boost::bind(onChange, ref(files), _1);
-  FsWatcher::LocalFile_Change_Callback fileDelete = boost::bind(onDelete, ref(files), _1);
-
-  thread workThread(run, dir, fileChange, fileDelete);
-  //FsWatcher watcher (dir.string().c_str(), fileChange, fileDelete);
+  std::thread workThread(boost::bind(&TestFSWatcherFixture::run, this));
+  this->advanceClocks(std::chrono::seconds(2));
 
   // ============ check create file detection ================
   create_file(dir / "test.txt", "hello");
-  // have to at least wait 0.5 seconds
-  usleep(1000000);
+  this->advanceClocks(std::chrono::seconds(2));
   // test.txt
   BOOST_CHECK_EQUAL(files.size(), 1);
   BOOST_CHECK(files.find("test.txt") != files.end());
@@ -101,8 +151,7 @@ BOOST_AUTO_TEST_CASE(TestFsWatcher)
     string filename = boost::lexical_cast<string>(i);
     create_file(subdir / filename.c_str(), boost::lexical_cast<string>(i));
   }
-  // have to at least wait 0.5 * 2 seconds
-  usleep(1100000);
+  this->advanceClocks(std::chrono::seconds(2));
   // test.txt
   // sub/0..9
   BOOST_CHECK_EQUAL(files.size(), 11);
@@ -117,10 +166,9 @@ BOOST_AUTO_TEST_CASE(TestFsWatcher)
   fs::copy_directory(subdir, subdir1);
   for (int i = 0; i < 5; i++) {
     string filename = boost::lexical_cast<string>(i);
-    fs::copy_file(subdir / filename.c_str(), subdir1 / filename.c_str());
+    fs::copy(subdir / filename.c_str(), subdir1 / filename.c_str());
   }
-  // have to at least wait 0.5 * 2 seconds
-  usleep(1100000);
+  this->advanceClocks(std::chrono::seconds(2));
   // test.txt
   // sub/0..9
   // sub1/sub2/0..4
@@ -135,7 +183,7 @@ BOOST_AUTO_TEST_CASE(TestFsWatcher)
     string filename = boost::lexical_cast<string>(i);
     fs::remove(subdir / filename.c_str());
   }
-  usleep(1100000);
+  this->advanceClocks(std::chrono::seconds(2));
   // test.txt
   // sub/7..9
   // sub1/sub2/0..4
@@ -148,14 +196,15 @@ BOOST_AUTO_TEST_CASE(TestFsWatcher)
       BOOST_CHECK(files.find("sub/" + filename) != files.end());
   }
 
-  // =================== check remove files again, remove the whole dir this time ===================
+  // =================== check remove files again, remove the whole dir this time
+  // ===================
   // before remove check
   for (int i = 0; i < 5; i++) {
     string filename = boost::lexical_cast<string>(i);
     BOOST_CHECK(files.find("sub1/sub2/" + filename) != files.end());
   }
   fs::remove_all(subdir1);
-  usleep(1100000);
+  this->advanceClocks(std::chrono::seconds(2));
   BOOST_CHECK_EQUAL(files.size(), 4);
   // test.txt
   // sub/7..9
@@ -169,7 +218,7 @@ BOOST_AUTO_TEST_CASE(TestFsWatcher)
     string filename = boost::lexical_cast<string>(i);
     fs::rename(subdir / filename.c_str(), dir / filename.c_str());
   }
-  usleep(1100000);
+  this->advanceClocks(std::chrono::seconds(2));
   // test.txt
   // 7
   // 8
@@ -183,33 +232,36 @@ BOOST_AUTO_TEST_CASE(TestFsWatcher)
   }
 
   create_file(dir / "add-removal-check.txt", "add-removal-check");
-  usleep(1200000);
+  this->advanceClocks(std::chrono::seconds(2));
   BOOST_CHECK(files.find("add-removal-check.txt") != files.end());
 
   fs::remove(dir / "add-removal-check.txt");
-  usleep(1200000);
+  this->advanceClocks(std::chrono::seconds(2));
   BOOST_CHECK(files.find("add-removal-check.txt") == files.end());
 
   create_file(dir / "add-removal-check.txt", "add-removal-check");
-  usleep(1200000);
+  this->advanceClocks(std::chrono::seconds(2));
   BOOST_CHECK(files.find("add-removal-check.txt") != files.end());
 
   fs::remove(dir / "add-removal-check.txt");
-  usleep(1200000);
+  this->advanceClocks(std::chrono::seconds(2));
   BOOST_CHECK(files.find("add-removal-check.txt") == files.end());
 
   create_file(dir / "add-removal-check.txt", "add-removal-check");
-  usleep(1200000);
+  this->advanceClocks(std::chrono::seconds(2));
   BOOST_CHECK(files.find("add-removal-check.txt") != files.end());
 
   fs::remove(dir / "add-removal-check.txt");
-  usleep(1200000);
+  this->advanceClocks(std::chrono::seconds(2));
   BOOST_CHECK(files.find("add-removal-check.txt") == files.end());
 
-  // cleanup
-  if (fs::exists(dir)) {
-    fs::remove_all(dir);
-  }
+  emit app->stopApp();
+
+  workThread.join();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+} // namespace tests
+} // namespace chronoshare
+} // namespace ndn

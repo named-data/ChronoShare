@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -17,26 +17,45 @@
  *
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
-#ifndef FS_WATCHER_H
-#define FS_WATCHER_H
 
-#include <boost/filesystem.hpp>
+#ifndef CHRONOSHARE_FS_WATCHER_FS_WATCHER_HPP
+#define CHRONOSHARE_FS_WATCHER_FS_WATCHER_HPP
+
+#include "db-helper.hpp"
+#include "core/chronoshare-common.hpp"
+
 #include <QFileSystemWatcher>
 #include <sqlite3.h>
 #include <vector>
 
-#include "scheduler.hpp"
+#include <ndn-cxx/util/scheduler-scoped-event-id.hpp>
+#include <ndn-cxx/util/scheduler.hpp>
+
+#include <boost/asio/io_service.hpp>
+#include <boost/filesystem.hpp>
+
+namespace ndn {
+namespace chronoshare {
 
 class FsWatcher : public QObject
 {
   Q_OBJECT
 
 public:
-  typedef boost::function<void(const boost::filesystem::path&)> LocalFile_Change_Callback;
+  class Error : public DbHelper::Error
+  {
+  public:
+    explicit Error(const std::string& what)
+      : DbHelper::Error(what)
+    {
+    }
+  };
+
+  typedef std::function<void(const boost::filesystem::path&)> LocalFile_Change_Callback;
 
   // constructor
-  FsWatcher(QString dirPath, LocalFile_Change_Callback onChange, LocalFile_Change_Callback onDelete,
-            QObject* parent = 0);
+  FsWatcher(boost::asio::io_service& io, QString dirPath, LocalFile_Change_Callback onChange,
+            LocalFile_Change_Callback onDelete, QObject* parent = 0);
 
   // destructor
   ~FsWatcher();
@@ -77,9 +96,13 @@ private:
   void
   getFilesInDir(const boost::filesystem::path& dir, std::vector<std::string>& files);
 
+  void
+  rescheduleEvent(const std::string& eventType, const std::string& dirPath,
+                  const time::milliseconds& period, const Scheduler::Event& callback);
+
 private:
   QFileSystemWatcher* m_watcher; // filesystem watcher
-  SchedulerPtr m_scheduler;
+  Scheduler m_scheduler;
 
   QString m_dirPath; // monitored path
 
@@ -87,6 +110,11 @@ private:
   LocalFile_Change_Callback m_onDelete;
 
   sqlite3* m_db;
+
+  std::map<std::string, util::scheduler::ScopedEventId> m_events;
 };
 
-#endif // FILESYSTEMWATCHER_H
+} // namespace chronoshare
+} // namespace ndn
+
+#endif // CHRONOSHARE_FS_WATCHER_FS_WATCHER_HPP

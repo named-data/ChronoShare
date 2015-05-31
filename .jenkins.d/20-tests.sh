@@ -47,6 +47,9 @@ sudo nfd &
 # Give NFD a few seconds to start
 sleep 10
 
+#open the NDN LOG
+export NDN_LOG=*=ALL
+
 # First run all tests as unprivileged user
 ./build/unit-tests $(ut_log_args)
 

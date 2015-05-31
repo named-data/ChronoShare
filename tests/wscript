@@ -8,32 +8,32 @@ def build(bld):
     if not bld.env['WITH_TESTS']:
         return
 
-    Logs.error("Many unit tests are temporary disabled")
-
     bld(features='cxx',
-        target='unit-tests-main',
-        name='unit-tests-main',
-        source='main.cpp',
-        use='BOOST',
+        target='tests-base',
+        name='tests-base',
+        source=bld.path.ant_glob(['*.cpp'], excl='main.cpp'),
+        use='core-objects',
         includes='.. .',
-        defines=['BOOST_TEST_MODULE=ChronoShare Unit Tests'])
+        defines='UNIT_TEST_CONFIG_PATH=\"%s/tmp-files/\"' % (bld.bldnode)
+      )
 
-    unit_tests = bld.program(
-            target='../unit-tests',
-            features='cxx cxxprogram',
-            source=bld.path.ant_glob(['*.cpp',
-                                      'unit-tests/dummy-forwarder.cpp',
-                                      'unit-tests/sync-*.t.cpp',
-                                      'unit-tests/action-log.t.cpp',
-                                      'unit-tests/object-*.t.cpp',
-                                      'unit-tests/fetch*.t.cpp',
-                                      'unit-tests/serve-and-fetch.t.cpp',
-                                      'unit-tests/content-server.t.cpp',
-                                      'unit-tests/dispatcher.t.cpp',
-                                      ],
-                                     excl=['main.cpp']),
-            use='chronoshare core-objects unit-tests-main',
+    for module, name in {"unit": "Unit Tests",
+                         "integrated": "Integrated Tests"}.items():
+        bld(target='%s-tests-main' % module,
+            name='%s-tests-main' % module,
+            features='cxx',
+            use='core-objects BOOST',
+            source='main.cpp',
+            defines=['BOOST_TEST_MODULE=%s' % name]
+        )
+
+        tests = bld.program(
+            target='../%s-tests' % module,
+            features='qt5 cxx cxxprogram',
+            moc='' if module == 'unit' else 'integrated-tests/fs-watcher.t.hpp',
+            source=bld.path.ant_glob(['%s-tests/*.cpp' % module]),
+            use='chronoshare core-objects fs-watcher tests-base %s-tests-main QT5CORE QT5WIDGETS' % module,
             install_path=None,
-            defines='UNIT_TEST_CONFIG_PATH=\"%s/tmp-files/\"' % (bld.bldnode),
+            defines=['UNIT_TEST_CONFIG_PATH=\"%s/tmp-files/\"' % (bld.bldnode)],
             includes='.. ../src .',
-          )
+        )
