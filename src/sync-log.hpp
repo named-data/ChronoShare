@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -18,26 +18,45 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#ifndef SYNC_LOG_H
-#define SYNC_LOG_H
+#ifndef CHRONOSHARE_SRC_SYNC_LOG_HPP
+#define CHRONOSHARE_SRC_SYNC_LOG_HPP
 
 #include "db-helper.hpp"
-#include <boost/thread/shared_mutex.hpp>
-#include <ccnx-name.h>
-#include <map>
-#include <sync-state.pb.hpp>
+#include "sync-state.pb.h"
+#include "core/chronoshare-common.hpp"
 
-typedef boost::shared_ptr<SyncStateMsg> SyncStateMsgPtr;
+#include <ndn-cxx/name.hpp>
+
+#include <map>
+
+// @todo Replace with std::thread
+#include <boost/thread.hpp>
+#include <boost/thread/shared_mutex.hpp>
+
+namespace ndn {
+namespace chronoshare {
+
+typedef shared_ptr<SyncStateMsg> SyncStateMsgPtr;
 
 class SyncLog : public DbHelper
 {
 public:
-  SyncLog(const boost::filesystem::path& path, const Ccnx::Name& localName);
+  class Error : public DbHelper::Error
+  {
+  public:
+    explicit
+    Error(const std::string& what)
+      : DbHelper::Error(what)
+    {
+    }
+  };
+
+  SyncLog(const boost::filesystem::path& path, const Name& localName);
 
   /**
    * @brief Get local username
    */
-  inline const Ccnx::Name&
+  const Name&
   GetLocalName() const;
 
   sqlite3_int64
@@ -45,28 +64,28 @@ public:
 
   // done
   void
-  UpdateDeviceSeqNo(const Ccnx::Name& name, sqlite3_int64 seqNo);
+  UpdateDeviceSeqNo(const Name& name, sqlite3_int64 seqNo);
 
   void
   UpdateLocalSeqNo(sqlite3_int64 seqNo);
 
-  Ccnx::Name
-  LookupLocator(const Ccnx::Name& deviceName);
+  Name
+  LookupLocator(const Name& deviceName);
 
-  Ccnx::Name
+  Name
   LookupLocalLocator();
 
   void
-  UpdateLocator(const Ccnx::Name& deviceName, const Ccnx::Name& locator);
+  UpdateLocator(const Name& deviceName, const Name& locator);
 
   void
-  UpdateLocalLocator(const Ccnx::Name& locator);
+  UpdateLocalLocator(const Name& locator);
 
   // done
   /**
-   * Create an entry in SyncLog and SyncStateNodes corresponding to the current state of SyncNodes
+   * Create an 1ntry in SyncLog and SyncStateNodes corresponding to the current state of SyncNodes
    */
-  HashPtr
+  ConstBufferPtr
   RememberStateInStateLog();
 
   // done
@@ -75,7 +94,7 @@ public:
 
   // done
   sqlite3_int64
-  LookupSyncLog(const Hash& stateHash);
+  LookupSyncLog(const Buffer& stateHash);
 
   // How difference is exposed will be determined later by the actual protocol
   SyncStateMsgPtr
@@ -83,11 +102,11 @@ public:
                        bool includeOldSeq = false);
 
   SyncStateMsgPtr
-  FindStateDifferences(const Hash& oldHash, const Hash& newHash, bool includeOldSeq = false);
+  FindStateDifferences(const Buffer& oldHash, const Buffer& newHash, bool includeOldSeq = false);
 
   //-------- only used in test -----------------
   sqlite3_int64
-  SeqNo(const Ccnx::Name& name);
+  SeqNo(const Name& name);
 
   sqlite3_int64
   LogSize();
@@ -97,7 +116,7 @@ protected:
   UpdateDeviceSeqNo(sqlite3_int64 deviceId, sqlite3_int64 seqNo);
 
 protected:
-  Ndnx::Name m_localName;
+  Name m_localName;
 
   sqlite3_int64 m_localDeviceId;
 
@@ -107,12 +126,15 @@ protected:
   Mutex m_stateUpdateMutex;
 };
 
-typedef boost::shared_ptr<SyncLog> SyncLogPtr;
+typedef shared_ptr<SyncLog> SyncLogPtr;
 
-const Ccnx::Name&
+inline const Name&
 SyncLog::GetLocalName() const
 {
   return m_localName;
 }
 
-#endif // SYNC_LOG_H
+} // namespace chronoshare
+} // namespace ndn
+
+#endif // CHRONOSHARE_SRC_SYNC_LOG_HPP

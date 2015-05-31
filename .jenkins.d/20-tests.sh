@@ -44,6 +44,9 @@ export ASAN_OPTIONS
 # Run NFD and tests
 sudo nfd &
 
+# Give NFD a few seconds to start
+sleep 10
+
 # First run all tests as unprivileged user
 ./build/unit-tests $(ut_log_args)
 

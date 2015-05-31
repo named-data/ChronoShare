@@ -101,15 +101,18 @@ def build(bld):
     #     )
     Logs.error("Ad hoc network creation routines are temporary disabled")
 
-    # chornoshare = bld(
-    #     target="chronoshare",
-    #     features=['cxx'],
-    #     source=bld.path.ant_glob(['src/**/*.cpp', 'src/*.proto']),
-    #     use='core adhoc BOOST LOG4CXX NDN_CXX TINYXML SQLITE3',
-    #     includes="src",
-    #     export_includes="src",
-    #     )
-    Logs.error("Chronoshare source compilation is temporary disabled")
+    chornoshare = bld(
+        target="chronoshare",
+        features=['cxx'],
+        source=bld.path.ant_glob(['src/*.proto',
+                                  'src/db-helper.cpp',
+                                  'src/sync-*.cpp',
+                                  ]),
+        use='core-objects adhoc BOOST LOG4CXX NDN_CXX TINYXML SQLITE3',
+        includes="src",
+        export_includes="src",
+        )
+    Logs.error("Most of Chronoshare source compilation is temporary disabled")
 
     # fs_watcher = bld(
     #     features=['qt5', 'cxx'],

@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -18,10 +18,15 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#ifndef SYNC_STATE_HELPER_H
-#define SYNC_STATE_HELPER_H
+#ifndef CHRONOSHARE_SRC_SYNC_STATE_HELPER_HPP
+#define CHRONOSHARE_SRC_SYNC_STATE_HELPER_HPP
 
-#include "sync-state.pb.hpp"
+#include "core/chronoshare-common.hpp"
+
+#include "sync-state.pb.h"
+
+namespace ndn {
+namespace chronoshare {
 
 inline std::ostream&
 operator<<(std::ostream& os, const SyncStateMsgPtr& msg)
@@ -33,12 +38,12 @@ operator<<(std::ostream& os, const SyncStateMsgPtr& msg)
     int index = 0;
     while (index < size) {
       SyncState state = msg->state(index);
-      string strName = state.name();
-      string strLocator = state.locator();
+      std::string strName = state.name();
+      std::string strLocator = state.locator();
       sqlite3_int64 seq = state.seq();
 
-      os << "Name: " << Ccnx::Name((const unsigned char*)strName.c_str(), strName.size())
-         << ", Locator: " << Ccnx::Name((const unsigned char*)strLocator.c_str(), strLocator.size())
+      os << "Name: " << Name(Block((const unsigned char*)strName.c_str(), strName.size())).toUri()
+         << ", Locator: " << Name(Block((const unsigned char*)strLocator.c_str(), strLocator.size()))
          << ", seq: " << seq << std::endl;
       index++;
     }
@@ -51,5 +56,7 @@ operator<<(std::ostream& os, const SyncStateMsgPtr& msg)
   return os;
 }
 
+} // namespace chronoshare
+} // namespace ndn
 
-#endif // SYNC_STATE_HELPER_H
+#endif // CHRONOSHARE_SRC_SYNC_STATE_HELPER_HPP
