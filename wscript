@@ -191,22 +191,21 @@ def build(bld):
 #         bld.install_files("${DATADIR}/ChronoShare", "gui/images/chronoshare-big.png")
     Logs.error("ChronoShare app compilation is temporary disabled")
 
-#     cmdline = bld(
-#         target = "csd",
-#         features = "qt5 cxx cxxprogram",
-#         defines = "WAF",
-#         source = bld.path.ant_glob(['cmd/csd.cpp']),
-#         use = "fs_watcher chronoshare http_server QT5CORE",
-#     )
-    Logs.error("csd app compilation is temporary disabled")
+    cmdline = bld(
+        target = "csd",
+        features = "qt5 cxx cxxprogram",
+        defines = "WAF",
+        source = 'cmd/csd.cpp',
+        moc = 'cmd/csd.hpp',
+        use = "fs-watcher chronoshare http_server QT5CORE",
+    )
 
-#     dump_db = bld(
-#         target = "dump-db",
-#         features = "cxx cxxprogram",
-#         source = bld.path.ant_glob(['cmd/dump-db.cpp']),
-#         use = "fs_watcher chronoshare http_server QT5CORE",
-#         )
-    Logs.error("dump-db app compilation is temporary disabled")
+    dump_db = bld(
+        target = "dump-db",
+        features = "cxx cxxprogram",
+        source = bld.path.ant_glob(['cmd/dump-db.cpp']),
+        use = "fs-watcher chronoshare http_server QT5CORE",
+        )
 
     bld.recurse('tests');
 

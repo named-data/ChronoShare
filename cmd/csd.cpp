@@ -18,41 +18,87 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#include <QtCore>
+#include "csd.hpp"
+#include <thread>
 
-#include "ccnx-wrapper.hpp"
-#include "dispatcher.hpp"
-#include "fs-watcher.hpp"
-#include "logging.hpp"
-
-#include <boost/make_shared.hpp>
-
-using namespace boost;
-using namespace std;
-using namespace Ndnx;
+namespace ndn {
+namespace chronoshare {
 
 int
 main(int argc, char* argv[])
 {
   QCoreApplication app(argc, argv);
+  Runner runner(&app);
+  QObject::connect(&runner, SIGNAL(terminateApp()), &app, SLOT(quit()), Qt::QueuedConnection);
 
   if (argc != 4) {
-    cerr << "Usage: ./csd <username> <shared-folder> <path>" << endl;
+    std::cerr << "Usage: ./csd <username> <shared-folder> <path>" << std::endl;
     return 1;
   }
 
-  string username = argv[1];
-  string sharedFolder = argv[2];
-  string path = argv[3];
+  std::string username = argv[1];
+  std::string sharedFolder = argv[2];
+  std::string path = argv[3];
 
-  cout << "Starting ChronoShare for [" << username << "] shared-folder [" << sharedFolder
-       << "] at [" << path << "]" << endl;
+  std::cout << "Starting ChronoShare for [" << username << "] shared-folder [" << sharedFolder
+            << "] at [" << path << "]" << std::endl;
 
-  Dispatcher dispatcher(username, sharedFolder, path, make_shared<CcnxWrapper>());
+  boost::asio::io_service ioService;
+  Face face(ioService);
 
-  FsWatcher watcher(path.c_str(),
+  Dispatcher dispatcher(username, sharedFolder, path, face);
+
+  std::thread ioThread([&ioService, &runner] {
+    try {
+      ioService.run();
+      runner.retval = 0;
+    }
+    catch (boost::exception& e) {
+      runner.retval = 2;
+      if (&dynamic_cast<std::exception&>(e) != nullptr) {
+        std::cerr << "ERROR: " << dynamic_cast<std::exception&>(e).what() << std::endl;
+      }
+      std::cerr << boost::diagnostic_information(e, true) << std::endl;
+    }
+    catch (std::exception& e) {
+      runner.retval = 2;
+      std::cerr << "ERROR: " << e.what() << std::endl;
+    }
+
+    QTimer::singleShot(0, &runner, SLOT(notifyAsioThread()));
+  });
+
+  FsWatcher watcher(ioService, path.c_str(),
                     bind(&Dispatcher::Did_LocalFile_AddOrModify, &dispatcher, _1),
                     bind(&Dispatcher::Did_LocalFile_Delete, &dispatcher, _1));
 
-  return app.exec();
+  int retval = 0;
+  try {
+    retval = app.exec();
+  }
+  catch (boost::exception& e) {
+    retval = 1;
+    if (&dynamic_cast<std::exception&>(e) != nullptr) {
+      std::cerr << "ERROR: " << dynamic_cast<std::exception&>(e).what() << std::endl;
+    }
+    std::cerr << boost::diagnostic_information(e, true) << std::endl;
+  }
+  catch (std::exception& e) {
+    retval = 1;
+    std::cerr << "ERROR: " << e.what() << std::endl;
+  }
+
+  ioService.stop();
+  ioThread.join();
+
+  return std::max(retval, runner.retval);
+}
+
+} // namespace chronoshare
+} // namespace ndn
+
+int
+main(int argc, char* argv[])
+{
+  return ndn::chronoshare::main(argc, argv);
 }
