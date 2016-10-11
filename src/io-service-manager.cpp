@@ -18,35 +18,50 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#ifndef CHRONOSHARE_CORE_CHRONOSHARE_COMMON_HPP
-#define CHRONOSHARE_CORE_CHRONOSHARE_COMMON_HPP
-
-#include "core/chronoshare-config.hpp"
-
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
-#include <functional>
-#include <limits>
-#include <memory>
-#include <stdexcept>
-#include <string>
-#include <type_traits>
-#include <unistd.h>
-
-#include <boost/assert.hpp>
-#include <boost/concept_check.hpp>
-#include <boost/exception/all.hpp>
-#include <boost/noncopyable.hpp>
-#include <boost/throw_exception.hpp>
+#include "io-service-manager.hpp"
+#include "core/logging.hpp"
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/thread/thread.hpp>
 
 namespace ndn {
 namespace chronoshare {
 
-using std::shared_ptr;
-using std::make_shared;
+using namespace ndn::chronoshare;
+
+_LOG_INIT(FaceService);
+
+IoServiceManager::IoServiceManager(boost::asio::io_service& io)
+  : m_ioService(io)
+  , m_connect(true)
+{
+}
+
+IoServiceManager::~IoServiceManager()
+{
+  handle_stop();
+}
+
+void
+IoServiceManager::run()
+{
+  while (m_connect) {
+    try {
+      m_ioServiceWork.reset(new boost::asio::io_service::work(m_ioService));
+      m_ioService.reset();
+      m_ioService.run();
+    }
+    catch (...) {
+      _LOG_DEBUG("error while connecting to the forwarder");
+    }
+  }
+}
+
+void
+IoServiceManager::handle_stop()
+{
+  m_connect = false;
+  m_ioService.stop();
+}
 
 } // namespace chronoshare
 } // namespace ndn
-
-#endif // CHRONOSHARE_CORE_CHRONOSHARE_COMMON_HPP

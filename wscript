@@ -92,21 +92,12 @@ def build(bld):
         target="chronoshare",
         features=['cxx'],
         source=bld.path.ant_glob(['src/*.proto',
-                                  'src/db-helper.cpp',
-                                  'src/sync-*.cpp',
-                                  'src/file-state.cpp',
-                                  'src/action-log.cpp',
-                                  'src/object-*.cpp',
-                                  'src/fetch*.cpp',
-                                  'src/content-server.cpp',
-                                  'src/dispatcher.cpp',
-                                  'src/state-server.cpp'
+                                  'src/*.cpp',
                                   ]),
         use='core-objects adhoc NDN_CXX BOOST TINYXML SQLITE3',
         includes="src",
         export_includes="src",
         )
-    Logs.error("Most of Chronoshare source compilation is temporary disabled")
 
     fs_watcher = bld(
           features=['qt5', 'cxx'],

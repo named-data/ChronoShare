@@ -18,35 +18,44 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#ifndef CHRONOSHARE_CORE_CHRONOSHARE_COMMON_HPP
-#define CHRONOSHARE_CORE_CHRONOSHARE_COMMON_HPP
+#ifndef CHRONOSHARE_SRC_IO_SERVICE_MANAGER_HPP
+#define CHRONOSHARE_SRC_IO_SERVICE_MANAGER_HPP
 
-#include "core/chronoshare-config.hpp"
+#include <ndn-cxx/face.hpp>
+#include <boost/asio/io_service.hpp>
 
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
-#include <functional>
-#include <limits>
-#include <memory>
-#include <stdexcept>
-#include <string>
-#include <type_traits>
-#include <unistd.h>
-
-#include <boost/assert.hpp>
-#include <boost/concept_check.hpp>
-#include <boost/exception/all.hpp>
-#include <boost/noncopyable.hpp>
-#include <boost/throw_exception.hpp>
+#define RECONNECTION_TIME 30000
 
 namespace ndn {
 namespace chronoshare {
 
-using std::shared_ptr;
-using std::make_shared;
+/// The class prevent face loss connection to NFD.
+class IoServiceManager : private boost::noncopyable
+{
+public:
+  /// Construct the server to listen on the specified TCP address and port, and
+  /// serve up files from the given directory.
+
+  IoServiceManager(boost::asio::io_service& io);
+
+  ~IoServiceManager();
+
+  /// Run the service's io_service loop.
+  void
+  run();
+
+  /// Handle a request to stop the service.
+  void
+  handle_stop();
+
+private:
+  /// the IO service used by NFD connection.
+  boost::asio::io_service& m_ioService;
+  std::unique_ptr<boost::asio::io_service::work> m_ioServiceWork;
+  bool m_connect;
+};
 
 } // namespace chronoshare
 } // namespace ndn
 
-#endif // CHRONOSHARE_CORE_CHRONOSHARE_COMMON_HPP
+#endif // CHRONOSHARE_SRC_IO_SERVICE_MANAGER_HPP

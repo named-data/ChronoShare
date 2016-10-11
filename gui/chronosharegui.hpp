@@ -38,6 +38,7 @@
 #ifndef Q_MOC_RUN
 #include "dispatcher.hpp"
 #include "fs-watcher.hpp"
+#include "io-service-manager.hpp"
 #include "server.hpp"
 #endif // Q_MOC_RUN
 
@@ -126,6 +127,9 @@ private:
   void
   openMessageBox(QString title, QString text, QString infotext);
 
+  void
+  openWarningMessageBox(QString title, QString text, QString infotext);
+
   // capture close event
   void
   closeEvent(QCloseEvent* event);
@@ -152,6 +156,7 @@ private:
   QString m_sharedFolderName; // shared folder name
 
   http::server::server* m_httpServer;
+  IoServiceManager* m_ioSerciceManager;
   std::thread m_httpServerThread;
 
   QLabel* labelUsername;
@@ -171,7 +176,10 @@ private:
   // QString m_settings;
 
   std::thread m_chronoshareThread;
+  std::thread m_NetworkThread;
   std::unique_ptr<boost::asio::io_service> m_ioService;
+  std::unique_ptr<boost::asio::io_service::work> m_ioServiceWork;
+
   std::unique_ptr<Face> m_face;
   std::unique_ptr<FsWatcher> m_watcher;
   std::unique_ptr<Dispatcher> m_dispatcher;
