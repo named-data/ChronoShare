@@ -18,55 +18,64 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#include "logging.hpp"
 #include "object-manager.hpp"
 
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
+#include "test-common.hpp"
 
-#include <boost/make_shared.hpp>
-#include <boost/test/unit_test.hpp>
-#include <iostream>
-#include <iterator>
-#include <unistd.h>
+#include <ndn-cxx/util/dummy-client-face.hpp>
+
+namespace ndn {
+namespace chronoshare {
+namespace tests {
+
+namespace fs = boost::filesystem;
 
 _LOG_INIT(Test.ObjectManager);
 
-using namespace Ndnx;
-using namespace std;
-using namespace boost;
-namespace fs = boost::filesystem;
-
-BOOST_AUTO_TEST_SUITE(TestObjectManager)
-
-BOOST_AUTO_TEST_CASE(ObjectManagerTest)
+class TestObjectManagerFixture : public IdentityManagementTimeFixture
 {
-  fs::path tmpdir = fs::unique_path(fs::temp_directory_path() / "%%%%-%%%%-%%%%-%%%%");
-  _LOG_DEBUG("tmpdir: " << tmpdir);
+public:
+  TestObjectManagerFixture()
+    : face(m_io, m_keyChain, {true, true})
+  {
+    tmpdir = fs::unique_path(UNIT_TEST_CONFIG_PATH) / "TestObjectManager";
+    if (exists(tmpdir)) {
+      remove_all(tmpdir);
+    }
+    manager = make_unique<ObjectManager>(face, m_keyChain, tmpdir, "test-chronoshare");
+  }
+
+public:
+  util::DummyClientFace face;
+  unique_ptr<ObjectManager> manager;
+  fs::path tmpdir;
+};
+
+BOOST_FIXTURE_TEST_SUITE(TestObjectManager, TestObjectManagerFixture)
+
+BOOST_AUTO_TEST_CASE(FromFileToFile)
+{
   Name deviceName("/device");
 
-  CcnxWrapperPtr ccnx = make_shared<CcnxWrapper>();
-  ObjectManager manager(ccnx, tmpdir, "test-chronoshare");
+  auto objects = manager->localFileToObjects(fs::path("tests") / "unit-tests" / "object-manager.t.cpp", deviceName);
 
-  tuple<HashPtr, int> hash_semgents =
-    manager.localFileToObjects(fs::path("test") / "test-object-manager.cc", deviceName);
+  BOOST_CHECK_EQUAL(std::get<1>(objects), 3);
 
-  BOOST_CHECK_EQUAL(hash_semgents.get<1>(), 3);
-
-  bool ok = manager.objectsToLocalFile(deviceName, *hash_semgents.get<0>(), tmpdir / "test.cc");
+  bool ok = manager->objectsToLocalFile(deviceName, *std::get<0>(objects), tmpdir / "test.cpp");
   BOOST_CHECK_EQUAL(ok, true);
 
   {
-    fs::ifstream origFile(fs::path("test") / "test-object-manager.cc");
-    fs::ifstream newFile(tmpdir / "test.cc");
+    fs::ifstream origFile(fs::path("tests") / "unit-tests" / "object-manager.t.cpp");
+    fs::ifstream newFile(tmpdir / "test.cpp");
 
-    istream_iterator<char> eof, origFileI(origFile), newFileI(newFile);
+    std::istream_iterator<char> eof, origFileI(origFile), newFileI(newFile);
 
     BOOST_CHECK_EQUAL_COLLECTIONS(origFileI, eof, newFileI, eof);
   }
-
-  remove_all(tmpdir);
 }
 
-
 BOOST_AUTO_TEST_SUITE_END()
+
+} // namespace tests
+} // namespace chronoshare
+} // namespace ndn

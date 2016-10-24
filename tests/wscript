@@ -25,6 +25,7 @@ def build(bld):
                                       'unit-tests/dummy-forwarder.cpp',
                                       'unit-tests/sync-*.t.cpp',
                                       'unit-tests/action-log.t.cpp',
+                                      'unit-tests/object-*.t.cpp',
                                       ],
                                      excl=['main.cpp']),
             use='chronoshare core-objects unit-tests-main',
