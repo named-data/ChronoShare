@@ -17,72 +17,80 @@
  *
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
-
-#include "ccnx-wrapper.hpp"
 #include "dispatcher.hpp"
-#include "logging.hpp"
+#include "dummy-forwarder.hpp"
+#include "test-common.hpp"
+
 #include <boost/filesystem.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/test/unit_test.hpp>
 #include <cassert>
 #include <fstream>
 
-using namespace Ndnx;
-using namespace std;
-using namespace boost;
 namespace fs = boost::filesystem;
+
+namespace ndn {
+namespace chronoshare {
+namespace tests {
 
 _LOG_INIT(Test.Dispatcher);
 
-BOOST_AUTO_TEST_SUITE(TestDispatcher)
-
-void
-cleanDir(fs::path dir)
+class TestDispatcherFixture : public IdentityManagementTimeFixture
 {
-  if (fs::exists(dir)) {
-    fs::remove_all(dir);
+public:
+  TestDispatcherFixture()
+    : forwarder(m_io, m_keyChain)
+    , dir1(fs::path(fs::path(UNIT_TEST_CONFIG_PATH) / "TestDispatcher/test-white-house"))
+    , dir2(fs::path(fs::path(UNIT_TEST_CONFIG_PATH) / "TestDispatcher/test-black-house"))
+    , user1("/obamaa")
+    , user2("/trump")
+    , folder("who-is-president")
+    , face1(forwarder.addFace())
+    , face2(forwarder.addFace())
+  {
   }
-}
 
-void
-checkRoots(const HashPtr& root1, const HashPtr& root2)
-{
-  BOOST_CHECK_EQUAL(*root1, *root2);
-}
+  ~TestDispatcherFixture()
+  {
+    if (exists(fs::path(fs::path(UNIT_TEST_CONFIG_PATH) / "TestDispatcher"))) {
+      remove_all(fs::path(fs::path(UNIT_TEST_CONFIG_PATH) / "TestDispatcher"));
+    }
+  }
+
+  void
+  checkRoots(ndn::ConstBufferPtr root1, ndn::ConstBufferPtr root2)
+  {
+  }
+
+public:
+  DummyForwarder forwarder;
+  fs::path dir1;
+  fs::path dir2;
+  std::string user1;
+  std::string user2;
+  std::string folder;
+  Face& face1;
+  Face& face2;
+};
+
+BOOST_FIXTURE_TEST_SUITE(TestDispatcher, TestDispatcherFixture)
 
 BOOST_AUTO_TEST_CASE(DispatcherTest)
 {
-  fs::path dir1("./TestDispatcher/test-white-house");
-  fs::path dir2("./TestDispatcher/test-black-house");
+  Dispatcher d1(user1, folder, dir1, face1, false);
+  Dispatcher d2(user2, folder, dir2, face2, false);
 
-  string user1 = "/obamaa";
-  string user2 = "/romney";
+  advanceClocks(time::milliseconds(10), 1000);
 
-  string folder = "who-is-president";
+  _LOG_DEBUG("checking obama vs trump");
+  BOOST_CHECK(*(d1.SyncRoot()) == *(d2.SyncRoot()));
 
-  NdnxWrapperPtr ndnx1 = make_shared<NdnxWrapper>();
-  usleep(100);
-  NdnxWrapperPtr ndnx2 = make_shared<NdnxWrapper>();
-  usleep(100);
-
-  cleanDir(dir1);
-  cleanDir(dir2);
-
-  Dispatcher d1(user1, folder, dir1, ndnx1, false);
-  usleep(100);
-  Dispatcher d2(user2, folder, dir2, ndnx2, false);
-
-  usleep(14900000);
-
-  _LOG_DEBUG("checking obama vs romney");
-  checkRoots(d1.SyncRoot(), d2.SyncRoot());
-
-  fs::path filename("a_letter_to_romney.txt");
-  string words = "I'm the new socialist President. You are not!";
+  fs::path filename("a_letter_to_obama.txt");
+  std::string words = "I'm the new socialist President. You are not!";
 
   fs::path abf = dir1 / filename;
 
-  ofstream ofs;
+  std::ofstream ofs;
   ofs.open(abf.string().c_str());
   for (int i = 0; i < 5000; i++) {
     ofs << words;
@@ -91,18 +99,21 @@ BOOST_AUTO_TEST_CASE(DispatcherTest)
 
   d1.Did_LocalFile_AddOrModify(filename);
 
-  sleep(5);
+  advanceClocks(time::milliseconds(10), 1000);
 
   fs::path ef = dir2 / filename;
   BOOST_REQUIRE_MESSAGE(fs::exists(ef), user1 << " failed to notify " << user2 << " about "
                                               << filename.string());
   BOOST_CHECK_EQUAL(fs::file_size(abf), fs::file_size(ef));
-  HashPtr fileHash1 = Hash::FromFileContent(abf);
-  HashPtr fileHash2 = Hash::FromFileContent(ef);
-  BOOST_CHECK_EQUAL(*fileHash1, *fileHash2);
 
-  cleanDir(dir1);
-  cleanDir(dir2);
+  ConstBufferPtr fileHash1 = digestFromFile(abf);
+  ConstBufferPtr fileHash2 = digestFromFile(ef);
+
+  BOOST_CHECK(*fileHash1 == *fileHash2);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+} // namespace tests
+} // namespace chronoshare
+} // namespace ndn

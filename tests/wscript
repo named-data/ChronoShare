@@ -29,6 +29,7 @@ def build(bld):
                                       'unit-tests/fetch*.t.cpp',
                                       'unit-tests/serve-and-fetch.t.cpp',
                                       'unit-tests/content-server.t.cpp',
+                                      'unit-tests/dispatcher.t.cpp',
                                       ],
                                      excl=['main.cpp']),
             use='chronoshare core-objects unit-tests-main',
