@@ -19,35 +19,23 @@
  */
 
 #include "fetch-task-db.hpp"
-#include "logging.hpp"
 
-#include <boost/bind.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
-#include <boost/function.hpp>
+#include "test-common.hpp"
 
-#include <boost/make_shared.hpp>
-#include <boost/test/unit_test.hpp>
-#include <iostream>
-#include <iterator>
-#include <map>
-#include <unistd.h>
-#include <utility>
+namespace ndn {
+namespace chronoshare {
+namespace tests {
+
+namespace fs = boost::filesystem;
 
 _LOG_INIT(Test.FetchTaskDb);
-
-using namespace Ndnx;
-using namespace std;
-using namespace boost;
-namespace fs = boost::filesystem;
 
 BOOST_AUTO_TEST_SUITE(TestFetchTaskDb)
 
 class Checker
 {
 public:
-  Checker(const Name& deviceName, const Name& baseName, uint64_t minSeqNo, uint64_t maxSeqNo,
-          int priority)
+  Checker(const Name& deviceName, const Name& baseName, uint64_t minSeqNo, uint64_t maxSeqNo, int priority)
     : m_deviceName(deviceName)
     , m_baseName(baseName)
     , m_minSeqNo(minSeqNo)
@@ -76,8 +64,8 @@ public:
   void
   show()
   {
-    cout << m_deviceName << ", " << m_baseName << ", " << m_minSeqNo << ", " << m_maxSeqNo << ", "
-         << m_priority << endl;
+    std::cout << m_deviceName << ", " << m_baseName << ", " << m_minSeqNo << ", " << m_maxSeqNo << ", "
+              << m_priority << std::endl;
   }
 
   Name m_deviceName;
@@ -87,29 +75,37 @@ public:
   int m_priority;
 };
 
-map<Name, Checker> checkers;
+std::map<Name, Checker> checkers;
 int g_counter = 0;
 
 void
 getChecker(const Name& deviceName, const Name& baseName, uint64_t minSeqNo, uint64_t maxSeqNo,
            int priority)
 {
+  _LOG_DEBUG("deviceName: " << deviceName << " baseName ");
   Checker checker(deviceName, baseName, minSeqNo, maxSeqNo, priority);
   g_counter++;
-  if (checkers.find(checker.m_deviceName + checker.m_baseName) != checkers.end()) {
+  Name whole(checker.m_deviceName);
+  whole.append(checker.m_baseName);
+  if (checkers.find(whole) != checkers.end()) {
     BOOST_FAIL("duplicated checkers");
   }
-  checkers.insert(make_pair(checker.m_deviceName + checker.m_baseName, checker));
+
+  checkers.insert(make_pair(whole, checker));
 }
 
 BOOST_AUTO_TEST_CASE(FetchTaskDbTest)
 {
-  fs::path folder("TaskDbTest");
-  fs::create_directories(folder / ".chronoshare");
+  fs::path tmpdir = fs::unique_path(UNIT_TEST_CONFIG_PATH) / "TaskDbTest";
+  if (exists(tmpdir)) {
+    remove_all(tmpdir);
+  }
 
-  FetchTaskDbPtr db = make_shared<FetchTaskDb>(folder, "test");
+  fs::create_directories(tmpdir / ".chronoshare");
 
-  map<Name, Checker> m1;
+  FetchTaskDbPtr db = make_shared<FetchTaskDb>(tmpdir, "test");
+
+  std::map<Name, Checker> m1;
   g_counter = 0;
 
   checkers.clear();
@@ -121,8 +117,8 @@ BOOST_AUTO_TEST_CASE(FetchTaskDbTest)
   for (uint64_t i = 0; i < 10; i++) {
     Name d = deviceNamePrefix;
     Name b = baseNamePrefix;
-    Checker c(d.appendComp(i), b.appendComp(i), i, 11, 1);
-    m1.insert(make_pair(d + b, c));
+    Checker c(d.appendNumber(i), b.appendNumber(i), i, 11, 1);
+    m1.insert(make_pair(d.append(b), c));
     db->addTask(c.m_deviceName, c.m_baseName, c.m_minSeqNo, c.m_maxSeqNo, c.m_priority);
   }
 
@@ -130,8 +126,8 @@ BOOST_AUTO_TEST_CASE(FetchTaskDbTest)
   for (uint64_t i = 5; i < 10; i++) {
     Name d = deviceNamePrefix;
     Name b = baseNamePrefix;
-    d.appendComp(i);
-    b.appendComp(i);
+    d.appendNumber(i);
+    b.appendNumber(i);
     db->deleteTask(d, b);
   }
 
@@ -140,7 +136,7 @@ BOOST_AUTO_TEST_CASE(FetchTaskDbTest)
   for (uint64_t i = 3; i < 8; i++) {
     Name d = deviceNamePrefix;
     Name b = baseNamePrefix;
-    Checker c(d.appendComp(i), b.appendComp(i), i, 11, 1);
+    Checker c(d.appendNumber(i), b.appendNumber(i), i, 11, 1);
     db->addTask(c.m_deviceName, c.m_baseName, c.m_minSeqNo, c.m_maxSeqNo, c.m_priority);
   }
 
@@ -148,9 +144,10 @@ BOOST_AUTO_TEST_CASE(FetchTaskDbTest)
 
   BOOST_CHECK_EQUAL(g_counter, 8);
 
-  map<Name, Checker>::iterator it = checkers.begin();
+  std::map<Name, Checker>::iterator it = checkers.begin();
   while (it != checkers.end()) {
-    map<Name, Checker>::iterator mt = m1.find(it->first);
+    _LOG_DEBUG("first -> " << it->first);
+    std::map<Name, Checker>::iterator mt = m1.find(it->first);
     if (mt == m1.end()) {
       BOOST_FAIL("unknown task found");
     }
@@ -159,16 +156,18 @@ BOOST_AUTO_TEST_CASE(FetchTaskDbTest)
       Checker c2 = mt->second;
       BOOST_CHECK(c1 == c2);
       if (!(c1 == c2)) {
-        cout << "C1: " << endl;
+        std::cout << "C1: " << std::endl;
         c1.show();
-        cout << "C2: " << endl;
+        std::cout << "C2: " << std::endl;
         c2.show();
       }
     }
     ++it;
   }
-  fs::remove_all(folder);
 }
 
-
 BOOST_AUTO_TEST_SUITE_END()
+
+} // namespace tests
+} // namespace chronoshare
+} // namespace ndn

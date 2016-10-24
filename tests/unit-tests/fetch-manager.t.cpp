@@ -17,61 +17,54 @@
  *
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
-
-#include "ccnx-wrapper.hpp"
 #include "fetch-manager.hpp"
-#include "fetcher.hpp"
-#include "logging.hpp"
-#include <boost/make_shared.hpp>
-#include <boost/test/unit_test.hpp>
+
+#include "test-common.hpp"
+
+#include <ndn-cxx/util/dummy-client-face.hpp>
+
+#include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string/join.hpp>
+#include <boost/range/adaptor/transformed.hpp>
+
+namespace ndn {
+namespace chronoshare {
+namespace tests {
 
 _LOG_INIT(Test.FetchManager);
 
-using namespace Ndnx;
-using namespace std;
-using namespace boost;
-
 BOOST_AUTO_TEST_SUITE(TestFetchManager)
 
-struct FetcherTestData
+class FetcherTestData : public IdentityManagementTimeFixture
 {
-  set<uint64_t> recvData;
-  set<uint64_t> recvContent;
-
-  set<Name> differentNames;
-  set<Name> segmentNames;
-
-  bool m_done;
-  bool m_failed;
-
+public:
   FetcherTestData()
-    : m_done(false)
+    : face(m_io, m_keyChain, {true, true})
+    , m_done(false)
     , m_failed(false)
+    , m_hasMissing(true)
   {
   }
 
   void
-  onData(const Ccnx::Name& deviceName, const Ccnx::Name& basename, uint64_t seqno, Ccnx::PcoPtr pco)
+  onData(const ndn::Name& deviceName, const ndn::Name& basename, uint64_t seqno,
+         ndn::shared_ptr<ndn::Data> data)
   {
-    _LOG_TRACE("onData: " << seqno);
+    _LOG_TRACE("onData: " << seqno << data->getName());
 
     recvData.insert(seqno);
     differentNames.insert(basename);
     Name name = basename;
-    name.appendComp(seqno);
+    name.appendNumber(seqno);
     segmentNames.insert(name);
 
-    BytesPtr data = pco->contentPtr();
-
-    if (data->size() == sizeof(int)) {
-      recvContent.insert(*reinterpret_cast<const int*>(head(*data)));
-    }
-
-    // cout << "<<< " << basename << ", " << name << ", " << seqno << endl;
+    Block block = data->getContent();
+    std::string recvNo(reinterpret_cast<const char*>(block.value()), block.value_size());
+    recvContent.insert(boost::lexical_cast<uint32_t>(recvNo));
   }
 
   void
-  finish(const Ccnx::Name& deviceName, const Ccnx::Name& baseName)
+  finish(const ndn::Name& deviceName, const ndn::Name& baseName)
   {
   }
 
@@ -79,191 +72,109 @@ struct FetcherTestData
   onComplete(Fetcher& fetcher)
   {
     m_done = true;
-    // cout << "Done" << endl;
   }
 
   void
   onFail(Fetcher& fetcher)
   {
     m_failed = true;
-    // cout << "Failed" << endl;
   }
+
+public:
+  util::DummyClientFace face;
+  std::set<uint32_t> recvData;
+  std::set<uint32_t> recvContent;
+
+  std::set<Name> differentNames;
+  std::set<Name> segmentNames;
+
+  bool m_done;
+  bool m_failed;
+
+  bool m_hasMissing;
 };
 
-void run()
+BOOST_FIXTURE_TEST_CASE(TestFetcher, FetcherTestData)
 {
-  NdnxWrapperPtr ndnx = make_shared<NdnxWrapper> ();
-
-  Name baseName ("/base");
-  Name deviceName ("/device");
-
-  for (int i = 0; i < 10; i++)
-    {
-      usleep(100000);
-      ndnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 30);
-    }
-
-  for (int i = 11; i < 50; i++)
-    {
-      usleep(100000);
-      ndnx->publishData (Name (baseName)(i), reinterpret_cast<const unsigned char*> (&i), sizeof(int), 30);
-    }
-
-}
-
-BOOST_AUTO_TEST_CASE(TestFetcher)
-{
-  CcnxWrapperPtr ccnx = make_shared<CcnxWrapper>();
-
-  Name baseName("/base");
+  Name baseName("/fetchtest");
   Name deviceName("/device");
-  /* publish seqnos:  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, <gap 5>, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, <gap 1>, 26 */
+
+  // publish seqnos:  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, <gap 5>, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, <gap 1>, 26
   // this will allow us to test our pipeline of 6
-  for (int i = 0; i < 10; i++) {
-    ccnx->publishData(Name(baseName)(i), reinterpret_cast<const unsigned char*>(&i), sizeof(int), 30);
-  }
+  std::set<uint32_t> seqs = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /*<gap 10-14>,*/
+                             15, 16, 17, 18, 19, 20, 21, 22, 23, 24, /*<gap 25>,*/ 26};
 
-  for (int i = 15; i < 25; i++) {
-    ccnx->publishData(Name(baseName)(i), reinterpret_cast<const unsigned char*>(&i), sizeof(int), 30);
-  }
+  face.onSendInterest.connect([&, this] (const Interest& interest) {
 
-  int oneMore = 26;
-  ccnx->publishData(Name(baseName)(oneMore), reinterpret_cast<const unsigned char*>(&oneMore),
-                    sizeof(int), 30);
+      uint32_t requestedSeqNo = interest.getName().at(-1).toNumber();
+      if (seqs.count(requestedSeqNo) > 0) {
 
-  FetcherTestData data;
-  ExecutorPtr executor = make_shared<Executor>(1);
-  executor->start();
+        auto data = make_shared<Data>();
+        Name name(baseName);
+        name.appendNumber(requestedSeqNo);
 
-  Fetcher fetcher(ccnx, executor, bind(&FetcherTestData::onData, &data, _1, _2, _3, _4),
-                  bind(&FetcherTestData::finish, &data, _1, _2),
-                  bind(&FetcherTestData::onComplete, &data, _1),
-                  bind(&FetcherTestData::onFail, &data, _1), deviceName, Name("/base"), 0, 26,
-                  boost::posix_time::seconds(5)); // this time is not precise
+        data->setName(name);
+        data->setFreshnessPeriod(time::seconds(300));
+        std::string content = to_string(requestedSeqNo);
+        data->setContent(reinterpret_cast<const uint8_t*>(content.data()), content.size());
+        m_keyChain.sign(*data);
+        m_io.post([data, this] { face.receive(*data); });
+      }
+    });
 
-  BOOST_CHECK_EQUAL(fetcher.IsActive(), false);
-  fetcher.RestartPipeline();
-  BOOST_CHECK_EQUAL(fetcher.IsActive(), true);
-
-  usleep(7000000);
-  BOOST_CHECK_EQUAL(data.m_failed, true);
-  BOOST_CHECK_EQUAL(data.differentNames.size(), 1);
-  BOOST_CHECK_EQUAL(data.segmentNames.size(), 20);
-  BOOST_CHECK_EQUAL(data.recvData.size(), 20);
-  BOOST_CHECK_EQUAL(data.recvContent.size(), 20);
-
-  {
-    ostringstream recvData;
-    for (set<uint64_t>::iterator i = data.recvData.begin(); i != data.recvData.end(); i++)
-      recvData << *i << ", ";
-
-    ostringstream recvContent;
-    for (set<uint64_t>::iterator i = data.recvContent.begin(); i != data.recvContent.end(); i++)
-      recvContent << *i << ", ";
-
-    BOOST_CHECK_EQUAL(recvData.str(),
-                      "0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, ");
-    BOOST_CHECK_EQUAL(recvData.str(), recvContent.str());
-  }
+  Fetcher fetcher(face, bind(&FetcherTestData::onData, this, _1, _2, _3, _4),
+                  bind(&FetcherTestData::finish, this, _1, _2),
+                  bind(&FetcherTestData::onComplete, this, _1),
+                  bind(&FetcherTestData::onFail, this, _1), deviceName, Name("/fetchtest"), 0, 26,
+                  time::seconds(5), Name());
 
   BOOST_CHECK_EQUAL(fetcher.IsActive(), false);
   fetcher.RestartPipeline();
   BOOST_CHECK_EQUAL(fetcher.IsActive(), true);
 
-  usleep(7000000);
-  BOOST_CHECK_EQUAL(data.m_failed, true);
+  this->advanceClocks(time::milliseconds(50), 1000);
+  BOOST_CHECK_EQUAL(m_failed, true);
+  BOOST_CHECK_EQUAL(differentNames.size(), 1);
+  BOOST_CHECK_EQUAL(segmentNames.size(), 20);
+  BOOST_CHECK_EQUAL(recvData.size(), 20);
+  BOOST_CHECK_EQUAL(recvContent.size(), 20);
 
-  // publishing missing pieces
-  for (int i = 0; i < 27; i++) {
-    ccnx->publishData(Name(baseName)(i), reinterpret_cast<const unsigned char*>(&i), sizeof(int), 1);
-  }
+  BOOST_CHECK_EQUAL("0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24",
+                    join(recvData | boost::adaptors::transformed([] (int i) { return std::to_string(i); }), ", "));
+  BOOST_CHECK_EQUAL_COLLECTIONS(recvData.begin(), recvData.end(), recvContent.begin(), recvContent.end());
+
   BOOST_CHECK_EQUAL(fetcher.IsActive(), false);
   fetcher.RestartPipeline();
   BOOST_CHECK_EQUAL(fetcher.IsActive(), true);
 
-  usleep(1000000);
-  BOOST_CHECK_EQUAL(data.m_done, true);
+  this->advanceClocks(time::milliseconds(100), 100);
+  BOOST_CHECK_EQUAL(m_done, false);
+  BOOST_CHECK_EQUAL(m_failed, true);
+  BOOST_CHECK_EQUAL(fetcher.IsActive(), false);
 
-  {
-    ostringstream recvData;
-    for (set<uint64_t>::iterator i = data.recvData.begin(); i != data.recvData.end(); i++)
-      recvData << *i << ", ";
+  std::set<uint32_t> missing = {10, 11, 12, 13, 14, 25};
+  seqs.insert(missing.begin(), missing.end());
 
-    ostringstream recvContent;
-    for (set<uint64_t>::iterator i = data.recvContent.begin(); i != data.recvContent.end(); i++)
-      recvContent << *i << ", ";
+  m_failed = false;
+  fetcher.RestartPipeline();
+  BOOST_CHECK_EQUAL(fetcher.IsActive(), true);
 
-    BOOST_CHECK_EQUAL(recvData.str(),
-                      "0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, ");
-    BOOST_CHECK_EQUAL(recvData.str(), recvContent.str());
-  }
+  this->advanceClocks(time::milliseconds(100), 100);
+  BOOST_CHECK_EQUAL(m_done, true);
+  BOOST_CHECK_EQUAL(m_failed, false);
+  BOOST_CHECK_EQUAL(segmentNames.size(), 27);
+  BOOST_CHECK_EQUAL(recvData.size(), 27);
+  BOOST_CHECK_EQUAL(recvContent.size(), 27);
 
-  executor->shutdown();
+  BOOST_CHECK_EQUAL("0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26",
+                    join(recvData | boost::adaptors::transformed([] (int i) { return std::to_string(i); }), ", "));
+  BOOST_CHECK_EQUAL_COLLECTIONS(recvData.begin(), recvData.end(), recvContent.begin(), recvContent.end());
+
+  // TODO add tests that other callbacks got called
 }
-
-
-BOOST_AUTO_TEST_CASE (TestFetcher2)
-{
-  NdnxWrapperPtr ndnx = make_shared<NdnxWrapper> ();
-
-  Name baseName ("/base");
-  Name deviceName ("/device");
-
-  thread publishThread(run);
-
-  FetcherTestData data;
-  ExecutorPtr executor = make_shared<Executor>(1);
-  executor->start ();
-
-  Fetcher fetcher (ndnx,
-                   executor,
-                   bind (&FetcherTestData::onData, &data, _1, _2, _3, _4),
-                   bind (&FetcherTestData::finish, &data, _1, _2),
-                   bind (&FetcherTestData::onComplete, &data, _1),
-                   bind (&FetcherTestData::onFail, &data, _1),
-                   deviceName, baseName, 0, 49,
-                   boost::posix_time::seconds (5)); // this time is not precise
-
-  BOOST_CHECK_EQUAL (fetcher.IsActive (), false);
-  fetcher.RestartPipeline ();
-  BOOST_CHECK_EQUAL (fetcher.IsActive (), true);
-
-  usleep(20000000);
-  BOOST_CHECK_EQUAL (data.m_failed, true);
-
-  executor->shutdown ();
-}
-
-
-
-// BOOST_AUTO_TEST_CASE (NdnxWrapperSelector)
-// {
-
-//   Closure closure (bind(dataCallback, _1, _2), bind(timeout, _1));
-
-//   Selectors selectors;
-//   selectors.interestLifetime(1);
-
-//   string n1 = "/random/01";
-//   c1->sendInterest(Name(n1), closure, selectors);
-//   sleep(2);
-//   c2->publishData(Name(n1), (const unsigned char *)n1.c_str(), n1.size(), 4);
-//   usleep(100000);
-//   BOOST_CHECK_EQUAL(g_timeout_counter, 1);
-//   BOOST_CHECK_EQUAL(g_dataCallback_counter, 0);
-
-//   string n2 = "/random/02";
-//   selectors.interestLifetime(2);
-//   c1->sendInterest(Name(n2), closure, selectors);
-//   sleep(1);
-//   c2->publishData(Name(n2), (const unsigned char *)n2.c_str(), n2.size(), 4);
-//   usleep(100000);
-//   BOOST_CHECK_EQUAL(g_timeout_counter, 1);
-//   BOOST_CHECK_EQUAL(g_dataCallback_counter, 1);
-
-//   // reset
-//   g_dataCallback_counter = 0;
-//   g_timeout_counter = 0;
-// }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+} // namespace tests
+} // namespace chronoshare
+} // namespace ndn
