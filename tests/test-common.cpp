@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2014-2016, Regents of the University of California,
+ * Copyright (c) 2014-2017, Regents of the University of California,
  *                          Arizona Board of Regents,
  *                          Colorado State University,
  *                          University Pierre & Marie Curie, Sorbonne University,
@@ -26,6 +26,8 @@
  */
 
 #include "test-common.hpp"
+
+#include <ndn-cxx/util/digest.hpp>
 #include <ndn-cxx/security/signature-sha256-with-rsa.hpp>
 
 namespace ndn {
@@ -119,6 +121,14 @@ makeNack(const Name& name, uint32_t nonce, lp::NackReason reason)
   lp::Nack nack(std::move(interest));
   nack.setReason(reason);
   return nack;
+}
+
+ConstBufferPtr
+digestFromFile(const boost::filesystem::path& filename)
+{
+  boost::filesystem::ifstream iff(filename, std::ios::in | std::ios::binary);
+  util::Sha256 digest(iff);
+  return digest.computeDigest();
 }
 
 } // namespace tests

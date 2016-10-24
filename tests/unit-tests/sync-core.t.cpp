@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -17,32 +17,44 @@
  *
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
-#include "logging.hpp"
+
 #include "sync-core.hpp"
 
-#include <boost/filesystem.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/test/unit_test.hpp>
+#include "test-common.hpp"
 
-using namespace std;
-using namespace Ndnx;
-using namespace boost;
-using namespace boost::filesystem;
+namespace ndn {
+namespace chronoshare {
+namespace tests {
 
-INIT_LOGGER("Test.SyncCore");
+namespace fs = boost::filesystem;
 
-BOOST_AUTO_TEST_SUITE(SyncCoreTests)
+INIT_LOGGER("Test.SyncCore")
+
+class TestSyncCoreFixture : public IdentityManagementTimeFixture
+{
+public:
+  void
+  advanceClocks()
+  {
+    for (int i = 0; i < 100; ++i) {
+      usleep(10000);
+      IdentityManagementTimeFixture::advanceClocks(time::milliseconds(10), 1);
+    }
+  }
+};
+
+BOOST_FIXTURE_TEST_SUITE(TestSyncCore, TestSyncCoreFixture)
 
 void
 callback(const SyncStateMsgPtr& msg)
 {
+  _LOG_DEBUG("Callback I'm called!!!!");
   BOOST_CHECK(msg->state_size() > 0);
   int size = msg->state_size();
   int index = 0;
   while (index < size) {
     SyncState state = msg->state(index);
     BOOST_CHECK(state.has_old_seq());
-    BOOST_CHECK(state.old_seq() >= 0);
     if (state.seq() != 0) {
       BOOST_CHECK(state.old_seq() != state.seq());
     }
@@ -50,71 +62,63 @@ callback(const SyncStateMsgPtr& msg)
   }
 }
 
-void
-checkRoots(const HashPtr& root1, const HashPtr& root2)
+BOOST_AUTO_TEST_CASE(TwoNodes)
 {
-  BOOST_CHECK_EQUAL(*root1, *root2);
-}
-
-BOOST_AUTO_TEST_CASE(SyncCoreTest)
-{
-  INIT_LOGGERS();
-
-  string dir = "./SyncCoreTest";
-  // clean the test dir
-  path d(dir);
-  if (exists(d)) {
-    remove_all(d);
+  fs::path tmpdir = fs::unique_path(UNIT_TEST_CONFIG_PATH) / "SyncCoreTest";
+  if (exists(tmpdir)) {
+    remove_all(tmpdir);
   }
 
-  string dir1 = "./SyncCoreTest/1";
-  string dir2 = "./SyncCoreTest/2";
-  Name user1("/joker");
-  Name loc1("/gotham1");
-  Name user2("/darkknight");
-  Name loc2("/gotham2");
-  Name syncPrefix("/broadcast/darkknight");
-  NdnxWrapperPtr c1(new NdnxWrapper());
-  NdnxWrapperPtr c2(new NdnxWrapper());
-  SyncLogPtr log1(new SyncLog(dir1, user1.toString()));
-  SyncLogPtr log2(new SyncLog(dir2, user2.toString()));
+  std::string dir1 = (tmpdir / "1").string();
+  std::string dir2 = (tmpdir / "2").string();
+  Name user1("/shuai");
+  Name loc1("/locator1");
+  Name user2("/loli");
+  Name loc2("/locator2");
+  Name syncPrefix("/broadcast/arslan");
 
-  SyncCore* core1 = new SyncCore(log1, user1, loc1, syncPrefix, bind(callback, _1), c1);
-  usleep(10000);
-  SyncCore* core2 = new SyncCore(log2, user2, loc2, syncPrefix, bind(callback, _1), c2);
+  shared_ptr<Face> c1 = make_shared<Face>(this->m_io);
+  auto log1 = make_shared<SyncLog>(dir1, user1);
+  auto core1 = make_shared<SyncCore>(*c1, log1, user1, loc1, syncPrefix, bind(&callback, _1));
 
-  sleep(1);
-  checkRoots(core1->root(), core2->root());
+  shared_ptr<Face> c2 = make_shared<Face>(this->m_io);
+  auto log2 = make_shared<SyncLog>(dir2, user2);
+  auto core2 = make_shared<SyncCore>(*c2, log2, user2, loc2, syncPrefix, bind(&callback, _1));
 
-  // _LOG_TRACE ("\n\n\n\n\n\n----------\n");
+  // @TODO: Implement test using the dummy forwarder and disable dependency on real time
+
+  this->advanceClocks();
+
+  BOOST_CHECK_EQUAL(toHex(*core1->root()), toHex(*core2->root()));
+
+  // _LOG_TRACE("\n\n\n\n\n\n----------\n");
 
   core1->updateLocalState(1);
-  usleep(100000);
-  checkRoots(core1->root(), core2->root());
+  this->advanceClocks();
+  BOOST_CHECK_EQUAL(toHex(*core1->root()), toHex(*core2->root()));
   BOOST_CHECK_EQUAL(core2->seq(user1), 1);
   BOOST_CHECK_EQUAL(log2->LookupLocator(user1), loc1);
 
   core1->updateLocalState(5);
-  usleep(100000);
-  checkRoots(core1->root(), core2->root());
+  this->advanceClocks();
+  BOOST_CHECK_EQUAL(toHex(*core1->root()), toHex(*core2->root()));
   BOOST_CHECK_EQUAL(core2->seq(user1), 5);
   BOOST_CHECK_EQUAL(log2->LookupLocator(user1), loc1);
 
   core2->updateLocalState(10);
-  usleep(100000);
-  checkRoots(core1->root(), core2->root());
+  this->advanceClocks();
+  BOOST_CHECK_EQUAL(toHex(*core1->root()), toHex(*core2->root()));
   BOOST_CHECK_EQUAL(core1->seq(user2), 10);
   BOOST_CHECK_EQUAL(log1->LookupLocator(user2), loc2);
 
   // simple simultaneous data generation
-  // _LOG_TRACE ("\n\n\n\n\n\n----------Simultaneous\n");
-  _LOG_TRACE("Simultaneous");
+  _LOG_TRACE("\n\n\n\n\n\n----------Simultaneous\n");
 
   core1->updateLocalState(11);
-  usleep(100);
+  this->advanceClocks();
   core2->updateLocalState(15);
-  usleep(2000000);
-  checkRoots(core1->root(), core2->root());
+  this->advanceClocks();
+  BOOST_CHECK_EQUAL(toHex(*core1->root()), toHex(*core2->root()));
   BOOST_CHECK_EQUAL(core1->seq(user2), 15);
   BOOST_CHECK_EQUAL(core2->seq(user1), 11);
 
@@ -122,11 +126,10 @@ BOOST_AUTO_TEST_CASE(SyncCoreTest)
   BOOST_CHECK_EQUAL(log1->LookupLocator(user2), loc2);
   BOOST_CHECK_EQUAL(log2->LookupLocator(user1), loc1);
   BOOST_CHECK_EQUAL(log2->LookupLocator(user2), loc2);
-
-  // clean the test dir
-  if (exists(d)) {
-    remove_all(d);
-  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+} // namespace tests
+} // namespace chronoshare
+} // namespace ndn

@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -17,26 +17,27 @@
  *
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
-#include "ccnx-common.hpp"
+
+#include "sync-state.pb.h"
 #include "sync-core.hpp"
+
 #include <boost/iostreams/device/back_inserter.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/range/iterator_range.hpp>
-#include <boost/test/unit_test.hpp>
 
-using namespace Ndnx;
-using namespace std;
-using namespace boost;
+#include "test-common.hpp"
 
-BOOST_AUTO_TEST_SUITE(ProtobufTests)
+namespace ndn {
+namespace chronoshare {
+namespace tests {
 
+INIT_LOGGER("Test.protobuf")
 
-BOOST_AUTO_TEST_CASE(TestGzipProtobuf)
+BOOST_AUTO_TEST_SUITE(TestSyncStatePb)
+
+BOOST_AUTO_TEST_CASE(Serialize)
 {
-  SyncStateMsgPtr msg = make_shared<SyncStateMsg>();
+  auto msg = make_shared<SyncStateMsg>();
 
   SyncState* state = msg->add_state();
   state->set_type(SyncState::UPDATE);
@@ -45,22 +46,26 @@ BOOST_AUTO_TEST_CASE(TestGzipProtobuf)
   state->set_locator(&x[0], sizeof(x));
   state->set_name(&x[0], sizeof(x));
 
-  BytesPtr bb = serializeMsg<SyncStateMsg>(*msg);
+  ndn::ConstBufferPtr bb = serializeMsg<SyncStateMsg>(*msg);
 
-  BytesPtr cb = serializeGZipMsg<SyncStateMsg>(*msg);
-  BOOST_CHECK(cb->size() < bb->size());
-  cout << cb->size() << ", " << bb->size() << endl;
+  ndn::ConstBufferPtr cb = serializeGZipMsg<SyncStateMsg>(*msg);
+  BOOST_CHECK_LT(cb->size(), bb->size());
 
   SyncStateMsgPtr msg1 = deserializeGZipMsg<SyncStateMsg>(*cb);
 
-  BOOST_REQUIRE(msg1->state_size() == 1);
+  BOOST_REQUIRE_EQUAL(msg1->state_size(), 1);
 
   SyncState state1 = msg1->state(0);
   BOOST_CHECK_EQUAL(state->seq(), state1.seq());
   BOOST_CHECK_EQUAL(state->type(), state1.type());
-  string sx(x, 100);
+
+  std::string sx(x, 100);
   BOOST_CHECK_EQUAL(sx, state1.name());
   BOOST_CHECK_EQUAL(sx, state1.locator());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+} // namespace tests
+} // namespace chronoshare
+} // namespace ndn

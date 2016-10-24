@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -18,103 +18,103 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#include <boost/lexical_cast.hpp>
-#include <boost/test/unit_test.hpp>
+#include "sync-log.hpp"
 
-#include "action-log.hpp"
-#include "logging.hpp"
-#include <boost/filesystem.hpp>
-#include <ccnx-name.hpp>
-#include <iostream>
-#include <unistd.h>
+#include "test-common.hpp"
 
-using namespace std;
-using namespace boost;
-using namespace Ndnx;
+namespace ndn {
+namespace chronoshare {
+namespace tests {
+
 namespace fs = boost::filesystem;
 
-BOOST_AUTO_TEST_SUITE(TestSyncLog)
+INIT_LOGGER("Test.SyncLog")
 
+BOOST_FIXTURE_TEST_SUITE(TestSyncLog, IdentityManagementTimeFixture)
 
 BOOST_AUTO_TEST_CASE(BasicDatabaseTest)
 {
-  INIT_LOGGERS();
+  fs::path tmpdir = fs::unique_path(UNIT_TEST_CONFIG_PATH);
+  if (exists(tmpdir)) {
+    remove_all(tmpdir);
+  }
 
-  fs::path tmpdir = fs::unique_path(fs::temp_directory_path() / "%%%%-%%%%-%%%%-%%%%");
-  SyncLog db(tmpdir, Name("/alex"));
+  SyncLog db(tmpdir, Name("/lijing"));
 
-  HashPtr hash = db.RememberStateInStateLog();
+  ndn::ConstBufferPtr hash = db.RememberStateInStateLog();
   // should be empty
-  BOOST_CHECK_EQUAL(lexical_cast<string>(*hash),
-                    "7a6f2c1eefd539560d2dc3e5542868a79810d0867db15d9b87e41ec105899405");
 
-  db.UpdateDeviceSeqNo(Name("/alex"), 1);
+  BOOST_CHECK_EQUAL(toHex(*hash),
+                    "94D988A90C6A3D0F74624368BE65E5369DDDDB3444841FAD4EF41F674B937F26");
+
+  db.UpdateDeviceSeqNo(Name("/lijing"), 1);
   hash = db.RememberStateInStateLog();
 
-  BOOST_CHECK_EQUAL(lexical_cast<string>(*hash),
-                    "3410477233f98d6c3f9a6f8da24494bf5a65e1a7c9f4f66b228128bd4e020558");
+  BOOST_CHECK_EQUAL(toHex(*hash),
+                    "91A849EEDE75ACD56AE1BCB99E92D8FB28757683BC387DBB0E59C3108FCF4F18");
 
-  db.UpdateDeviceSeqNo(Name("/alex"), 2);
+  db.UpdateDeviceSeqNo(Name("/lijing"), 2);
   hash = db.RememberStateInStateLog();
-  BOOST_CHECK_EQUAL(lexical_cast<string>(*hash),
-                    "2ff304769cdb0125ac039e6fe7575f8576dceffc62618a431715aaf6eea2bf1c");
+  BOOST_CHECK_EQUAL(toHex(*hash),
+                    "D2DFEDA56ED98C0E17D455A859BC8C3B9E31C85C138C280A8BADAB4FC551F282");
 
-  db.UpdateDeviceSeqNo(Name("/alex"), 2);
+  db.UpdateDeviceSeqNo(Name("/lijing"), 2);
   hash = db.RememberStateInStateLog();
-  BOOST_CHECK_EQUAL(lexical_cast<string>(*hash),
-                    "2ff304769cdb0125ac039e6fe7575f8576dceffc62618a431715aaf6eea2bf1c");
+  BOOST_CHECK_EQUAL(toHex(*hash),
+                    "D2DFEDA56ED98C0E17D455A859BC8C3B9E31C85C138C280A8BADAB4FC551F282");
 
-  db.UpdateDeviceSeqNo(Name("/alex"), 1);
+  db.UpdateDeviceSeqNo(Name("/lijing"), 1);
   hash = db.RememberStateInStateLog();
-  BOOST_CHECK_EQUAL(lexical_cast<string>(*hash),
-                    "2ff304769cdb0125ac039e6fe7575f8576dceffc62618a431715aaf6eea2bf1c");
+  BOOST_CHECK_EQUAL(toHex(*hash),
+                    "D2DFEDA56ED98C0E17D455A859BC8C3B9E31C85C138C280A8BADAB4FC551F282");
 
-  db.UpdateLocator(Name("/alex"), Name("/hawaii"));
+  db.UpdateLocator(Name("/lijing"), Name("/hawaii"));
 
-  BOOST_CHECK_EQUAL(db.LookupLocator(Name("/alex")), Name("/hawaii"));
+  BOOST_CHECK_EQUAL(db.LookupLocator(Name("/lijing")), Name("/hawaii"));
 
-  SyncStateMsgPtr msg =
-    db.FindStateDifferences("00", "95284d3132a7a88b85c5141ca63efa68b7a7daf37315def69e296a0c24692833");
+  SyncStateMsgPtr msg = db.FindStateDifferences("00", "95284D3132A7A88B85C5141CA63EFA68B7A7DAF37315DEF69E296A0C24692833");
   BOOST_CHECK_EQUAL(msg->state_size(), 0);
 
   msg = db.FindStateDifferences("00",
-                                "2ff304769cdb0125ac039e6fe7575f8576dceffc62618a431715aaf6eea2bf1c");
+                                "D2DFEDA56ED98C0E17D455A859BC8C3B9E31C85C138C280A8BADAB4FC551F282");
   BOOST_CHECK_EQUAL(msg->state_size(), 1);
   BOOST_CHECK_EQUAL(msg->state(0).type(), SyncState::UPDATE);
   BOOST_CHECK_EQUAL(msg->state(0).seq(), 2);
 
-  msg = db.FindStateDifferences("2ff304769cdb0125ac039e6fe7575f8576dceffc62618a431715aaf6eea2bf1c",
+  msg = db.FindStateDifferences("D2DFEDA56ED98C0E17D455A859BC8C3B9E31C85C138C280A8BADAB4FC551F282",
                                 "00");
   BOOST_CHECK_EQUAL(msg->state_size(), 1);
   BOOST_CHECK_EQUAL(msg->state(0).type(), SyncState::DELETE);
 
-  msg = db.FindStateDifferences("7a6f2c1eefd539560d2dc3e5542868a79810d0867db15d9b87e41ec105899405",
-                                "2ff304769cdb0125ac039e6fe7575f8576dceffc62618a431715aaf6eea2bf1c");
+  msg = db.FindStateDifferences("94D988A90C6A3D0F74624368BE65E5369DDDDB3444841FAD4EF41F674B937F26",
+                                "D2DFEDA56ED98C0E17D455A859BC8C3B9E31C85C138C280A8BADAB4FC551F282");
   BOOST_CHECK_EQUAL(msg->state_size(), 1);
   BOOST_CHECK_EQUAL(msg->state(0).type(), SyncState::UPDATE);
   BOOST_CHECK_EQUAL(msg->state(0).seq(), 2);
 
-  msg = db.FindStateDifferences("2ff304769cdb0125ac039e6fe7575f8576dceffc62618a431715aaf6eea2bf1c",
-                                "7a6f2c1eefd539560d2dc3e5542868a79810d0867db15d9b87e41ec105899405");
+  msg = db.FindStateDifferences("D2DFEDA56ED98C0E17D455A859BC8C3B9E31C85C138C280A8BADAB4FC551F282",
+                                "94D988A90C6A3D0F74624368BE65E5369DDDDB3444841FAD4EF41F674B937F26");
   BOOST_CHECK_EQUAL(msg->state_size(), 1);
   BOOST_CHECK_EQUAL(msg->state(0).type(), SyncState::UPDATE);
   BOOST_CHECK_EQUAL(msg->state(0).seq(), 0);
 
-  db.UpdateDeviceSeqNo(Name("/bob"), 1);
+  db.UpdateDeviceSeqNo(Name("/shuai"), 1);
   hash = db.RememberStateInStateLog();
-  BOOST_CHECK_EQUAL(lexical_cast<string>(*hash),
-                    "5df5affc07120335089525e82ec9fda60c6dccd7addb667106fb79de80610519");
+  BOOST_CHECK_EQUAL(toHex(*hash),
+                    "602FF1878FC394B90E4A0E90C7409EA4B8EE8AA40169801D62F838470551DB7C");
 
   msg = db.FindStateDifferences("00",
-                                "5df5affc07120335089525e82ec9fda60c6dccd7addb667106fb79de80610519");
+                                "602FF1878FC394B90E4A0E90C7409EA4B8EE8AA40169801D62F838470551DB7C");
   BOOST_CHECK_EQUAL(msg->state_size(), 2);
   BOOST_CHECK_EQUAL(msg->state(0).type(), SyncState::UPDATE);
   BOOST_CHECK_EQUAL(msg->state(0).seq(), 2);
 
   BOOST_CHECK_EQUAL(msg->state(1).type(), SyncState::UPDATE);
   BOOST_CHECK_EQUAL(msg->state(1).seq(), 1);
-
-  remove_all(tmpdir);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+} // namespace tests
+} // namespace chronoshare
+} // namespace ndn

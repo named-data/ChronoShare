@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2014-2016, Regents of the University of California,
+ * Copyright (c) 2014-2017, Regents of the University of California,
  *                          Arizona Board of Regents,
  *                          Colorado State University,
  *                          University Pierre & Marie Curie, Sorbonne University,
@@ -34,6 +34,7 @@
 
 #include <boost/asio/io_service.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 
 #include <ndn-cxx/name.hpp>
 #include <ndn-cxx/data.hpp>
@@ -164,6 +165,11 @@ setNameComponent(Packet& packet, ssize_t index, const A& ...a)
   setNameComponent(name, index, a...);
   packet.setName(name);
 }
+
+/** \brief convert file to digest
+ */
+ndn::ConstBufferPtr
+digestFromFile(const boost::filesystem::path& filename);
 
 } // namespace tests
 } // namespace chronoshare
