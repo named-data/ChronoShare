@@ -48,9 +48,13 @@ public:
     dir /= "test-home";
     setenv("HOME", dir.generic_string().c_str(), 1);
 
-    setenv("NDN_CLIENT_PIB", "pib-sqlite3", 1);
-    setenv("NDN_CLIENT_TPM", "tpm-file", 1);
-    boost::filesystem::create_directories(dir);
+    if (exists(dir)) {
+      remove_all(dir);
+    }
+
+    setenv("NDN_CLIENT_PIB", ("pib-sqlite3:" + dir.string()).c_str(), 1);
+    setenv("NDN_CLIENT_TPM", ("tpm-file:" + dir.string()).c_str(), 1);
+    create_directories(dir);
   }
 
   ~GlobalConfigurationFixture()
@@ -59,10 +63,10 @@ public:
       setenv("HOME", m_home.c_str(), 1);
     }
     if (!m_pib.empty()) {
-      setenv("NDN_CLIENT_PIB", m_home.c_str(), 1);
+      setenv("NDN_CLIENT_PIB", m_pib.c_str(), 1);
     }
     if (!m_tpm.empty()) {
-      setenv("NDN_CLIENT_TPM", m_home.c_str(), 1);
+      setenv("NDN_CLIENT_TPM", m_tpm.c_str(), 1);
     }
   }
 
