@@ -22,7 +22,7 @@
  */
 
 #include "chronosharegui.h"
-#include "config.h"
+#include "core/chronoshare-config.hpp"
 
 #include "logging.h"
 #include "ndnx-wrapper.h"

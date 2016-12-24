@@ -21,7 +21,7 @@
  */
 
 #include "adhoc.h"
-#include "config.h"
+#include "core/chronoshare-config.hpp"
 
 #if (__APPLE__ && HAVE_COREWLAN)
 

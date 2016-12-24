@@ -41,7 +41,7 @@ void run(fs::path dir, FsWatcher::LocalFile_Change_Callback c, FsWatcher::LocalF
 void SlowWrite(fs::path & file)
 {
   fs::ofstream off(file, std::ios::out);
-  
+
   for (int i = 0; i < 10; i++){
     off << i  << endl;
     usleep(200000);
@@ -62,12 +62,12 @@ BOOST_AUTO_TEST_CASE (TestFsWatcherDelay)
   FsWatcher::LocalFile_Change_Callback fileDelete = boost::bind(onDelete, _1);
 
   fs::path file = dir / "test.text";
-  
+
   thread watcherThread(run, dir, fileChange, fileDelete);
 
   thread writeThread(SlowWrite, file);
-  
-  
+
+
 
   usleep(10000000);
 

@@ -1,15 +1,6 @@
-.waf-*
+.waf-1*
+.waf3-1*
 *.pyc
 build/
 .lock*
-chronoshare.db
-Makefile
-*.o
-moc_*
-ui_*
-*.app
-*.DS_Store
-osx/Frameworks/Sparkle.framework
-Sparkle*
-*priv.pem
 gui/html.qrc

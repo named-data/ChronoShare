@@ -22,7 +22,7 @@
 #ifndef CHRONOSHARE_ADHOC_H
 #define CHRONOSHARE_ADHOC_H
 
-#include "config.h"
+#include "core/chronoshare-config.hpp"
 
 #if (__APPLE__ && HAVE_COREWLAN)
     #define ADHOC_SUPPORTED 1

@@ -22,7 +22,7 @@
 #ifndef LOGGING_H
 #define LOGGING_H
 
-#include "config.h"
+#include "core/chronoshare-config.hpp"
 
 #ifdef HAVE_LOG4CXX
 

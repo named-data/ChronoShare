@@ -19,25 +19,25 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#include "ndnx-wrapper.h"
-#include "ndnx-closure.h"
-#include "ndnx-name.h"
-#include "ndnx-selectors.h"
-#include "ndnx-pco.h"
+#include "ccnx-wrapper.h"
+#include "ccnx-closure.h"
+#include "ccnx-name.h"
+#include "ccnx-selectors.h"
+#include "ccnx-pco.h"
 #include <unistd.h>
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/make_shared.hpp>
 
-using namespace Ndnx;
+using namespace Ccnx;
 using namespace std;
 using namespace boost;
 
-BOOST_AUTO_TEST_SUITE(TestNdnxWrapper)
+BOOST_AUTO_TEST_SUITE(TestCcnxWrapper)
 
-NdnxWrapperPtr c1;
-NdnxWrapperPtr c2;
+CcnxWrapperPtr c1;
+CcnxWrapperPtr c2;
 int g_timeout_counter = 0;
 int g_dataCallback_counter = 0;
 
@@ -53,7 +53,7 @@ void publish2(const Name &name)
   c2->publishData(name, (const unsigned char*)content.c_str(), content.size(), 5);
 }
 
-void dataCallback(const Name &name, Ndnx::PcoPtr pco)
+void dataCallback(const Name &name, Ccnx::PcoPtr pco)
 {
   cout << " in data callback" << endl;
   BytesPtr content = pco->contentPtr ();
@@ -62,7 +62,7 @@ void dataCallback(const Name &name, Ndnx::PcoPtr pco)
   BOOST_CHECK_EQUAL(name, msg);
 }
 
-void encapCallback(const Name &name, Ndnx::PcoPtr pco)
+void encapCallback(const Name &name, Ccnx::PcoPtr pco)
 {
   cout << " in encap data callback" << endl;
   BOOST_CHECK(!c1->verify(pco));
@@ -84,11 +84,11 @@ setup()
 {
   if (!c1)
   {
-    c1 = make_shared<NdnxWrapper> ();
+    c1 = make_shared<CcnxWrapper> ();
   }
   if (!c2)
   {
-    c2 = make_shared<NdnxWrapper> ();
+    c2 = make_shared<CcnxWrapper> ();
   }
 }
 
@@ -106,7 +106,7 @@ teardown()
 }
 
 
-BOOST_AUTO_TEST_CASE (BlaNdnxWrapperTest)
+BOOST_AUTO_TEST_CASE (BlaCcnxWrapperTest)
 {
   INIT_LOGGERS ();
   
@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE (BlaNdnxWrapperTest)
   teardown();
 }
 
-BOOST_AUTO_TEST_CASE (NdnxWrapperSelector)
+BOOST_AUTO_TEST_CASE (CcnxWrapperSelector)
 {
 
   setup();
@@ -220,7 +220,7 @@ BOOST_AUTO_TEST_CASE (TestUnsigned)
 
 
  /*
- BOOST_AUTO_TEST_CASE (NdnxWrapperUnsigningTest)
+ BOOST_AUTO_TEST_CASE (CcnxWrapperUnsigningTest)
  {
    setup();
    Bytes data;
