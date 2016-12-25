@@ -8,7 +8,6 @@ def options(opt):
     opt.add_option('--with-tests', action='store_true', default=False, dest='with_tests',
                    help='''Build unit tests''')
     opt.add_option('--yes',action='store_true',default=False) # for autoconf/automake/make compatibility
-    opt.add_option('--log4cxx', action='store_true',default=False,dest='log4cxx',help='''Compile with log4cxx logging support''')
 
     opt.add_option('--without-sqlite-locking', action='store_false', default=True,
                    dest='with_sqlite_locking',
@@ -56,9 +55,7 @@ def configure(conf):
     if Utils.unversioned_sys_platform() == "linux":
         conf.define("TRAY_ICON", "chronoshare-ubuntu.png")
 
-    if conf.options.log4cxx:
-        conf.check_cfg(package='liblog4cxx', args=['--cflags', '--libs'], uselib_store='LOG4CXX', mandatory=True)
-        conf.define("HAVE_LOG4CXX", 1)
+    conf.check_cfg(package='liblog4cxx', args=['--cflags', '--libs'], uselib_store='LOG4CXX', mandatory=True)
 
     USED_BOOST_LIBS = ['system', 'filesystem', 'date_time', 'iostreams',
                        'regex', 'program_options', 'thread']
@@ -85,6 +82,14 @@ def configure(conf):
     conf.write_config_header('core/chronoshare-config.hpp')
 
 def build(bld):
+    bld(name='core-objects',
+        target='core-objects',
+        features=['cxx'],
+        source=bld.path.ant_glob('core/**/*.cpp'),
+        use='LOG4CXX BOOST',
+        includes='.',
+        export_includes='.')
+
     # if Utils.unversioned_sys_platform() == 'darwin':
     #     bld(
     #         target='adhoc',
