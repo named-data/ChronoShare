@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -17,17 +17,36 @@
  *
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
+
 #ifndef FETCH_TASK_DB_H
 #define FETCH_TASK_DB_H
 
-#include <boost/filesystem.hpp>
-#include <boost/shared_ptr.hpp>
-#include <ccnx-common.h>
-#include <ccnx-name.h>
+#include "db-helper.hpp"
+#include "core/chronoshare-common.hpp"
+
+#include <ndn-cxx/name.hpp>
+
 #include <sqlite3.h>
+
+#include <boost/filesystem.hpp>
+
+namespace ndn {
+namespace chronoshare {
 
 class FetchTaskDb
 {
+public:
+  class Error : public DbHelper::Error
+  {
+  public:
+    explicit Error(const std::string& what)
+      : DbHelper::Error(what)
+    {
+    }
+  };
+
+  typedef function<void(const Name&, const Name&, uint64_t, uint64_t, int)> FetchTaskCallback;
+
 public:
   FetchTaskDb(const boost::filesystem::path& folder, const std::string& tag);
   ~FetchTaskDb();
@@ -35,14 +54,11 @@ public:
   // task with same deviceName and baseName combination will be added only once
   // if task already exists, this call does nothing
   void
-  addTask(const Ccnx::Name& deviceName, const Ccnx::Name& baseName, uint64_t minSeqNo,
-          uint64_t maxSeqNo, int priority);
+  addTask(const Name& deviceName, const Name& baseName, uint64_t minSeqNo, uint64_t maxSeqNo,
+          int priority);
 
   void
-  deleteTask(const Ccnx::Name& deviceName, const Ccnx::Name& baseName);
-
-  typedef boost::function<void(const Ccnx::Name&, const Ccnx::Name&, uint64_t, uint64_t, int)>
-    FetchTaskCallback;
+  deleteTask(const Name& deviceName, const Name& baseName);
 
   void
   foreachTask(const FetchTaskCallback& callback);
@@ -51,6 +67,9 @@ private:
   sqlite3* m_db;
 };
 
-typedef boost::shared_ptr<FetchTaskDb> FetchTaskDbPtr;
+typedef shared_ptr<FetchTaskDb> FetchTaskDbPtr;
+
+} // namespace chronoshare
+} // namespace ndn
 
 #endif // FETCH_TASK_DB_H

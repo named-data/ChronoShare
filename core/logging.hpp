@@ -28,9 +28,9 @@ namespace chronoshare {
 
 #define _LOG_INIT(name) NDN_LOG_INIT(chronoshare.name)
 
-#define _LOG_DEBUG(x) NDN_LOG_DEBUG(x)
+#define _LOG_DEBUG(x) NDN_LOG_DEBUG(__FILE__ << ":" << __LINE__ << ":" << " " << x)
 
-#define _LOG_TRACE(x) NDN_LOG_TRACE(x)
+#define _LOG_TRACE(x) NDN_LOG_TRACE(__FILE__ << ":" << __LINE__ << ":" << " " << x)
 
 #define _LOG_ERROR(x) NDN_LOG_ERROR(x)
 

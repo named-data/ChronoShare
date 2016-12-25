@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -21,31 +21,38 @@
 #ifndef FETCH_MANAGER_H
 #define FETCH_MANAGER_H
 
-#include "ccnx-wrapper.h"
-#include "executor.h"
-#include "fetch-task-db.h"
-#include "scheduler.h"
-#include <boost/exception/all.hpp>
-#include <boost/function.hpp>
-#include <boost/shared_ptr.hpp>
-#include <list>
-#include <stdint.h>
-#include <string>
+#include "fetch-task-db.hpp"
+#include "fetcher.hpp"
+#include "core/chronoshare-common.hpp"
 
-#include "fetcher.h"
+#include <ndn-cxx/util/scheduler-scoped-event-id.hpp>
+#include <ndn-cxx/util/scheduler.hpp>
+
+#include <list>
+
+namespace ndn {
+namespace chronoshare {
 
 class FetchManager
 {
 public:
+  class Error : public std::runtime_error
+  {
+  public:
+    explicit Error(const std::string& what)
+      : std::runtime_error(what)
+    {
+    }
+  };
+
   enum { PRIORITY_NORMAL, PRIORITY_HIGH };
 
-  typedef boost::function<Ccnx::Name(const Ccnx::Name&)> Mapping;
-  typedef boost::function<void(Ccnx::Name& deviceName, Ccnx::Name& baseName, uint64_t seq, Ccnx::PcoPtr pco)>
-    SegmentCallback;
-  typedef boost::function<void(Ccnx::Name& deviceName, Ccnx::Name& baseName)> FinishCallback;
-  FetchManager(Ccnx::CcnxWrapperPtr ccnx,
-               const Mapping& mapping,
-               const Ccnx::Name& broadcastForwardingHint,
+  typedef function<Name(const Name&)> Mapping;
+  typedef function<void(Name& deviceName, Name& baseName, uint64_t seq, shared_ptr<Data> data)> SegmentCallback;
+  typedef function<void(Name& deviceName, Name& baseName)> FinishCallback;
+
+public:
+  FetchManager(Face& face, const Mapping& mapping, const Name& broadcastForwardingHint,
                uint32_t parallelFetches = 3,
                const SegmentCallback& defaultSegmentCallback = SegmentCallback(),
                const FinishCallback& defaultFinishCallback = FinishCallback(),
@@ -53,30 +60,26 @@ public:
   virtual ~FetchManager();
 
   void
-  Enqueue(const Ccnx::Name& deviceName, const Ccnx::Name& baseName,
-          const SegmentCallback& segmentCallback, const FinishCallback& finishCallback,
-          uint64_t minSeqNo, uint64_t maxSeqNo, int priority = PRIORITY_NORMAL);
+  Enqueue(const Name& deviceName, const Name& baseName, const SegmentCallback& segmentCallback,
+          const FinishCallback& finishCallback, uint64_t minSeqNo, uint64_t maxSeqNo,
+          int priority = PRIORITY_NORMAL);
 
   // Enqueue using default callbacks
   void
-  Enqueue(const Ccnx::Name& deviceName, const Ccnx::Name& baseName, uint64_t minSeqNo,
-          uint64_t maxSeqNo, int priority = PRIORITY_NORMAL);
-
-  // only for Fetcher
-  inline Ccnx::CcnxWrapperPtr
-  GetCcnx();
+  Enqueue(const Name& deviceName, const Name& baseName, uint64_t minSeqNo, uint64_t maxSeqNo,
+          int priority = PRIORITY_NORMAL);
 
 private:
   // Fetch Events
   void
-  DidDataSegmentFetched(Fetcher& fetcher, uint64_t seqno, const Ccnx::Name& basename,
-                        const Ccnx::Name& name, Ccnx::PcoPtr data);
+  DidDataSegmentFetched(Fetcher& fetcher, uint64_t seqno, const Name& basename, const Name& name,
+                        shared_ptr<Data> data);
 
   void
   DidNoDataTimeout(Fetcher& fetcher);
 
   void
-  DidFetchComplete(Fetcher& fetcher, const Ccnx::Name& deviceName, const Ccnx::Name& baseName);
+  DidFetchComplete(Fetcher& fetcher, const Name& deviceName, const Name& baseName);
 
   void
   ScheduleFetches();
@@ -85,44 +88,33 @@ private:
   TimedWait(Fetcher& fetcher);
 
 private:
-  Ndnx::NdnxWrapperPtr m_ndnx;
+  Face& m_face;
   Mapping m_mapping;
 
   uint32_t m_maxParallelFetches;
   uint32_t m_currentParallelFetches;
-  boost::mutex m_parellelFetchMutex;
+  std::mutex m_parellelFetchMutex;
 
   // optimized list structure for fetch queue
   typedef boost::intrusive::member_hook<Fetcher, boost::intrusive::list_member_hook<>,
-                                        &Fetcher::m_managerListHook>
-    MemberOption;
+                                        &Fetcher::m_managerListHook> MemberOption;
   typedef boost::intrusive::list<Fetcher, MemberOption> FetchList;
 
   FetchList m_fetchList;
-  SchedulerPtr m_scheduler;
-  ExecutorPtr m_executor;
-  TaskPtr m_scheduleFetchesTask;
+  Scheduler m_scheduler;
+  util::scheduler::ScopedEventId m_scheduledFetchesEvent;
+
   SegmentCallback m_defaultSegmentCallback;
   FinishCallback m_defaultFinishCallback;
   FetchTaskDbPtr m_taskDb;
 
-  const Ndnx::Name m_broadcastHint;
+  const Name m_broadcastHint;
+  boost::asio::io_service& m_ioService;
 };
 
-Ccnx::CcnxWrapperPtr
-FetchManager::GetCcnx()
-{
-  return m_ndnx;
-}
+typedef shared_ptr<FetchManager> FetchManagerPtr;
 
-typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;
-namespace Error {
-struct FetchManager : virtual boost::exception, virtual std::exception
-{
-};
-}
-
-typedef boost::shared_ptr<FetchManager> FetchManagerPtr;
-
+} // namespace chronoshare
+} // namespace ndn
 
 #endif // FETCHER_H

@@ -18,30 +18,26 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#include "fetcher.h"
-#include "ccnx-pco.h"
-#include "fetch-manager.h"
-#include "logging.h"
+#include "fetcher.hpp"
+#include "fetch-manager.hpp"
+#include "core/logging.hpp"
 
+#include <boost/asio/io_service.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/ref.hpp>
-#include <boost/throw_exception.hpp>
+
+namespace ndn {
+namespace chronoshare {
 
 _LOG_INIT(Fetcher);
 
-using namespace boost;
-using namespace std;
-using namespace Ndnx;
-
-Fetcher::Fetcher(Ccnx::CcnxWrapperPtr ccnx, ExecutorPtr executor,
-                 const SegmentCallback& segmentCallback, const FinishCallback& finishCallback,
-                 OnFetchCompleteCallback onFetchComplete, OnFetchFailedCallback onFetchFailed,
-                 const Ccnx::Name& deviceName, const Ccnx::Name& name, int64_t minSeqNo,
-                 int64_t maxSeqNo,
-                 boost::posix_time::time_duration timeout /* = boost::posix_time::seconds (30)*/,
-                 const Ccnx::Name& forwardingHint /* = Ccnx::Name ()*/)
-  : m_ccnx(ccnx)
+Fetcher::Fetcher(Face& face,
+                 const SegmentCallback& segmentCallback,
+                 const FinishCallback& finishCallback,
+                 const OnFetchCompleteCallback& onFetchComplete,
+                 const OnFetchFailedCallback& onFetchFailed,
+                 const Name& deviceName, const Name& name, int64_t minSeqNo, int64_t maxSeqNo,
+                 time::milliseconds timeout, const Name& forwardingHint)
+  : m_face(face)
 
   , m_segmentCallback(segmentCallback)
   , m_onFetchComplete(onFetchComplete)
@@ -57,14 +53,20 @@ Fetcher::Fetcher(Ccnx::CcnxWrapperPtr ccnx, ExecutorPtr executor,
 
   , m_minSendSeqNo(minSeqNo - 1)
   , m_maxInOrderRecvSeqNo(minSeqNo - 1)
-  , m_minSeqNo(minSeqNo)
+  // , m_minSeqNo(minSeqNo)
   , m_maxSeqNo(maxSeqNo)
 
   , m_pipeline(6) // initial "congestion window"
   , m_activePipeline(0)
-  , m_retryPause(0)
-  , m_nextScheduledRetry(date_time::second_clock<boost::posix_time::ptime>::universal_time())
-  , m_executor(executor) // must be 1
+
+  , m_slowStart(false)
+  , m_threshold(32767) // TODO make these values dynamic
+  , m_roundCount(32767)
+
+  , m_retryPause(time::seconds::zero())
+  , m_nextScheduledRetry(time::steady_clock::now())
+
+  , m_ioService(m_face.getIoService())
 {
 }
 
@@ -78,13 +80,13 @@ Fetcher::RestartPipeline()
   m_active = true;
   m_minSendSeqNo = m_maxInOrderRecvSeqNo;
   // cout << "Restart: " << m_minSendSeqNo << endl;
-  m_lastPositiveActivity = date_time::second_clock<boost::posix_time::ptime>::universal_time();
+  m_lastPositiveActivity = time::steady_clock::now();
 
-  m_executor->execute(bind(&Fetcher::FillPipeline, this));
+  m_ioService.post(bind(&Fetcher::FillPipeline, this));
 }
 
 void
-Fetcher::SetForwardingHint(const Ccnx::Name& forwardingHint)
+Fetcher::SetForwardingHint(const Name& forwardingHint)
 {
   m_forwardingHint = forwardingHint;
 }
@@ -93,7 +95,7 @@ void
 Fetcher::FillPipeline()
 {
   for (; m_minSendSeqNo < m_maxSeqNo && m_activePipeline < m_pipeline; m_minSendSeqNo++) {
-    unique_lock<mutex> lock(m_seqNoMutex);
+    std::unique_lock<std::mutex> lock(m_seqNoMutex);
 
     if (m_outOfOrderRecvSeqNo.find(m_minSendSeqNo + 1) != m_outOfOrderRecvSeqNo.end())
       continue;
@@ -103,72 +105,66 @@ Fetcher::FillPipeline()
 
     m_inActivePipeline.insert(m_minSendSeqNo + 1);
 
-    _LOG_DEBUG(" >>> i " << Name(m_forwardingHint)(m_name) << ", seq = " << (m_minSendSeqNo + 1));
+    _LOG_DEBUG(
+      " >>> i " << Name(m_forwardingHint).append(m_name) << ", seq = " << (m_minSendSeqNo + 1));
 
     // cout << ">>> " << m_minSendSeqNo+1 << endl;
-    m_ccnx->sendInterest(Name(m_forwardingHint)(m_name)(m_minSendSeqNo + 1),
-                         Closure(bind(&Fetcher::OnData, this, m_minSendSeqNo + 1, _1, _2),
-                                 bind(&Fetcher::OnTimeout, this, m_minSendSeqNo + 1, _1, _2, _3)),
-                         Selectors().interestLifetime(1)); // Alex: this lifetime should be changed to RTO
+
+    Interest interest(
+      Name(m_forwardingHint).append(m_name).appendNumber(m_minSendSeqNo + 1)); // Alex: this lifetime should be changed to RTO
+    _LOG_DEBUG("interest Name: " << interest);
+    interest.setInterestLifetime(time::seconds(1));
+    m_face.expressInterest(interest,
+                           bind(&Fetcher::OnData, this, m_minSendSeqNo + 1, _1, _2),
+                           bind(&Fetcher::OnTimeout, this, m_minSendSeqNo + 1, _1));
+
     _LOG_DEBUG(" >>> i ok");
 
     m_activePipeline++;
   }
 }
-
 void
-Fetcher::OnData(uint64_t seqno, const Ccnx::Name& name, PcoPtr data)
+Fetcher::OnData(uint64_t seqno, const Interest& interest, Data& data)
 {
-  m_executor->execute(bind(&Fetcher::OnData_Execute, this, seqno, name, data));
-}
+  const Name& name = data.getName();
+  _LOG_DEBUG(" <<< d " << name.getSubName(0, name.size() - 1) << ", seq = " << seqno);
 
-void
-Fetcher::OnData_Execute(uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
-{
-  _LOG_DEBUG(" <<< d " << name.getPartialName(0, name.size() - 1) << ", seq = " << seqno);
+  shared_ptr<Data> pco = make_shared<Data>(data.wireEncode());
 
   if (m_forwardingHint == Name()) {
     // TODO: check verified!!!!
     if (true) {
-      if (!m_segmentCallback.empty()) {
-        m_segmentCallback(m_deviceName, m_name, seqno, data);
+      if (m_segmentCallback != nullptr) {
+        m_segmentCallback(m_deviceName, m_name, seqno, pco);
       }
     }
     else {
-      _LOG_ERROR("Can not verify signature content. Name = " << data->name());
+      _LOG_ERROR("Can not verify signature content. Name = " << data.getName());
       // probably needs to do more in the future
     }
     // we don't have to tell FetchManager about this
   }
   else {
     // in this case we don't care whether "data" is verified,  in fact, we expect it is unverified
-    try {
-      PcoPtr pco = make_shared<ParsedContentObject>(*data->contentPtr());
 
-      // we need to verify this pco and apply callback only when verified
-      // TODO: check verified !!!
-      if (true) {
-        if (!m_segmentCallback.empty()) {
-          m_segmentCallback(m_deviceName, m_name, seqno, pco);
-        }
-      }
-      else {
-        _LOG_ERROR("Can not verify signature content. Name = " << pco->name());
-        // probably needs to do more in the future
+    // we need to verify this pco and apply callback only when verified
+    // TODO: check verified !!!
+    if (true) {
+      if (m_segmentCallback != nullptr) {
+        m_segmentCallback(m_deviceName, m_name, seqno, pco);
       }
     }
-    catch (MisformedContentObjectException& e) {
-      cerr << "MisformedContentObjectException..." << endl;
-      // no idea what should do...
-      // let's ignore for now
+    else {
+      _LOG_ERROR("Can not verify signature content. Name = " << pco->getName());
+      // probably needs to do more in the future
     }
   }
 
   m_activePipeline--;
-  m_lastPositiveActivity = date_time::second_clock<boost::posix_time::ptime>::universal_time();
+  m_lastPositiveActivity = time::steady_clock::now();
 
   {
-    unique_lock<mutex> lock (m_pipelineMutex);
+    std::unique_lock<std::mutex> lock(m_seqNoMutex);
     if(m_slowStart){
       m_pipeline++;
       if(m_pipeline == m_threshold)
@@ -184,16 +180,16 @@ Fetcher::OnData_Execute(uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
     }
   }
 
-  _LOG_DEBUG ("slowStart: " << boolalpha << m_slowStart << " pipeline: " << m_pipeline << " threshold: " << m_threshold);
+  _LOG_DEBUG ("slowStart: " << std::boolalpha << m_slowStart << " pipeline: " << m_pipeline << " threshold: " << m_threshold);
 
 
   ////////////////////////////////////////////////////////////////////////////
-  unique_lock<mutex> lock(m_seqNoMutex);
+  std::unique_lock<std::mutex> lock(m_seqNoMutex);
 
   m_outOfOrderRecvSeqNo.insert(seqno);
   m_inActivePipeline.erase(seqno);
   _LOG_DEBUG("Total segments received: " << m_outOfOrderRecvSeqNo.size());
-  set<int64_t>::iterator inOrderSeqNo = m_outOfOrderRecvSeqNo.begin();
+  std::set<int64_t>::iterator inOrderSeqNo = m_outOfOrderRecvSeqNo.begin();
   for (; inOrderSeqNo != m_outOfOrderRecvSeqNo.end(); inOrderSeqNo++) {
     _LOG_TRACE("Checking " << *inOrderSeqNo << " and " << m_maxInOrderRecvSeqNo + 1);
     if (*inOrderSeqNo == m_maxInOrderRecvSeqNo + 1) {
@@ -209,54 +205,47 @@ Fetcher::OnData_Execute(uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
   m_outOfOrderRecvSeqNo.erase(m_outOfOrderRecvSeqNo.begin(), inOrderSeqNo);
   ////////////////////////////////////////////////////////////////////////////
 
-  _LOG_TRACE("Max in order received: " << m_maxInOrderRecvSeqNo
-                                       << ", max seqNo to request: " << m_maxSeqNo);
+  _LOG_TRACE("Max in order received: " << m_maxInOrderRecvSeqNo << ", max seqNo to request: " << m_maxSeqNo);
 
   if (m_maxInOrderRecvSeqNo == m_maxSeqNo) {
     _LOG_TRACE("Fetch finished: " << m_name);
     m_active = false;
     // invoke callback
-    if (!m_finishCallback.empty()) {
+    if (m_finishCallback != nullptr) {
       _LOG_TRACE("Notifying callback");
       m_finishCallback(m_deviceName, m_name);
     }
 
     // tell FetchManager that we have finish our job
-    // m_onFetchComplete (*this);
+    // m_onFetchComplete(*this);
     // using executor, so we won't be deleted if there is scheduled FillPipeline call
-    if (!m_onFetchComplete.empty()) {
+    if (m_onFetchComplete != nullptr) {
       m_timedwait = true;
-      m_executor->execute(bind(m_onFetchComplete, ref(*this), m_deviceName, m_name));
+      m_ioService.post(bind(m_onFetchComplete, std::ref(*this), m_deviceName, m_name));
     }
   }
   else {
-    m_executor->execute(bind(&Fetcher::FillPipeline, this));
+    m_ioService.post(bind(&Fetcher::FillPipeline, this));
   }
 }
 
 void
-Fetcher::OnTimeout(uint64_t seqno, const Ccnx::Name& name, const Closure& closure, Selectors selectors)
+Fetcher::OnTimeout(uint64_t seqno, const Interest& interest)
 {
-  _LOG_DEBUG(this << ", " << m_executor.get());
-  m_executor->execute(bind(&Fetcher::OnTimeout_Execute, this, seqno, name, closure, selectors));
-}
-
-void
-Fetcher::OnTimeout_Execute(uint64_t seqno, Ccnx::Name name, Ccnx::Closure closure,
-                           Ccnx::Selectors selectors)
-{
-  _LOG_DEBUG(" <<< :( timeout " << name.getPartialName(0, name.size() - 1) << ", seq = " << seqno);
+  const Name name = interest.getName();
+  _LOG_DEBUG(" <<< :( timeout " << name.getSubName(0, name.size() - 1) << ", seq = " << seqno);
 
   // cout << "Fetcher::OnTimeout: " << name << endl;
   // cout << "Last: " << m_lastPositiveActivity << ", config: " << m_maximumNoActivityPeriod
   //      << ", now: " << date_time::second_clock<boost::posix_time::ptime>::universal_time()
-  //      << ", oldest: " << (date_time::second_clock<boost::posix_time::ptime>::universal_time() - m_maximumNoActivityPeriod) << endl;
+  //      << ", oldest: " <<(date_time::second_clock<boost::posix_time::ptime>::universal_time() -
+  //      m_maximumNoActivityPeriod) << endl;
 
-  if (m_lastPositiveActivity < (date_time::second_clock<boost::posix_time::ptime>::universal_time() -
-                                m_maximumNoActivityPeriod)) {
+  if (m_lastPositiveActivity <
+      (time::steady_clock::now() - m_maximumNoActivityPeriod)) {
     bool done = false;
     {
-      unique_lock<mutex> lock(m_seqNoMutex);
+      std::unique_lock<std::mutex> lock(m_seqNoMutex);
       m_inActivePipeline.erase(seqno);
       m_activePipeline--;
 
@@ -267,20 +256,25 @@ Fetcher::OnTimeout_Execute(uint64_t seqno, Ccnx::Name name, Ccnx::Closure closur
 
     if (done) {
       {
-        unique_lock<mutex> lock(m_seqNoMutex);
+        std::unique_lock<std::mutex> lock(m_seqNoMutex);
         _LOG_DEBUG("Telling that fetch failed");
         _LOG_DEBUG("Active pipeline size should be zero: " << m_inActivePipeline.size());
       }
 
       m_active = false;
-      if (!m_onFetchFailed.empty()) {
-        m_onFetchFailed(ref(*this));
+      if (m_onFetchFailed != nullptr) {
+        m_onFetchFailed(std::ref(*this));
       }
       // this is not valid anymore, but we still should be able finish work
     }
   }
   else {
     _LOG_DEBUG("Asking to reexpress seqno: " << seqno);
-    m_ccnx->sendInterest(name, closure, selectors);
+    m_face.expressInterest(interest,
+                           bind(&Fetcher::OnData, this, seqno, _1, _2), // TODO: correct?
+                           bind(&Fetcher::OnTimeout, this, seqno, _1)); // TODO: correct?
   }
 }
+
+} // namespace chronoshare
+} // namespace ndn
