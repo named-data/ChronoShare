@@ -17,9 +17,9 @@
  *
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
+
 #define BOOST_TEST_MAIN 1
 #define BOOST_TEST_DYN_LINK 1
 #include "test-common.hpp"
-
 
 #include <boost/test/unit_test.hpp>

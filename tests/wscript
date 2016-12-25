@@ -13,13 +13,15 @@ def build(bld):
         name='unit-tests-main',
         source='main.cpp',
         use='BOOST',
-        defines=['BOOST_TEST_MODULE=CHRONOSHARE Unit Test'])
+        includes='.. .',
+        defines=['BOOST_TEST_MODULE=ChronoShare Unit Tests'])
 
     unit_tests = bld.program(
             target='../unit-tests',
             features='cxx cxxprogram',
             source=bld.path.ant_glob(['**/*.cpp'], excl=['main.cpp']),
-            use='unit-tests-main',
+            use='unit-tests-main chronoshare',
             install_path=None,
-            defines='UNIT_TEST_CONFIG_PATH=\"%s/tmp-files/\"' % (bld.bldnode)
+            defines='UNIT_TEST_CONFIG_PATH=\"%s/tmp-files/\"' % (bld.bldnode),
+            includes='.. ../src .',
           )
