@@ -44,14 +44,16 @@ Dispatcher::Dispatcher(const std::string& localUserName, const std::string& shar
   : m_ccnx(ccnx)
   , m_core(NULL)
   , m_rootDir(rootDir)
-  , m_executor(
-      1) // creates problems with file assembly. need to ensure somehow that FinishExectute is called after all Segment_Execute finished
+  , m_executor(1)
+    // creates problems with file assembly. need to ensure somehow that
+    // FinishExectute is called after all Segment_Execute finished
   , m_objectManager(ccnx, rootDir, CHRONOSHARE_APP)
   , m_localUserName(localUserName)
   , m_sharedFolder(sharedFolder)
   , m_server(NULL)
   , m_enablePrefixDiscovery(enablePrefixDiscovery)
 {
+  KeyChain keyChain;
   m_syncLog = make_shared<SyncLog>(m_rootDir, localUserName);
   m_actionLog =
     make_shared<ActionLog>(m_ccnx, m_rootDir, m_syncLog, sharedFolder, CHRONOSHARE_APP,
@@ -64,7 +66,7 @@ Dispatcher::Dispatcher(const std::string& localUserName, const std::string& shar
 
   // m_server needs a different ccnx face
   m_server = new ContentServer(make_shared<CcnxWrapper>(), m_actionLog, rootDir, m_localUserName,
-                               m_sharedFolder, CHRONOSHARE_APP, CONTENT_FRESHNESS);
+                               m_sharedFolder, CHRONOSHARE_APP, keyChain, CONTENT_FRESHNESS);
   m_server->registerPrefix(Name("/"));
   m_server->registerPrefix(Name(BROADCAST_DOMAIN));
 
@@ -256,7 +258,6 @@ Dispatcher::Did_LocalFile_Delete_Execute(filesystem::path relativeFilePath)
 {
   filesystem::path absolutePath = m_rootDir / relativeFilePath;
   if (filesystem::exists(absolutePath)) {
-    //BOOST_THROW_EXCEPTION (Error::Dispatcher() << error_info_str("Delete notification but file exists: " + absolutePath.string() ));
     _LOG_ERROR("DELETE command, but file still exists: " << absolutePath.string());
     return;
   }
@@ -283,7 +284,8 @@ Dispatcher::Did_LocalFile_Delete_Execute(filesystem::path relativeFilePath)
  * - from ActionLog/AddOrUpdate: when action applied (file state changes, file added or modified) -> do nothing?
  *
  * - from FetchManager/Files: when file segment is retrieved -> save it in ObjectDb
- *                            when file fetch is completed   -> if file belongs to FileState, then assemble it to filesystem. Don't do anything otherwise
+ *                            when file fetch is completed   -> if file belongs to FileState, then assemble it to filesystem.
+ *                                                              Don't do anything otherwise
  */
 
 void
@@ -355,7 +357,8 @@ Dispatcher::Did_FetchManager_ActionFetch(const Ccnx::Name& deviceName,
                              FetchManager::PRIORITY_NORMAL);
     }
   }
-  // if necessary (when version number is the highest) delete will be applied through the trigger in m_actionLog->AddRemoteAction call
+  // if necessary (when version number is the highest) delete will be
+  // applied through the trigger in m_actionLog->AddRemoteAction call
 }
 
 void

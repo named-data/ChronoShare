@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -21,21 +21,31 @@
 #ifndef CONTENT_SERVER_H
 #define CONTENT_SERVER_H
 
+#include "core/chronoshare-common.hpp"
+
 #include "action-log.hpp"
-#include "ccnx-wrapper.hpp"
 #include "object-db.hpp"
-#include "scheduler.hpp"
-#include <boost/thread/locks.hpp>
-#include <boost/thread/shared_mutex.hpp>
+
+#include <ndn-cxx/face.hpp>
+#include <ndn-cxx/security/key-chain.hpp>
+#include <ndn-cxx/util/scheduler-scoped-event-id.hpp>
+#include <ndn-cxx/util/scheduler.hpp>
+
 #include <map>
 #include <set>
+
+#include <boost/thread/locks.hpp>
+#include <boost/thread/shared_mutex.hpp>
+
+namespace ndn {
+namespace chronoshare {
 
 class ContentServer
 {
 public:
-  ContentServer(Ccnx::CcnxWrapperPtr ccnx, ActionLogPtr actionLog,
-                const boost::filesystem::path& rootDir, const Ccnx::Name& userName,
-                const std::string& sharedFolderName, const std::string& appName, int freshness = -1);
+  ContentServer(Face& face, ActionLogPtr actionLog, const boost::filesystem::path& rootDir,
+                const Name& userName, const std::string& sharedFolderName,
+                const std::string& appName, KeyChain& keyChain, int freshness = -1);
   ~ContentServer();
 
   // the assumption is, when the interest comes in, interest is informs of
@@ -43,54 +53,58 @@ public:
   // currently /topology-independent-name must begin with /action or /file
   // so that ContentServer knows where to look for the content object
   void
-  registerPrefix(const Ccnx::Name& prefix);
+  registerPrefix(const Name& prefix);
   void
-  deregisterPrefix(const Ccnx::Name& prefix);
+  deregisterPrefix(const Name& prefix);
 
 private:
   void
-  filterAndServe(Ccnx::Name forwardingHint, const Ccnx::Name& interest);
+  filterAndServe(const InterestFilter& forwardingHint, const Interest& interest);
 
   void
-  filterAndServeImpl(const Ccnx::Name& forwardingHint, const Ccnx::Name& name,
-                     const Ccnx::Name& interest);
+  filterAndServeImpl(const Name& forwardingHint, const Name& name, const Name& interest);
 
   void
-  serve_Action(const Ccnx::Name& forwardingHint, const Ccnx::Name& name, const Ccnx::Name& interest);
+  serve_Action(const Name& forwardingHint, const Name& name, const Name& interest);
 
   void
-  serve_File(const Ccnx::Name& forwardingHint, const Ccnx::Name& name, const Ccnx::Name& interest);
+  serve_File(const Name& forwardingHint, const Name& name, const Name& interest);
 
   void
-  serve_Action_Execute(const Ccnx::Name& forwardingHint, const Ccnx::Name& name,
-                       const Ccnx::Name& interest);
+  serve_Action_Execute(const Name& forwardingHint, const Name& name, const Name& interest);
 
   void
-  serve_File_Execute(const Ccnx::Name& forwardingHint, const Ccnx::Name& name,
-                     const Ccnx::Name& interest);
+  serve_File_Execute(const Name& forwardingHint, const Name& name, const Name& interest);
 
   void
   flushStaleDbCache();
 
 private:
-  Ndnx::NdnxWrapperPtr m_ndnx;
+  Face& m_face;
   ActionLogPtr m_actionLog;
   typedef boost::shared_mutex Mutex;
-
   typedef boost::unique_lock<Mutex> ScopedLock;
-  typedef std::set<Ndnx::Name>::iterator PrefixIt;
-  std::set<Ndnx::Name> m_prefixes;
+
+  typedef std::map<Name, const RegisteredPrefixId*>::iterator FilterIdIt;
+  std::map<Name, const RegisteredPrefixId*> m_interestFilterIds;
+
   Mutex m_mutex;
   boost::filesystem::path m_dbFolder;
   int m_freshness;
 
-  SchedulerPtr m_scheduler;
-  typedef std::map<Hash, ObjectDbPtr> DbCache;
+  Scheduler m_scheduler;
+  util::scheduler::ScopedEventId m_flushStateDbCacheEvent;
+  typedef std::map<Buffer, shared_ptr<ObjectDb>> DbCache;
   DbCache m_dbCache;
   Mutex m_dbCacheMutex;
 
-  Ccnx::Name m_userName;
+  Name m_userName;
   std::string m_sharedFolderName;
   std::string m_appName;
+  KeyChain& m_keyChain;
 };
+
+} // namespace chronoshare
+} // namespace ndn
+
 #endif // CONTENT_SERVER_H
