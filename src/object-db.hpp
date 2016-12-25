@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -18,40 +18,54 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#ifndef OBJECT_DB_H
-#define OBJECT_DB_H
+#ifndef CHRONOSHARE_SRC_OBJECT_DB_HPP
+#define CHRONOSHARE_SRC_OBJECT_DB_HPP
+
+#include "db-helper.hpp"
+#include "core/chronoshare-common.hpp"
+
+#include <sqlite3.h>
+
+#include <ctime>
+#include <vector>
+
+#include <ndn-cxx/face.hpp>
+#include <ndn-cxx/name.hpp>
 
 #include <boost/filesystem.hpp>
-#include <boost/shared_ptr.hpp>
-#include <ccnx-common.h>
-#include <ccnx-name.h>
-#include <ctime>
-#include <sqlite3.h>
-#include <string>
-#include <vector>
+
+namespace ndn {
+namespace chronoshare {
 
 class ObjectDb
 {
 public:
+  class Error : public DbHelper::Error
+  {
+  public:
+    explicit Error(const std::string& what)
+      : DbHelper::Error(what)
+    {
+    }
+  };
+
+public:
   // database will be create in <folder>/<first-pair-of-hash-bytes>/<rest-of-hash>
   ObjectDb(const boost::filesystem::path& folder, const std::string& hash);
+
   ~ObjectDb();
 
   void
-  saveContentObject(const Ccnx::Name& deviceName, sqlite3_int64 segment, const Ccnx::Bytes& data);
+  saveContentObject(const Name& deviceName, sqlite3_int64 segment, const Data& data);
 
-  Ccnx::BytesPtr
-  fetchSegment(const Ccnx::Name& deviceName, sqlite3_int64 segment);
+  shared_ptr<Data>
+  fetchSegment(const Name& deviceName, sqlite3_int64 segment);
 
-  // sqlite3_int64
-  // getNumberOfSegments (const Ndnx::Name &deviceName);
-
-  time_t
-  secondsSinceLastUse();
+  const time::steady_clock::TimePoint&
+  getLastUsed() const;
 
   static bool
-  DoesExist(const boost::filesystem::path& folder, const Ccnx::Name& deviceName,
-            const std::string& hash);
+  doesExist(const boost::filesystem::path& folder, const Name& deviceName, const std::string& hash);
 
 private:
   void
@@ -62,9 +76,10 @@ private:
 
 private:
   sqlite3* m_db;
-  time_t m_lastUsed;
+  time::steady_clock::TimePoint m_lastUsed;
 };
 
-typedef boost::shared_ptr<ObjectDb> ObjectDbPtr;
+} // namespace chronoshare
+} // namespace ndn
 
-#endif // OBJECT_DB_H
+#endif // CHRONOSHARE_SRC_OBJECT_DB_HPP

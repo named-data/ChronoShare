@@ -18,34 +18,37 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#include "object-db.h"
-#include "db-helper.h"
-#include "logging.h"
-#include <boost/make_shared.hpp>
+#include "object-db.hpp"
+#include "db-helper.hpp"
+#include "core/logging.hpp"
+
 #include <iostream>
 #include <sys/stat.h>
 
-_LOG_INIT(Object.Db);
+#include <ndn-cxx/util/sqlite3-statement.hpp>
 
-using namespace std;
-using namespace Ndnx;
-using namespace boost;
+namespace ndn {
+namespace chronoshare {
+
+_LOG_INIT(ObjectDb);
+
 namespace fs = boost::filesystem;
+using ndn::util::Sqlite3Statement;
 
-const std::string INIT_DATABASE = "\
-CREATE TABLE                                                            \n \
-    File(                                                               \n\
-        device_name     BLOB NOT NULL,                                  \n\
-        segment         INTEGER,                                        \n\
-        content_object  BLOB,                                           \n\
-                                                                        \
-        PRIMARY KEY (device_name, segment)                              \n\
-    );                                                                  \n\
-CREATE INDEX device ON File(device_name);                               \n\
-";
+const std::string INIT_DATABASE = R"SQL(
+CREATE TABLE
+   File(
+        device_name     BLOB NOT NULL,
+        segment         INTEGER,
+        content_object  BLOB,
+
+        PRIMARY KEY (device_name, segment)
+    );
+CREATE INDEX device ON File(device_name);
+)SQL";
 
 ObjectDb::ObjectDb(const fs::path& folder, const std::string& hash)
-  : m_lastUsed(time(NULL))
+  : m_lastUsed(time::steady_clock::now())
 {
   fs::path actualFolder = folder / "objects" / hash.substr(0, 2);
   fs::create_directories(actualFolder);
@@ -54,30 +57,38 @@ ObjectDb::ObjectDb(const fs::path& folder, const std::string& hash)
 
   int res = sqlite3_open((actualFolder / hash.substr(2, hash.size() - 2)).c_str(), &m_db);
   if (res != SQLITE_OK) {
-    BOOST_THROW_EXCEPTION(Error::Db() << errmsg_info_str(
-                            "Cannot open/create dabatabase: [" +
-                            (actualFolder / hash.substr(2, hash.size() - 2)).string() + "]"));
+    BOOST_THROW_EXCEPTION(Error("Cannot open/create database: [" +
+                                (actualFolder / hash.substr(2, hash.size() - 2)).string() + "]"));
   }
 
   // Alex: determine if tables initialized. if not, initialize... not sure what is the best way to go...
   // for now, just attempt to create everything
 
   char* errmsg = 0;
-  res = sqlite3_exec(m_db, INIT_DATABASE.c_str(), NULL, NULL, &errmsg);
+  res = sqlite3_exec(m_db, INIT_DATABASE.c_str(), nullptr, nullptr, &errmsg);
   if (res != SQLITE_OK && errmsg != 0) {
-    // _LOG_TRACE ("Init \"error\": " << errmsg);
     sqlite3_free(errmsg);
   }
-
-  // _LOG_DEBUG ("open db");
 
   willStartSave();
 }
 
+ObjectDb::~ObjectDb()
+{
+  didStopSave();
+
+  int res = sqlite3_close(m_db);
+  if (res != SQLITE_OK) {
+    // complain
+  }
+}
+
 bool
-ObjectDb::DoesExist(const boost::filesystem::path& folder, const Ccnx::Name& deviceName,
+ObjectDb::doesExist(const boost::filesystem::path& folder, const Name& deviceName,
                     const std::string& hash)
 {
+  BOOST_ASSERT(hash.size() > 2);
+
   fs::path actualFolder = folder / "objects" / hash.substr(0, 2);
   bool retval = false;
 
@@ -89,8 +100,8 @@ ObjectDb::DoesExist(const boost::filesystem::path& folder, const Ccnx::Name& dev
                        "SELECT count(*), count(nullif(content_object,0)) FROM File WHERE device_name=?",
                        -1, &stmt, 0);
 
-    CcnxCharbufPtr buf = deviceName.toCcnxCharbuf();
-    sqlite3_bind_blob(stmt, 1, buf->buf(), buf->length(), SQLITE_TRANSIENT);
+    sqlite3_bind_blob(stmt, 1, deviceName.wireEncode().wire(), deviceName.wireEncode().size(),
+                      SQLITE_TRANSIENT);
 
     int res = sqlite3_step(stmt);
     if (res == SQLITE_ROW) {
@@ -111,105 +122,60 @@ ObjectDb::DoesExist(const boost::filesystem::path& folder, const Ccnx::Name& dev
   return retval;
 }
 
-
-ObjectDb::~ObjectDb()
-{
-  didStopSave();
-
-  // _LOG_DEBUG ("close db");
-  int res = sqlite3_close(m_db);
-  if (res != SQLITE_OK) {
-    // complain
-  }
-}
-
 void
-ObjectDb::saveContentObject(const Ccnx::Name& deviceName, sqlite3_int64 segment,
-                            const Ccnx::Bytes& data)
+ObjectDb::saveContentObject(const Name& deviceName, sqlite3_int64 segment, const Data& data)
 {
-  sqlite3_stmt* stmt;
-  sqlite3_prepare_v2(m_db, "INSERT INTO File "
-                           "(device_name, segment, content_object) "
-                           "VALUES (?, ?, ?)",
-                     -1, &stmt, 0);
-
-  //_LOG_DEBUG ("Saving content object for [" << deviceName << ", seqno: " << segment << ", size: " << data.size () << "]");
-
-  CcnxCharbufPtr buf = deviceName.toCcnxCharbuf();
-  sqlite3_bind_blob(stmt, 1, buf->buf(), buf->length(), SQLITE_STATIC);
-  sqlite3_bind_int64(stmt, 2, segment);
-  sqlite3_bind_blob(stmt, 3, &data[0], data.size(), SQLITE_STATIC);
-
-  sqlite3_step(stmt);
-  //_LOG_DEBUG ("After saving object: " << sqlite3_errmsg (m_db));
-  sqlite3_finalize(stmt);
-
   // update last used time
-  m_lastUsed = time(NULL);
+  m_lastUsed = time::steady_clock::now();
+
+  Sqlite3Statement stmt(m_db, "INSERT INTO File "
+                                "(device_name, segment, content_object) "
+                                "VALUES (?, ?, ?)");
+
+  _LOG_DEBUG("Saving content object for [" << deviceName << ", seqno: " << segment << ", size: "
+                                           << data.wireEncode().size()
+                                           << "]");
+  stmt.bind(1, deviceName.wireEncode(), SQLITE_STATIC);
+  stmt.bind(2, segment);
+  stmt.bind(3, data.wireEncode(), SQLITE_STATIC);
+  stmt.step();
 }
 
-Ccnx::BytesPtr
-ObjectDb::fetchSegment(const Ccnx::Name& deviceName, sqlite3_int64 segment)
+shared_ptr<Data>
+ObjectDb::fetchSegment(const Name& deviceName, sqlite3_int64 segment)
 {
-  sqlite3_stmt* stmt;
-  sqlite3_prepare_v2(m_db, "SELECT content_object FROM File WHERE device_name=? AND segment=?", -1,
-                     &stmt, 0);
+  // update last used time
+  m_lastUsed = time::steady_clock::now();
 
-  CcnxCharbufPtr buf = deviceName.toCcnxCharbuf();
-  sqlite3_bind_blob(stmt, 1, buf->buf(), buf->length(), SQLITE_TRANSIENT);
-  sqlite3_bind_int64(stmt, 2, segment);
+  Sqlite3Statement stmt(m_db, "SELECT content_object FROM File WHERE device_name=? AND segment=?");
+  stmt.bind(1, deviceName.wireEncode(), SQLITE_STATIC);
+  stmt.bind(2, segment);
 
-  BytesPtr ret;
-
-  int res = sqlite3_step(stmt);
-  if (res == SQLITE_ROW) {
-    const unsigned char* buf = reinterpret_cast<const unsigned char*>(sqlite3_column_blob(stmt, 0));
-    int bufBytes = sqlite3_column_bytes(stmt, 0);
-
-    ret = make_shared<Bytes>(buf, buf + bufBytes);
+  if (stmt.step() == SQLITE_ROW) {
+    return make_shared<Data>(stmt.getBlock(0));
   }
-
-  sqlite3_finalize(stmt);
-
-  // update last used time
-  m_lastUsed = time(NULL);
-
-  return ret;
+  else {
+    return nullptr;
+  }
 }
 
-time_t
-ObjectDb::secondsSinceLastUse()
+const time::steady_clock::TimePoint&
+ObjectDb::getLastUsed() const
 {
-  return (time(NULL) - m_lastUsed);
+  return m_lastUsed;
 }
-
-// sqlite3_int64
-// ObjectDb::getNumberOfSegments (const Ndnx::Name &deviceName)
-// {
-//   sqlite3_stmt *stmt;
-//   sqlite3_prepare_v2 (m_db, "SELECT count(*) FROM File WHERE device_name=?", -1, &stmt, 0);
-
-//   bool retval = false;
-//   int res = sqlite3_step (stmt);
-//   if (res == SQLITE_ROW)
-//     {
-//       retval = true;
-//     }
-//   sqlite3_finalize (stmt);
-
-//   return retval;
-// }
 
 void
 ObjectDb::willStartSave()
 {
   sqlite3_exec(m_db, "BEGIN TRANSACTION;", 0, 0, 0);
-  // _LOG_DEBUG ("Open transaction: " << sqlite3_errmsg (m_db));
 }
 
 void
 ObjectDb::didStopSave()
 {
   sqlite3_exec(m_db, "END TRANSACTION;", 0, 0, 0);
-  // _LOG_DEBUG ("Close transaction: " << sqlite3_errmsg (m_db));
 }
+
+} // namespace chronoshare
+} // namespace ndn
