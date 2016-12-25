@@ -21,12 +21,12 @@
 #include "chronosharegui.hpp"
 #include "core/chronoshare-config.hpp"
 
-#include "logging.hpp"
 #include "ccnx-wrapper.hpp"
-#include <QValidator>
+#include "logging.hpp"
+#include <QDesktopServices>
 #include <QDir>
 #include <QFileInfo>
-#include <QDesktopServices>
+#include <QValidator>
 
 #include <boost/make_shared.hpp>
 
@@ -43,35 +43,36 @@ static const string DOC_ROOT = ":/html";
 static const QString ICON_BIG_FILE(":/images/chronoshare-big.png");
 static const QString ICON_TRAY_FILE(":/images/" TRAY_ICON);
 
-INIT_LOGGER ("Gui");
+INIT_LOGGER("Gui");
 
-ChronoShareGui::ChronoShareGui(QWidget *parent)
+ChronoShareGui::ChronoShareGui(QWidget* parent)
   : QDialog(parent)
   , m_watcher(0)
   , m_dispatcher(0)
   , m_httpServer(0)
 #ifdef ADHOC_SUPPORTED
-  , m_executor (1)
+  , m_executor(1)
 #endif
 #ifdef SPARKLE_SUPPORTED
-  , m_autoUpdate(new SparkleAutoUpdate(tr("http://irl.cs.ucla.edu/~zhenkai/chronoshare_dist/chronoshare.xml")))
+  , m_autoUpdate(
+      new SparkleAutoUpdate(tr("http://irl.cs.ucla.edu/~zhenkai/chronoshare_dist/chronoshare.xml")))
 #endif
 {
   setWindowTitle("Settings");
-  setMinimumWidth (600);
+  setMinimumWidth(600);
 
   labelUsername = new QLabel("Username (hint: /<username>)");
   labelSharedFolder = new QLabel("Shared Folder Name");
   labelSharedFolderPath = new QLabel("Shared Folder Path");
 
   QRegExp regex("(/[^/]+)+$");
-  QValidator *prefixValidator = new QRegExpValidator(regex, this);
+  QValidator* prefixValidator = new QRegExpValidator(regex, this);
 
   editUsername = new QLineEdit();
   editUsername->setValidator(prefixValidator);
 
   QRegExp noPureWhiteSpace("^\\S+.*$");
-  QValidator *wsValidator = new QRegExpValidator(noPureWhiteSpace, this);
+  QValidator* wsValidator = new QRegExpValidator(noPureWhiteSpace, this);
   editSharedFolder = new QLineEdit();
   editSharedFolder->setValidator(wsValidator);
 
@@ -111,109 +112,100 @@ ChronoShareGui::ChronoShareGui(QWidget *parent)
   m_trayIcon->show();
 
   // load settings
-  if(!loadSettings())
-    {
-      // prompt user to choose folder
-      openMessageBox("First Time Setup", "Please enter a username, shared folder name and choose the shared folder path on your local filesystem.");
-      viewSettings();
-      openFileDialog();
+  if (!loadSettings()) {
+    // prompt user to choose folder
+    openMessageBox("First Time Setup",
+                   "Please enter a username, shared folder name and choose the shared folder path on your local filesystem.");
+    viewSettings();
+    openFileDialog();
+    viewSettings();
+  }
+  else {
+    if (m_username.isNull() || m_username == "" || m_sharedFolderName.isNull() ||
+        m_sharedFolderName == "") {
+      openMessageBox("First Time Setup",
+                     "To activate ChronoShare, please configure your username and shared folder name.");
       viewSettings();
     }
-  else
-    {
-      if (m_username.isNull () || m_username == "" ||
-          m_sharedFolderName.isNull () || m_sharedFolderName == "")
-        {
-          openMessageBox("First Time Setup", "To activate ChronoShare, please configure your username and shared folder name.");
-          viewSettings();
-        }
-      else
-        {
-          startBackend();
-        }
+    else {
+      startBackend();
     }
+  }
 
 #ifdef ADHOC_SUPPORTED
-  m_executor.start ();
+  m_executor.start();
 #endif
 }
 
 void
-ChronoShareGui::startBackend (bool restart/*=false*/)
+ChronoShareGui::startBackend(bool restart /*=false*/)
 {
-  if (m_username.isNull () || m_username=="" ||
-      m_sharedFolderName.isNull () || m_sharedFolderName=="" ||
-      m_dirPath.isNull () || m_dirPath=="")
-    {
-      _LOG_DEBUG ("Don't start backend, because settings are in progress or incomplete");
+  if (m_username.isNull() || m_username == "" || m_sharedFolderName.isNull() ||
+      m_sharedFolderName == "" || m_dirPath.isNull() || m_dirPath == "") {
+    _LOG_DEBUG("Don't start backend, because settings are in progress or incomplete");
+    return;
+  }
+
+  if (m_watcher != 0 && m_dispatcher != 0) {
+    if (!restart) {
       return;
     }
 
-  if (m_watcher != 0 && m_dispatcher != 0)
-  {
-    if (!restart)
-      {
-        return;
-      }
-
-    _LOG_DEBUG ("Restarting Dispatcher and FileWatcher for the new location or new username");
+    _LOG_DEBUG("Restarting Dispatcher and FileWatcher for the new location or new username");
     delete m_watcher; // stop filewatching ASAP
     delete m_dispatcher; // stop dispatcher ASAP, but after watcher (to prevent triggering callbacks on deleted object)
   }
 
-  filesystem::path realPathToFolder (m_dirPath.toStdString ());
-  realPathToFolder /= m_sharedFolderName.toStdString ();
+  filesystem::path realPathToFolder(m_dirPath.toStdString());
+  realPathToFolder /= m_sharedFolderName.toStdString();
 
-  m_dispatcher = new Dispatcher (m_username.toStdString (), m_sharedFolderName.toStdString (),
-                                 realPathToFolder, make_shared<NdnxWrapper> ());
+  m_dispatcher = new Dispatcher(m_username.toStdString(), m_sharedFolderName.toStdString(),
+                                realPathToFolder, make_shared<CcnxWrapper>());
 
   // Alex: this **must** be here, otherwise m_dirPath will be uninitialized
-  m_watcher = new FsWatcher (realPathToFolder.string ().c_str (),
-                             bind (&Dispatcher::Did_LocalFile_AddOrModify, m_dispatcher, _1),
-                             bind (&Dispatcher::Did_LocalFile_Delete,      m_dispatcher, _1));
+  m_watcher = new FsWatcher(realPathToFolder.string().c_str(),
+                            bind(&Dispatcher::Did_LocalFile_AddOrModify, m_dispatcher, _1),
+                            bind(&Dispatcher::Did_LocalFile_Delete, m_dispatcher, _1));
 
-  if (m_httpServer != 0)
-    {
-      // no need to restart webserver if it already exists
-      return;
-    }
+  if (m_httpServer != 0) {
+    // no need to restart webserver if it already exists
+    return;
+  }
 
   QFileInfo indexHtmlInfo(":/html/index.html");
-  if (indexHtmlInfo.exists())
-  {
-    try
-    {
+  if (indexHtmlInfo.exists()) {
+    try {
       m_httpServer = new http::server::server(HTTP_SERVER_ADDRESS, HTTP_SERVER_PORT, DOC_ROOT);
       m_httpServerThread = boost::thread(&http::server::server::run, m_httpServer);
     }
-    catch (std::exception &e)
-    {
-      _LOG_ERROR ("Start http server failed");
+    catch (std::exception& e) {
+      _LOG_ERROR("Start http server failed");
       m_httpServer = 0; // just to make sure
       QMessageBox msgBox;
-      msgBox.setText ("WARNING: Cannot start http server!");
-      msgBox.setIcon (QMessageBox::Warning);
-      msgBox.setInformativeText(QString("Starting http server failed. You will not be able to check history from web brower. Exception caused: %1").arg(e.what()));
+      msgBox.setText("WARNING: Cannot start http server!");
+      msgBox.setIcon(QMessageBox::Warning);
+      msgBox.setInformativeText(
+        QString(
+          "Starting http server failed. You will not be able to check history from web brower. Exception caused: %1")
+          .arg(e.what()));
       msgBox.setStandardButtons(QMessageBox::Ok);
       msgBox.exec();
     }
   }
-  else
-  {
-    _LOG_ERROR ("Http server doc root dir does not exist!");
+  else {
+    _LOG_ERROR("Http server doc root dir does not exist!");
   }
 }
 
 ChronoShareGui::~ChronoShareGui()
 {
 #ifdef ADHOC_SUPPORTED
-  m_executor.shutdown ();
+  m_executor.shutdown();
 #endif
 
   delete m_watcher; // stop filewatching ASAP
   delete m_dispatcher; // stop dispatcher ASAP, but after watcher (to prevent triggering callbacks on deleted object)
-  if (m_httpServer != 0)
-  {
+  if (m_httpServer != 0) {
     m_httpServer->handle_stop();
     m_httpServerThread.join();
     delete m_httpServer;
@@ -243,7 +235,8 @@ ChronoShareGui::~ChronoShareGui()
   delete mainLayout;
 }
 
-void ChronoShareGui::openMessageBox(QString title, QString text)
+void
+ChronoShareGui::openMessageBox(QString title, QString text)
 {
   QMessageBox messageBox(this);
   messageBox.setWindowTitle(title);
@@ -254,7 +247,8 @@ void ChronoShareGui::openMessageBox(QString title, QString text)
   messageBox.exec();
 }
 
-void ChronoShareGui::openMessageBox(QString title, QString text, QString infotext)
+void
+ChronoShareGui::openMessageBox(QString title, QString text, QString infotext)
 {
   QMessageBox messageBox(this);
   messageBox.setWindowTitle(title);
@@ -266,9 +260,10 @@ void ChronoShareGui::openMessageBox(QString title, QString text, QString infotex
   messageBox.exec();
 }
 
-void ChronoShareGui::createActionsAndMenu()
+void
+ChronoShareGui::createActionsAndMenu()
 {
-  _LOG_DEBUG ("Create actions");
+  _LOG_DEBUG("Create actions");
 
   // create the "open folder" action
   m_openFolder = new QAction(tr("&Open Folder"), this);
@@ -278,8 +273,7 @@ void ChronoShareGui::createActionsAndMenu()
   connect(m_openWeb, SIGNAL(triggered()), this, SLOT(openInWebBrowser()));
 
   m_recentFilesMenu = new QMenu(tr("Recently Changed Files"), this);
-  for (int i = 0; i < 5; i++)
-  {
+  for (int i = 0; i < 5; i++) {
     m_fileActions[i] = new QAction(this);
     m_fileActions[i]->setVisible(false);
     connect(m_fileActions[i], SIGNAL(triggered()), this, SLOT(openFile()));
@@ -297,15 +291,15 @@ void ChronoShareGui::createActionsAndMenu()
 
 #ifdef ADHOC_SUPPORTED
   // create "AdHoc Wifi" action
-  m_wifiAction = new QAction (tr("Enable AdHoc &WiFI"), m_trayIconMenu);
-  m_wifiAction->setChecked (false);
-  m_wifiAction->setCheckable (true);
-  connect (m_wifiAction, SIGNAL (toggled(bool)), this, SLOT(onAdHocChange(bool)));
+  m_wifiAction = new QAction(tr("Enable AdHoc &WiFI"), m_trayIconMenu);
+  m_wifiAction->setChecked(false);
+  m_wifiAction->setCheckable(true);
+  connect(m_wifiAction, SIGNAL(toggled(bool)), this, SLOT(onAdHocChange(bool)));
 #endif
 
 #ifdef SPARKLE_SUPPORTED
-  m_checkForUpdates = new QAction (tr("Check For Updates"), this);
-  connect (m_checkForUpdates, SIGNAL(triggered()), this, SLOT(onCheckForUpdates()));
+  m_checkForUpdates = new QAction(tr("Check For Updates"), this);
+  connect(m_checkForUpdates, SIGNAL(triggered()), this, SLOT(onCheckForUpdates()));
 #endif
 
   // create the "quit program" action
@@ -313,7 +307,8 @@ void ChronoShareGui::createActionsAndMenu()
   connect(m_quitProgram, SIGNAL(triggered()), qApp, SLOT(quit()));
 }
 
-void ChronoShareGui::createTrayIcon()
+void
+ChronoShareGui::createTrayIcon()
 {
   // create a new icon menu
   m_trayIconMenu = new QMenu(this);
@@ -346,45 +341,42 @@ void ChronoShareGui::createTrayIcon()
   m_trayIcon->setContextMenu(m_trayIconMenu);
 
   // handle left click of icon
-  connect(m_trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)), this, SLOT(trayIconClicked(QSystemTrayIcon::ActivationReason)));
+  connect(m_trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)), this,
+          SLOT(trayIconClicked(QSystemTrayIcon::ActivationReason)));
 }
 
 void
-ChronoShareGui::onAdHocChange (bool state)
+ChronoShareGui::onAdHocChange(bool state)
 {
 #ifdef ADHOC_SUPPORTED
-  if (m_wifiAction->isChecked ())
-    {
-      QMessageBox msgBox;
-      msgBox.setText ("WARNING: your WiFi will be disconnected");
-      msgBox.setIcon (QMessageBox::Warning);
-      msgBox.setInformativeText("AdHoc WiFi will disconnect your current WiFi.\n  Are you sure that you are OK with that?");
-      msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
-      msgBox.setDefaultButton(QMessageBox::Cancel);
-      int ret = msgBox.exec();
+  if (m_wifiAction->isChecked()) {
+    QMessageBox msgBox;
+    msgBox.setText("WARNING: your WiFi will be disconnected");
+    msgBox.setIcon(QMessageBox::Warning);
+    msgBox.setInformativeText(
+      "AdHoc WiFi will disconnect your current WiFi.\n  Are you sure that you are OK with that?");
+    msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+    msgBox.setDefaultButton(QMessageBox::Cancel);
+    int ret = msgBox.exec();
 
-      if (ret == QMessageBox::Cancel)
-        {
-          m_wifiAction->setChecked (false);
-        }
-      else
-        {
-
-          m_wifiAction->setText (tr("Disable AdHoc WiFI"));
-
-          // create adhoc
-          m_executor.execute (Adhoc::CreateAdhoc);
-        }
+    if (ret == QMessageBox::Cancel) {
+      m_wifiAction->setChecked(false);
     }
-  else
-    {
-      m_wifiAction->setText (tr("Enable AdHoc WiFI"));
+    else {
+      m_wifiAction->setText(tr("Disable AdHoc WiFI"));
 
-      // disable adhoc
-      m_executor.execute (Adhoc::DestroyAdhoc);
-
-      // a trick in DestroyAdhoc ensures that WiFi will be reconnected to a default WiFi
+      // create adhoc
+      m_executor.execute(Adhoc::CreateAdhoc);
     }
+  }
+  else {
+    m_wifiAction->setText(tr("Enable AdHoc WiFI"));
+
+    // disable adhoc
+    m_executor.execute(Adhoc::DestroyAdhoc);
+
+    // a trick in DestroyAdhoc ensures that WiFi will be reconnected to a default WiFi
+  }
 #endif
 }
 
@@ -398,38 +390,43 @@ ChronoShareGui::onCheckForUpdates()
 #endif
 }
 
-void ChronoShareGui::setIcon()
+void
+ChronoShareGui::setIcon()
 {
   // set the icon image
   m_trayIcon->setIcon(QIcon(ICON_TRAY_FILE));
 }
 
-void ChronoShareGui::openSharedFolder()
+void
+ChronoShareGui::openSharedFolder()
 {
-  filesystem::path realPathToFolder (m_dirPath.toStdString ());
-  realPathToFolder /= m_sharedFolderName.toStdString ();
+  filesystem::path realPathToFolder(m_dirPath.toStdString());
+  realPathToFolder /= m_sharedFolderName.toStdString();
   QString path = QDir::toNativeSeparators(realPathToFolder.string().c_str());
   QDesktopServices::openUrl(QUrl("file:///" + path));
 }
 
-void ChronoShareGui::openInWebBrowser()
+void
+ChronoShareGui::openInWebBrowser()
 {
-  QUrl url ("http://localhost:9001/");
-  url.setFragment ("folderHistory&"
-                   "user=" + QUrl::toPercentEncoding (m_username) + "&"
-                   "folder=" + QUrl::toPercentEncoding (m_sharedFolderName));
+  QUrl url("http://localhost:9001/");
+  url.setFragment("folderHistory&"
+                  "user=" +
+                  QUrl::toPercentEncoding(m_username) + "&"
+                                                        "folder=" +
+                  QUrl::toPercentEncoding(m_sharedFolderName));
 
   // i give up. there is double encoding and I have no idea how to fight it...
-  QDesktopServices::openUrl (url);
+  QDesktopServices::openUrl(url);
 }
 
-void ChronoShareGui::openFile()
+void
+ChronoShareGui::openFile()
 {
   // figure out who sent the signal
-  QAction *pAction = qobject_cast<QAction*>(sender());
-  if (pAction->isEnabled())
-  {
-    // we stored full path of the file in this toolTip field
+  QAction* pAction = qobject_cast<QAction*>(sender());
+  if (pAction->isEnabled()) {
+// we stored full path of the file in this toolTip field
 #ifdef Q_WS_MAC
     // we do some hack so we could show the file in Finder highlighted
     QStringList args;
@@ -449,30 +446,31 @@ void ChronoShareGui::openFile()
   }
 }
 
-void ChronoShareGui::updateRecentFilesMenu()
+void
+ChronoShareGui::updateRecentFilesMenu()
 {
-  for (int i = 0; i < 5; i++)
-  {
+  for (int i = 0; i < 5; i++) {
     m_fileActions[i]->setVisible(false);
   }
-  m_dispatcher->LookupRecentFileActions(boost::bind(&ChronoShareGui::checkFileAction, this, _1, _2, _3), 5);
+  m_dispatcher->LookupRecentFileActions(boost::bind(&ChronoShareGui::checkFileAction, this, _1, _2,
+                                                    _3),
+                                        5);
 }
 
-void ChronoShareGui::checkFileAction (const std::string &filename, int action, int index)
+void
+ChronoShareGui::checkFileAction(const std::string& filename, int action, int index)
 {
-  filesystem::path realPathToFolder (m_dirPath.toStdString ());
-  realPathToFolder /= m_sharedFolderName.toStdString ();
+  filesystem::path realPathToFolder(m_dirPath.toStdString());
+  realPathToFolder /= m_sharedFolderName.toStdString();
   realPathToFolder /= filename;
-  QString fullPath =  realPathToFolder.string().c_str();
+  QString fullPath = realPathToFolder.string().c_str();
   QFileInfo fileInfo(fullPath);
-  if (fileInfo.exists())
-  {
+  if (fileInfo.exists()) {
     // This is a hack, we just use some field to store the path
     m_fileActions[index]->setToolTip(fileInfo.absolutePath());
     m_fileActions[index]->setEnabled(true);
   }
-  else
-  {
+  else {
     // after half an hour frustrating test and search around,
     // I think it's the problem of Qt.
     // According to the Qt doc, the action cannot be clicked
@@ -483,8 +481,7 @@ void ChronoShareGui::checkFileAction (const std::string &filename, int action, i
     // Give up at least for now
     m_fileActions[index]->setEnabled(false);
     // UPDATE, file not fetched yet
-    if (action == 0)
-    {
+    if (action == 0) {
       QFont font;
       // supposed by change the font, didn't happen
       font.setWeight(QFont::Light);
@@ -492,8 +489,7 @@ void ChronoShareGui::checkFileAction (const std::string &filename, int action, i
       m_fileActions[index]->setToolTip(tr("Fetching..."));
     }
     // DELETE
-    else
-    {
+    else {
       QFont font;
       // supposed by change the font, didn't happen
       font.setStrikeOut(true);
@@ -505,100 +501,95 @@ void ChronoShareGui::checkFileAction (const std::string &filename, int action, i
   m_fileActions[index]->setVisible(true);
 }
 
-void ChronoShareGui::changeSettings()
+void
+ChronoShareGui::changeSettings()
 {
   QString oldUsername = m_username;
   QString oldSharedFolderName = m_sharedFolderName;
 
-  if(!editUsername->text().isEmpty())
+  if (!editUsername->text().isEmpty())
     m_username = editUsername->text().trimmed();
   else
     editUsername->setText(m_username);
 
-  if(!editSharedFolder->text().isEmpty())
+  if (!editSharedFolder->text().isEmpty())
     m_sharedFolderName = editSharedFolder->text().trimmed();
   else
     editSharedFolder->setText(m_sharedFolderName);
 
-  if (m_username.isNull () || m_username=="" ||
-      m_sharedFolderName.isNull () || m_sharedFolderName=="")
-    {
-      openMessageBox ("Error",
-                      "Username and shared folder name cannot be empty");
-    }
-  else
-    {
-      saveSettings();
-      this->hide();
+  if (m_username.isNull() || m_username == "" || m_sharedFolderName.isNull() ||
+      m_sharedFolderName == "") {
+    openMessageBox("Error", "Username and shared folder name cannot be empty");
+  }
+  else {
+    saveSettings();
+    this->hide();
 
-      if (m_username != oldUsername ||
-          oldSharedFolderName != m_sharedFolderName)
-        {
-          startBackend (true); // restart dispatcher/fswatcher
-        }
+    if (m_username != oldUsername || oldSharedFolderName != m_sharedFolderName) {
+      startBackend(true); // restart dispatcher/fswatcher
     }
+  }
 }
 
-void ChronoShareGui::openFileDialog()
+void
+ChronoShareGui::openFileDialog()
 {
-  while (true)
-    {
-      // prompt user for new directory
-      QString tempPath = QFileDialog::getExistingDirectory(this, tr("Choose ChronoShare folder"),
-                                                           m_dirPath, QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
-      if (tempPath.isNull ())
-        {
-          if (m_dirPath.isNull ())
-            {
-              openMessageBox ("Notice", "ChronoShare will use [" + QDir::homePath () + "/ChronoShare]. \n\nYou can change it later selecting \"Change Folder\" menu.");
+  while (true) {
+    // prompt user for new directory
+    QString tempPath =
+      QFileDialog::getExistingDirectory(this, tr("Choose ChronoShare folder"), m_dirPath,
+                                        QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+    if (tempPath.isNull()) {
+      if (m_dirPath.isNull()) {
+        openMessageBox("Notice",
+                       "ChronoShare will use [" + QDir::homePath() +
+                         "/ChronoShare]. \n\nYou can change it later selecting \"Change Folder\" menu.");
 
-              m_dirPath = QDir::homePath () + "/ChronoShare";
-              editSharedFolderPath->setText (m_dirPath);
-              break;
-            }
-          else
-            {
-              // user just cancelled, no need to do anything else
-              return;
-            }
-        }
-
-      QFileInfo qFileInfo (tempPath);
-
-      if (!qFileInfo.isDir())
-        {
-          openMessageBox ("Error", "Please select an existing folder or create a new one.");
-          continue;
-        }
-
-      if (m_dirPath == tempPath)
-        {
-          // user selected the same directory, no need to do anything
-          return;
-        }
-
-      m_dirPath = tempPath;
-      editSharedFolderPath->setText(m_dirPath);
-      break;
+        m_dirPath = QDir::homePath() + "/ChronoShare";
+        editSharedFolderPath->setText(m_dirPath);
+        break;
+      }
+      else {
+        // user just cancelled, no need to do anything else
+        return;
+      }
     }
 
-  _LOG_DEBUG ("Selected path: " << m_dirPath.toStdString ());
-  // save settings
-  saveSettings ();
+    QFileInfo qFileInfo(tempPath);
 
-  startBackend (true); // restart dispatcher/fswatcher
+    if (!qFileInfo.isDir()) {
+      openMessageBox("Error", "Please select an existing folder or create a new one.");
+      continue;
+    }
+
+    if (m_dirPath == tempPath) {
+      // user selected the same directory, no need to do anything
+      return;
+    }
+
+    m_dirPath = tempPath;
+    editSharedFolderPath->setText(m_dirPath);
+    break;
+  }
+
+  _LOG_DEBUG("Selected path: " << m_dirPath.toStdString());
+  // save settings
+  saveSettings();
+
+  startBackend(true); // restart dispatcher/fswatcher
 }
 
-void ChronoShareGui::trayIconClicked (QSystemTrayIcon::ActivationReason reason)
+void
+ChronoShareGui::trayIconClicked(QSystemTrayIcon::ActivationReason reason)
 {
   // if double clicked, open shared folder
-  if(reason == QSystemTrayIcon::DoubleClick)
-    {
-      openSharedFolder();
-    }
+  if (reason == QSystemTrayIcon::DoubleClick) {
+    openSharedFolder();
+  }
 }
 
-void ChronoShareGui::viewSettings()
+void
+ChronoShareGui::viewSettings()
 {
   //simple for now
   this->show();
@@ -606,80 +597,77 @@ void ChronoShareGui::viewSettings()
   this->activateWindow();
 }
 
-bool ChronoShareGui::loadSettings()
+bool
+ChronoShareGui::loadSettings()
 {
   bool successful = true;
 
   // Load Settings
   // QSettings settings(m_settingsFilePath, QSettings::NativeFormat);
-  QSettings settings (QSettings::NativeFormat, QSettings::UserScope, "irl.cs.ucla.edu", "ChronoShare");
+  QSettings settings(QSettings::NativeFormat, QSettings::UserScope, "irl.cs.ucla.edu", "ChronoShare");
 
   // _LOG_DEBUG (lexical_cast<string> (settings.allKeys()));
 
-  if(settings.contains("username"))
-    {
-      m_username = settings.value("username", "admin").toString();
-    }
-  else
-    {
-      successful = false;
-    }
+  if (settings.contains("username")) {
+    m_username = settings.value("username", "admin").toString();
+  }
+  else {
+    successful = false;
+  }
 
   editUsername->setText(m_username);
 
-  if(settings.contains("sharedfoldername"))
-    {
-      m_sharedFolderName = settings.value("sharedfoldername", "shared").toString();
-    }
-  else
-    {
-      successful = false;
-    }
+  if (settings.contains("sharedfoldername")) {
+    m_sharedFolderName = settings.value("sharedfoldername", "shared").toString();
+  }
+  else {
+    successful = false;
+  }
 
   editSharedFolder->setText(m_sharedFolderName);
 
-  if(settings.contains("dirPath"))
-    {
-      m_dirPath = settings.value("dirPath", QDir::homePath()).toString();
-    }
-  else
-    {
-      successful = false;
-    }
+  if (settings.contains("dirPath")) {
+    m_dirPath = settings.value("dirPath", QDir::homePath()).toString();
+  }
+  else {
+    successful = false;
+  }
 
   editSharedFolderPath->setText(m_dirPath);
 
-  _LOG_DEBUG ("Found configured path: " << (successful ? m_dirPath.toStdString () : std::string("no")));
+  _LOG_DEBUG("Found configured path: " << (successful ? m_dirPath.toStdString() : std::string("no")));
 
   return successful;
 }
 
-void ChronoShareGui::saveSettings()
+void
+ChronoShareGui::saveSettings()
 {
   // Save Settings
   // QSettings settings(m_settingsFilePath, QSettings::NativeFormat);
-  QSettings settings (QSettings::NativeFormat, QSettings::UserScope, "irl.cs.ucla.edu", "ChronoShare");
+  QSettings settings(QSettings::NativeFormat, QSettings::UserScope, "irl.cs.ucla.edu", "ChronoShare");
 
   settings.setValue("dirPath", m_dirPath);
   settings.setValue("username", m_username);
   settings.setValue("sharedfoldername", m_sharedFolderName);
 }
 
-void ChronoShareGui::closeEvent(QCloseEvent* event)
+void
+ChronoShareGui::closeEvent(QCloseEvent* event)
 {
-  _LOG_DEBUG ("Close Event");
+  _LOG_DEBUG("Close Event");
 
-  if (m_username.isNull () || m_username == "" ||
-      m_sharedFolderName.isNull () || m_sharedFolderName == "")
-    {
-      openMessageBox ("ChronoShare is not active", "Username and/or shared folder name are not set.\n\n To activate ChronoShare, open Settings menu and configure your username and shared folder name");
-    }
+  if (m_username.isNull() || m_username == "" || m_sharedFolderName.isNull() ||
+      m_sharedFolderName == "") {
+    openMessageBox("ChronoShare is not active",
+                   "Username and/or shared folder name are not set.\n\n To activate ChronoShare, open Settings menu and configure your username and shared folder name");
+  }
 
   this->hide();
   event->ignore(); // don't let the event propagate to the base class
 }
 
 #if WAF
-#include "chronosharegui.moc"
 #include "chronosharegui.cpp.moc"
+#include "chronosharegui.moc"
 #endif

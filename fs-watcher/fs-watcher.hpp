@@ -20,10 +20,10 @@
 #ifndef FS_WATCHER_H
 #define FS_WATCHER_H
 
-#include <vector>
-#include <QFileSystemWatcher>
 #include <boost/filesystem.hpp>
+#include <QFileSystemWatcher>
 #include <sqlite3.h>
+#include <vector>
 
 #include "scheduler.hpp"
 
@@ -32,51 +32,50 @@ class FsWatcher : public QObject
   Q_OBJECT
 
 public:
-  typedef boost::function<void (const boost::filesystem::path &)> LocalFile_Change_Callback;
+  typedef boost::function<void(const boost::filesystem::path&)> LocalFile_Change_Callback;
 
   // constructor
-  FsWatcher (QString dirPath,
-             LocalFile_Change_Callback onChange, LocalFile_Change_Callback onDelete,
-             QObject* parent = 0);
+  FsWatcher(QString dirPath, LocalFile_Change_Callback onChange, LocalFile_Change_Callback onDelete,
+            QObject* parent = 0);
 
   // destructor
-  ~FsWatcher ();
+  ~FsWatcher();
 
 private slots:
   // handle callback from watcher
   void
-  DidDirectoryChanged (QString dirPath);
+  DidDirectoryChanged(QString dirPath);
 
   /**
    * @brief This even will be triggered either by actual file change or via directory change event
    * (i.e., can happen twice in a row, as well as trigger false alarm)
    */
   void
-  DidFileChanged (QString filePath);
+  DidFileChanged(QString filePath);
 
 private:
   // handle callback from the watcher
   // scan directory and notify callback about any file changes
   void
-  ScanDirectory_NotifyUpdates_Execute (QString dirPath);
+  ScanDirectory_NotifyUpdates_Execute(QString dirPath);
 
   void
-  ScanDirectory_NotifyRemovals_Execute (QString dirPath);
+  ScanDirectory_NotifyRemovals_Execute(QString dirPath);
 
   void
   initFileStateDb();
 
   bool
-  fileExists(const boost::filesystem::path &filename);
+  fileExists(const boost::filesystem::path& filename);
 
   void
-  addFile(const boost::filesystem::path &filename);
+  addFile(const boost::filesystem::path& filename);
 
   void
-  deleteFile(const boost::filesystem::path &filename);
+  deleteFile(const boost::filesystem::path& filename);
 
   void
-  getFilesInDir(const boost::filesystem::path &dir, std::vector<std::string> &files);
+  getFilesInDir(const boost::filesystem::path& dir, std::vector<std::string>& files);
 
 private:
   QFileSystemWatcher* m_watcher; // filesystem watcher
@@ -87,7 +86,7 @@ private:
   LocalFile_Change_Callback m_onChange;
   LocalFile_Change_Callback m_onDelete;
 
-  sqlite3 *m_db;
+  sqlite3* m_db;
 };
 
 #endif // FILESYSTEMWATCHER_H

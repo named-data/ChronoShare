@@ -21,19 +21,20 @@
 #ifndef OBJECT_MANAGER_H
 #define OBJECT_MANAGER_H
 
-#include <string>
-#include <ndnx-wrapper.h>
-#include <hash-helper.h>
 #include <boost/filesystem.hpp>
 #include <boost/tuple/tuple.hpp>
+#include <ccnx-wrapper.h>
+#include <hash-helper.h>
+#include <string>
 
 // everything related to managing object files
 
 class ObjectManager
 {
 public:
-  ObjectManager (Ndnx::NdnxWrapperPtr ndnx, const boost::filesystem::path &folder, const std::string &appName);
-  virtual ~ObjectManager ();
+  ObjectManager(Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path& folder,
+                const std::string& appName);
+  virtual ~ObjectManager();
 
   /**
    * @brief Creates and saves local file in a local database file
@@ -41,10 +42,11 @@ public:
    * Format: /<appname>/file/<hash>/<devicename>/<segment>
    */
   boost::tuple<HashPtr /*object-db name*/, size_t /* number of segments*/>
-  localFileToObjects (const boost::filesystem::path &file, const Ndnx::Name &deviceName);
+  localFileToObjects(const boost::filesystem::path& file, const Ccnx::Name& deviceName);
 
   bool
-  objectsToLocalFile (/*in*/const Ndnx::Name &deviceName, /*in*/const Hash &hash, /*out*/ const boost::filesystem::path &file);
+  objectsToLocalFile(/*in*/ const Ccnx::Name& deviceName, /*in*/ const Hash& hash,
+                     /*out*/ const boost::filesystem::path& file);
 
 private:
   Ndnx::NdnxWrapperPtr m_ndnx;
@@ -55,7 +57,9 @@ private:
 typedef boost::shared_ptr<ObjectManager> ObjectManagerPtr;
 
 namespace Error {
-struct ObjectManager : virtual boost::exception, virtual std::exception { };
+struct ObjectManager : virtual boost::exception, virtual std::exception
+{
+};
 }
 
 #endif // OBJECT_MANAGER_H

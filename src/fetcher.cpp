@@ -19,170 +19,152 @@
  */
 
 #include "fetcher.h"
+#include "ccnx-pco.h"
 #include "fetch-manager.h"
-#include "ndnx-pco.h"
 #include "logging.h"
 
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/ref.hpp>
 #include <boost/throw_exception.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 
-INIT_LOGGER ("Fetcher");
+INIT_LOGGER("Fetcher");
 
 using namespace boost;
 using namespace std;
 using namespace Ndnx;
 
-Fetcher::Fetcher (Ndnx::NdnxWrapperPtr ndnx,
-                  ExecutorPtr executor,
-                  const SegmentCallback &segmentCallback,
-                  const FinishCallback &finishCallback,
-                  OnFetchCompleteCallback onFetchComplete, OnFetchFailedCallback onFetchFailed,
-                  const Ndnx::Name &deviceName, const Ndnx::Name &name, int64_t minSeqNo, int64_t maxSeqNo,
-                  boost::posix_time::time_duration timeout/* = boost::posix_time::seconds (30)*/,
-                  const Ndnx::Name &forwardingHint/* = Ndnx::Name ()*/)
-  : m_ndnx (ndnx)
+Fetcher::Fetcher(Ccnx::CcnxWrapperPtr ccnx, ExecutorPtr executor,
+                 const SegmentCallback& segmentCallback, const FinishCallback& finishCallback,
+                 OnFetchCompleteCallback onFetchComplete, OnFetchFailedCallback onFetchFailed,
+                 const Ccnx::Name& deviceName, const Ccnx::Name& name, int64_t minSeqNo,
+                 int64_t maxSeqNo,
+                 boost::posix_time::time_duration timeout /* = boost::posix_time::seconds (30)*/,
+                 const Ccnx::Name& forwardingHint /* = Ccnx::Name ()*/)
+  : m_ccnx(ccnx)
 
-  , m_segmentCallback (segmentCallback)
-  , m_onFetchComplete (onFetchComplete)
-  , m_onFetchFailed (onFetchFailed)
-  , m_finishCallback (finishCallback)
+  , m_segmentCallback(segmentCallback)
+  , m_onFetchComplete(onFetchComplete)
+  , m_onFetchFailed(onFetchFailed)
+  , m_finishCallback(finishCallback)
 
-  , m_active (false)
-  , m_timedwait (false)
-  , m_name (name)
-  , m_deviceName (deviceName)
-  , m_forwardingHint (forwardingHint)
-  , m_maximumNoActivityPeriod (timeout)
+  , m_active(false)
+  , m_timedwait(false)
+  , m_name(name)
+  , m_deviceName(deviceName)
+  , m_forwardingHint(forwardingHint)
+  , m_maximumNoActivityPeriod(timeout)
 
-  , m_minSendSeqNo (minSeqNo-1)
-  , m_maxInOrderRecvSeqNo (minSeqNo-1)
-  , m_minSeqNo (minSeqNo)
-  , m_maxSeqNo (maxSeqNo)
+  , m_minSendSeqNo(minSeqNo - 1)
+  , m_maxInOrderRecvSeqNo(minSeqNo - 1)
+  , m_minSeqNo(minSeqNo)
+  , m_maxSeqNo(maxSeqNo)
 
-  , m_pipeline (1) // initial "congestion window"
-  , m_activePipeline (0)
-
-  , m_rto(1) // for temporary congestion control, should be removed when NDN provide transport functionality.
-  , m_maxRto(static_cast<double>(timeout.total_seconds())/2)
-  , m_slowStart(true)
-  , m_threshold(4)
-  , m_roundCount(0)
-
-  , m_retryPause (0)
-  , m_nextScheduledRetry (date_time::second_clock<boost::posix_time::ptime>::universal_time ())
-  , m_executor (executor) // must be 1
+  , m_pipeline(6) // initial "congestion window"
+  , m_activePipeline(0)
+  , m_retryPause(0)
+  , m_nextScheduledRetry(date_time::second_clock<boost::posix_time::ptime>::universal_time())
+  , m_executor(executor) // must be 1
 {
 }
 
-Fetcher::~Fetcher ()
+Fetcher::~Fetcher()
 {
 }
 
 void
-Fetcher::RestartPipeline ()
+Fetcher::RestartPipeline()
 {
   m_active = true;
   m_minSendSeqNo = m_maxInOrderRecvSeqNo;
   // cout << "Restart: " << m_minSendSeqNo << endl;
   m_lastPositiveActivity = date_time::second_clock<boost::posix_time::ptime>::universal_time();
 
-  m_executor->execute (bind (&Fetcher::FillPipeline, this));
+  m_executor->execute(bind(&Fetcher::FillPipeline, this));
 }
 
 void
-Fetcher::SetForwardingHint (const Ndnx::Name &forwardingHint)
+Fetcher::SetForwardingHint(const Ccnx::Name& forwardingHint)
 {
   m_forwardingHint = forwardingHint;
 }
 
 void
-Fetcher::FillPipeline ()
+Fetcher::FillPipeline()
 {
-  for (; m_minSendSeqNo < m_maxSeqNo && m_activePipeline < m_pipeline; m_minSendSeqNo++)
-    {
-      unique_lock<mutex> lock (m_seqNoMutex);
+  for (; m_minSendSeqNo < m_maxSeqNo && m_activePipeline < m_pipeline; m_minSendSeqNo++) {
+    unique_lock<mutex> lock(m_seqNoMutex);
 
-      if (m_outOfOrderRecvSeqNo.find (m_minSendSeqNo+1) != m_outOfOrderRecvSeqNo.end ())
-        continue;
+    if (m_outOfOrderRecvSeqNo.find(m_minSendSeqNo + 1) != m_outOfOrderRecvSeqNo.end())
+      continue;
 
-      if (m_inActivePipeline.find (m_minSendSeqNo+1) != m_inActivePipeline.end ())
-        continue;
+    if (m_inActivePipeline.find(m_minSendSeqNo + 1) != m_inActivePipeline.end())
+      continue;
 
-      m_inActivePipeline.insert (m_minSendSeqNo+1);
+    m_inActivePipeline.insert(m_minSendSeqNo + 1);
 
-      _LOG_DEBUG (" >>> i " << Name (m_forwardingHint)(m_name) << ", seq = " << (m_minSendSeqNo + 1 ));
+    _LOG_DEBUG(" >>> i " << Name(m_forwardingHint)(m_name) << ", seq = " << (m_minSendSeqNo + 1));
 
-      // cout << ">>> " << m_minSendSeqNo+1 << endl;
-      m_ndnx->sendInterest (Name (m_forwardingHint)(m_name)(m_minSendSeqNo+1),
-                            Closure (bind(&Fetcher::OnData, this, m_minSendSeqNo+1, _1, _2),
-                                     bind(&Fetcher::OnTimeout, this, m_minSendSeqNo+1, _1, _2, _3)),
-                            Selectors().interestLifetime (m_rto)); // Alex: this lifetime should be changed to RTO
-      _LOG_DEBUG (" >>> i ok");
+    // cout << ">>> " << m_minSendSeqNo+1 << endl;
+    m_ccnx->sendInterest(Name(m_forwardingHint)(m_name)(m_minSendSeqNo + 1),
+                         Closure(bind(&Fetcher::OnData, this, m_minSendSeqNo + 1, _1, _2),
+                                 bind(&Fetcher::OnTimeout, this, m_minSendSeqNo + 1, _1, _2, _3)),
+                         Selectors().interestLifetime(1)); // Alex: this lifetime should be changed to RTO
+    _LOG_DEBUG(" >>> i ok");
 
-      m_activePipeline ++;
-    }
+    m_activePipeline++;
+  }
 }
 
 void
-Fetcher::OnData (uint64_t seqno, const Ndnx::Name &name, PcoPtr data)
+Fetcher::OnData(uint64_t seqno, const Ccnx::Name& name, PcoPtr data)
 {
-  m_executor->execute (bind (&Fetcher::OnData_Execute, this, seqno, name, data));
+  m_executor->execute(bind(&Fetcher::OnData_Execute, this, seqno, name, data));
 }
 
 void
-Fetcher::OnData_Execute (uint64_t seqno, Ndnx::Name name, Ndnx::PcoPtr data)
+Fetcher::OnData_Execute(uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data)
 {
-  _LOG_DEBUG (" <<< d " << name.getPartialName (0, name.size () - 1) << ", seq = " << seqno);
+  _LOG_DEBUG(" <<< d " << name.getPartialName(0, name.size() - 1) << ", seq = " << seqno);
 
-  if (m_forwardingHint == Name ())
-  {
+  if (m_forwardingHint == Name()) {
     // TODO: check verified!!!!
-    if (true)
-    {
-      if (!m_segmentCallback.empty ())
-      {
-        m_segmentCallback (m_deviceName, m_name, seqno, data);
+    if (true) {
+      if (!m_segmentCallback.empty()) {
+        m_segmentCallback(m_deviceName, m_name, seqno, data);
       }
     }
-    else
-    {
+    else {
       _LOG_ERROR("Can not verify signature content. Name = " << data->name());
       // probably needs to do more in the future
     }
     // we don't have to tell FetchManager about this
   }
-  else
-    {
-      // in this case we don't care whether "data" is verified, in fact, we expect it is unverified
-      try {
-        PcoPtr pco = make_shared<ParsedContentObject> (*data->contentPtr ());
+  else {
+    // in this case we don't care whether "data" is verified,  in fact, we expect it is unverified
+    try {
+      PcoPtr pco = make_shared<ParsedContentObject>(*data->contentPtr());
 
-        // we need to verify this pco and apply callback only when verified
-        // TODO: check verified !!!
-        if (true)
-        {
-          if (!m_segmentCallback.empty ())
-            {
-              m_segmentCallback (m_deviceName, m_name, seqno, pco);
-            }
-        }
-        else
-        {
-          _LOG_ERROR("Can not verify signature content. Name = " << pco->name());
-          // probably needs to do more in the future
+      // we need to verify this pco and apply callback only when verified
+      // TODO: check verified !!!
+      if (true) {
+        if (!m_segmentCallback.empty()) {
+          m_segmentCallback(m_deviceName, m_name, seqno, pco);
         }
       }
-      catch (MisformedContentObjectException &e)
-        {
-          cerr << "MisformedContentObjectException..." << endl;
-          // no idea what should do...
-          // let's ignore for now
-        }
+      else {
+        _LOG_ERROR("Can not verify signature content. Name = " << pco->name());
+        // probably needs to do more in the future
+      }
     }
+    catch (MisformedContentObjectException& e) {
+      cerr << "MisformedContentObjectException..." << endl;
+      // no idea what should do...
+      // let's ignore for now
+    }
+  }
 
-  m_activePipeline --;
+  m_activePipeline--;
   m_lastPositiveActivity = date_time::second_clock<boost::posix_time::ptime>::universal_time();
 
   {
@@ -206,132 +188,99 @@ Fetcher::OnData_Execute (uint64_t seqno, Ndnx::Name name, Ndnx::PcoPtr data)
 
 
   ////////////////////////////////////////////////////////////////////////////
-  unique_lock<mutex> lock (m_seqNoMutex);
+  unique_lock<mutex> lock(m_seqNoMutex);
 
-  m_outOfOrderRecvSeqNo.insert (seqno);
-  m_inActivePipeline.erase (seqno);
-  _LOG_DEBUG ("Total segments received: " << m_outOfOrderRecvSeqNo.size ());
-  set<int64_t>::iterator inOrderSeqNo = m_outOfOrderRecvSeqNo.begin ();
-  for (; inOrderSeqNo != m_outOfOrderRecvSeqNo.end ();
-       inOrderSeqNo++)
-    {
-      _LOG_TRACE ("Checking " << *inOrderSeqNo << " and " << m_maxInOrderRecvSeqNo+1);
-      if (*inOrderSeqNo == m_maxInOrderRecvSeqNo+1)
-        {
-          m_maxInOrderRecvSeqNo = *inOrderSeqNo;
-        }
-      else if (*inOrderSeqNo < m_maxInOrderRecvSeqNo+1) // not possible anymore, but just in case
-        {
-          continue;
-        }
-      else
-        break;
+  m_outOfOrderRecvSeqNo.insert(seqno);
+  m_inActivePipeline.erase(seqno);
+  _LOG_DEBUG("Total segments received: " << m_outOfOrderRecvSeqNo.size());
+  set<int64_t>::iterator inOrderSeqNo = m_outOfOrderRecvSeqNo.begin();
+  for (; inOrderSeqNo != m_outOfOrderRecvSeqNo.end(); inOrderSeqNo++) {
+    _LOG_TRACE("Checking " << *inOrderSeqNo << " and " << m_maxInOrderRecvSeqNo + 1);
+    if (*inOrderSeqNo == m_maxInOrderRecvSeqNo + 1) {
+      m_maxInOrderRecvSeqNo = *inOrderSeqNo;
     }
-  m_outOfOrderRecvSeqNo.erase (m_outOfOrderRecvSeqNo.begin (), inOrderSeqNo);
+    else if (*inOrderSeqNo < m_maxInOrderRecvSeqNo + 1) // not possible anymore, but just in case
+    {
+      continue;
+    }
+    else
+      break;
+  }
+  m_outOfOrderRecvSeqNo.erase(m_outOfOrderRecvSeqNo.begin(), inOrderSeqNo);
   ////////////////////////////////////////////////////////////////////////////
 
-  _LOG_TRACE ("Max in order received: " << m_maxInOrderRecvSeqNo << ", max seqNo to request: " << m_maxSeqNo);
+  _LOG_TRACE("Max in order received: " << m_maxInOrderRecvSeqNo
+                                       << ", max seqNo to request: " << m_maxSeqNo);
 
-  if (m_maxInOrderRecvSeqNo == m_maxSeqNo)
-    {
-      _LOG_TRACE ("Fetch finished: " << m_name);
-      m_active = false;
-      // invoke callback
-      if (!m_finishCallback.empty ())
-        {
-          _LOG_TRACE ("Notifying callback");
-          m_finishCallback(m_deviceName, m_name);
-        }
+  if (m_maxInOrderRecvSeqNo == m_maxSeqNo) {
+    _LOG_TRACE("Fetch finished: " << m_name);
+    m_active = false;
+    // invoke callback
+    if (!m_finishCallback.empty()) {
+      _LOG_TRACE("Notifying callback");
+      m_finishCallback(m_deviceName, m_name);
+    }
 
-      // tell FetchManager that we have finish our job
-      // m_onFetchComplete (*this);
-      // using executor, so we won't be deleted if there is scheduled FillPipeline call
-      if (!m_onFetchComplete.empty ())
-        {
-          m_timedwait = true;
-          m_executor->execute (bind (m_onFetchComplete, ref(*this), m_deviceName, m_name));
-        }
+    // tell FetchManager that we have finish our job
+    // m_onFetchComplete (*this);
+    // using executor, so we won't be deleted if there is scheduled FillPipeline call
+    if (!m_onFetchComplete.empty()) {
+      m_timedwait = true;
+      m_executor->execute(bind(m_onFetchComplete, ref(*this), m_deviceName, m_name));
     }
-  else
-    {
-      m_executor->execute (bind (&Fetcher::FillPipeline, this));
-    }
+  }
+  else {
+    m_executor->execute(bind(&Fetcher::FillPipeline, this));
+  }
 }
 
 void
-Fetcher::OnTimeout (uint64_t seqno, const Ndnx::Name &name, const Closure &closure, Selectors selectors)
+Fetcher::OnTimeout(uint64_t seqno, const Ccnx::Name& name, const Closure& closure, Selectors selectors)
 {
-  _LOG_DEBUG (this << ", " << m_executor.get ());
-  m_executor->execute (bind (&Fetcher::OnTimeout_Execute, this, seqno, name, closure, selectors));
+  _LOG_DEBUG(this << ", " << m_executor.get());
+  m_executor->execute(bind(&Fetcher::OnTimeout_Execute, this, seqno, name, closure, selectors));
 }
 
 void
-Fetcher::OnTimeout_Execute (uint64_t seqno, Ndnx::Name name, Ndnx::Closure closure, Ndnx::Selectors selectors)
+Fetcher::OnTimeout_Execute(uint64_t seqno, Ccnx::Name name, Ccnx::Closure closure,
+                           Ccnx::Selectors selectors)
 {
-  _LOG_DEBUG (" <<< :( timeout " << name.getPartialName (0, name.size () - 1) << ", seq = " << seqno);
+  _LOG_DEBUG(" <<< :( timeout " << name.getPartialName(0, name.size() - 1) << ", seq = " << seqno);
 
   // cout << "Fetcher::OnTimeout: " << name << endl;
   // cout << "Last: " << m_lastPositiveActivity << ", config: " << m_maximumNoActivityPeriod
   //      << ", now: " << date_time::second_clock<boost::posix_time::ptime>::universal_time()
   //      << ", oldest: " << (date_time::second_clock<boost::posix_time::ptime>::universal_time() - m_maximumNoActivityPeriod) << endl;
 
-  if (m_lastPositiveActivity <
-      (date_time::second_clock<boost::posix_time::ptime>::universal_time() - m_maximumNoActivityPeriod))
+  if (m_lastPositiveActivity < (date_time::second_clock<boost::posix_time::ptime>::universal_time() -
+                                m_maximumNoActivityPeriod)) {
+    bool done = false;
     {
-      bool done = false;
-      {
-        unique_lock<mutex> lock (m_seqNoMutex);
-        m_inActivePipeline.erase (seqno);
-        m_activePipeline --;
+      unique_lock<mutex> lock(m_seqNoMutex);
+      m_inActivePipeline.erase(seqno);
+      m_activePipeline--;
 
-        if (m_activePipeline == 0)
-          {
-          done = true;
-          }
+      if (m_activePipeline == 0) {
+        done = true;
+      }
+    }
+
+    if (done) {
+      {
+        unique_lock<mutex> lock(m_seqNoMutex);
+        _LOG_DEBUG("Telling that fetch failed");
+        _LOG_DEBUG("Active pipeline size should be zero: " << m_inActivePipeline.size());
       }
 
-      if (done)
-        {
-          {
-            unique_lock<mutex> lock (m_seqNoMutex);
-            _LOG_DEBUG ("Telling that fetch failed");
-            _LOG_DEBUG ("Active pipeline size should be zero: " << m_inActivePipeline.size ());
-          }
-
-          m_active = false;
-          if (!m_onFetchFailed.empty ())
-            {
-              m_onFetchFailed (ref (*this));
-            }
-          // this is not valid anymore, but we still should be able finish work
-        }
-    }
-  else
-    {
-      _LOG_DEBUG ("Asking to reexpress seqno: " << seqno);
-      {
-        unique_lock<mutex> lock (m_rtoMutex);
-        _LOG_DEBUG ("Interest Timeout");
-        m_rto = m_rto * 2;
-        if(m_rto > m_maxRto)
-          {
-            m_rto = m_maxRto;
-            _LOG_DEBUG ("RTO is max: " << m_rto);
-    }
-        else
-          {
-            _LOG_DEBUG ("RTO is doubled: " << m_rto);
-}
+      m_active = false;
+      if (!m_onFetchFailed.empty()) {
+        m_onFetchFailed(ref(*this));
       }
-
-      {
-        unique_lock<mutex> lock (m_pipelineMutex);
-        m_threshold = m_pipeline / 2;
-        m_pipeline = 1;
-        m_roundCount = 0;
-        m_slowStart = true;
-      }
-
-      m_ndnx->sendInterest (name, closure, selectors.interestLifetime (m_rto));
+      // this is not valid anymore, but we still should be able finish work
     }
+  }
+  else {
+    _LOG_DEBUG("Asking to reexpress seqno: " << seqno);
+    m_ccnx->sendInterest(name, closure, selectors);
+  }
 }

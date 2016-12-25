@@ -18,23 +18,23 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#include "logging.hpp"
 #include "fetch-task-db.hpp"
+#include "logging.hpp"
 
+#include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/function.hpp>
-#include <boost/bind.hpp>
 
-#include <boost/test/unit_test.hpp>
-#include <unistd.h>
 #include <boost/make_shared.hpp>
+#include <boost/test/unit_test.hpp>
 #include <iostream>
 #include <iterator>
 #include <map>
+#include <unistd.h>
 #include <utility>
 
-INIT_LOGGER ("Test.FetchTaskDb");
+INIT_LOGGER("Test.FetchTaskDb");
 
 using namespace Ndnx;
 using namespace std;
@@ -46,20 +46,38 @@ BOOST_AUTO_TEST_SUITE(TestFetchTaskDb)
 class Checker
 {
 public:
-  Checker(const Name &deviceName, const Name &baseName, uint64_t minSeqNo, uint64_t maxSeqNo, int priority)
-        : m_deviceName(deviceName), m_baseName(baseName), m_minSeqNo(minSeqNo), m_maxSeqNo(maxSeqNo), m_priority(priority)
-  {}
+  Checker(const Name& deviceName, const Name& baseName, uint64_t minSeqNo, uint64_t maxSeqNo,
+          int priority)
+    : m_deviceName(deviceName)
+    , m_baseName(baseName)
+    , m_minSeqNo(minSeqNo)
+    , m_maxSeqNo(maxSeqNo)
+    , m_priority(priority)
+  {
+  }
 
-  Checker(const Checker &other)
-        : m_deviceName(other.m_deviceName), m_baseName(other.m_baseName), m_minSeqNo(other.m_minSeqNo), m_maxSeqNo(other.m_maxSeqNo), m_priority(other.m_priority)
-  {}
+  Checker(const Checker& other)
+    : m_deviceName(other.m_deviceName)
+    , m_baseName(other.m_baseName)
+    , m_minSeqNo(other.m_minSeqNo)
+    , m_maxSeqNo(other.m_maxSeqNo)
+    , m_priority(other.m_priority)
+  {
+  }
 
   bool
-  operator==(const Checker &other) { return m_deviceName == other.m_deviceName && m_baseName == other.m_baseName && m_minSeqNo == other.m_minSeqNo && m_maxSeqNo == other.m_maxSeqNo && m_priority == other.m_priority; }
-
-  void show()
+  operator==(const Checker& other)
   {
-    cout << m_deviceName  <<", " << m_baseName << ", " << m_minSeqNo << ", " << m_maxSeqNo << ", " << m_priority << endl;
+    return m_deviceName == other.m_deviceName && m_baseName == other.m_baseName &&
+           m_minSeqNo == other.m_minSeqNo && m_maxSeqNo == other.m_maxSeqNo &&
+           m_priority == other.m_priority;
+  }
+
+  void
+  show()
+  {
+    cout << m_deviceName << ", " << m_baseName << ", " << m_minSeqNo << ", " << m_maxSeqNo << ", "
+         << m_priority << endl;
   }
 
   Name m_deviceName;
@@ -73,20 +91,20 @@ map<Name, Checker> checkers;
 int g_counter = 0;
 
 void
-getChecker(const Name &deviceName, const Name &baseName, uint64_t minSeqNo, uint64_t maxSeqNo, int priority)
+getChecker(const Name& deviceName, const Name& baseName, uint64_t minSeqNo, uint64_t maxSeqNo,
+           int priority)
 {
   Checker checker(deviceName, baseName, minSeqNo, maxSeqNo, priority);
-  g_counter ++;
-  if (checkers.find(checker.m_deviceName + checker.m_baseName) != checkers.end())
-  {
+  g_counter++;
+  if (checkers.find(checker.m_deviceName + checker.m_baseName) != checkers.end()) {
     BOOST_FAIL("duplicated checkers");
   }
   checkers.insert(make_pair(checker.m_deviceName + checker.m_baseName, checker));
 }
 
-BOOST_AUTO_TEST_CASE (FetchTaskDbTest)
+BOOST_AUTO_TEST_CASE(FetchTaskDbTest)
 {
-  INIT_LOGGERS ();
+  INIT_LOGGERS();
   fs::path folder("TaskDbTest");
   fs::create_directories(folder / ".chronoshare");
 
@@ -101,8 +119,7 @@ BOOST_AUTO_TEST_CASE (FetchTaskDbTest)
   Name baseNamePrefix("/device/base");
 
   // add 10 tasks
-  for (uint64_t i = 0; i < 10; i++)
-  {
+  for (uint64_t i = 0; i < 10; i++) {
     Name d = deviceNamePrefix;
     Name b = baseNamePrefix;
     Checker c(d.appendComp(i), b.appendComp(i), i, 11, 1);
@@ -111,8 +128,7 @@ BOOST_AUTO_TEST_CASE (FetchTaskDbTest)
   }
 
   // delete the latter 5
-  for (uint64_t i = 5; i < 10; i++)
-  {
+  for (uint64_t i = 5; i < 10; i++) {
     Name d = deviceNamePrefix;
     Name b = baseNamePrefix;
     d.appendComp(i);
@@ -122,8 +138,7 @@ BOOST_AUTO_TEST_CASE (FetchTaskDbTest)
 
   // add back 3 to 7, 3 and 4 should not be added twice
 
-  for (uint64_t i = 3; i < 8; i++)
-  {
+  for (uint64_t i = 3; i < 8; i++) {
     Name d = deviceNamePrefix;
     Name b = baseNamePrefix;
     Checker c(d.appendComp(i), b.appendComp(i), i, 11, 1);
@@ -135,20 +150,16 @@ BOOST_AUTO_TEST_CASE (FetchTaskDbTest)
   BOOST_CHECK_EQUAL(g_counter, 8);
 
   map<Name, Checker>::iterator it = checkers.begin();
-  while (it != checkers.end())
-  {
+  while (it != checkers.end()) {
     map<Name, Checker>::iterator mt = m1.find(it->first);
-    if (mt == m1.end())
-    {
+    if (mt == m1.end()) {
       BOOST_FAIL("unknown task found");
     }
-    else
-    {
+    else {
       Checker c1 = it->second;
       Checker c2 = mt->second;
       BOOST_CHECK(c1 == c2);
-      if (! (c1 == c2))
-      {
+      if (!(c1 == c2)) {
         cout << "C1: " << endl;
         c1.show();
         cout << "C2: " << endl;

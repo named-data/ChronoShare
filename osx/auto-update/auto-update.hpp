@@ -23,7 +23,8 @@
 class AutoUpdate
 {
 public:
-  virtual ~AutoUpdate() {};
-  virtual void checkForUpdates() = 0;
+  virtual ~AutoUpdate(){};
+  virtual void
+  checkForUpdates() = 0;
 };
 #endif

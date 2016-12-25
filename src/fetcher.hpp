@@ -21,12 +21,12 @@
 #ifndef FETCHER_H
 #define FETCHER_H
 
-#include "ndnx-wrapper.h"
-#include "ndnx-name.h"
+#include "ccnx-name.h"
+#include "ccnx-wrapper.h"
 
 #include "executor.h"
-#include <boost/intrusive/list.hpp>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <boost/intrusive/list.hpp>
 #include <set>
 
 #include <set>
@@ -36,70 +36,99 @@ class FetchManager;
 class Fetcher
 {
 public:
-  typedef boost::function<void(Ndnx::Name &deviceName, Ndnx::Name &baseName, uint64_t seq, Ndnx::PcoPtr pco)> SegmentCallback;
-  typedef boost::function<void(Ndnx::Name &deviceName, Ndnx::Name &baseName)> FinishCallback;
-  typedef boost::function<void (Fetcher &, const Ndnx::Name &deviceName, const Ndnx::Name &baseName)> OnFetchCompleteCallback;
-  typedef boost::function<void (Fetcher &)> OnFetchFailedCallback;
+  typedef boost::function<void(Ccnx::Name& deviceName, Ccnx::Name& baseName, uint64_t seq, Ccnx::PcoPtr pco)>
+    SegmentCallback;
+  typedef boost::function<void(Ccnx::Name& deviceName, Ccnx::Name& baseName)> FinishCallback;
+  typedef boost::function<void(Fetcher&, const Ccnx::Name& deviceName, const Ccnx::Name& baseName)>
+    OnFetchCompleteCallback;
+  typedef boost::function<void(Fetcher&)> OnFetchFailedCallback;
 
-  Fetcher (Ndnx::NdnxWrapperPtr ndnx,
-           ExecutorPtr executor,
-           const SegmentCallback &segmentCallback, // callback passed by caller of FetchManager
-           const FinishCallback &finishCallback, // callback passed by caller of FetchManager
-           OnFetchCompleteCallback onFetchComplete, OnFetchFailedCallback onFetchFailed, // callbacks provided by FetchManager
-           const Ndnx::Name &deviceName, const Ndnx::Name &name, int64_t minSeqNo, int64_t maxSeqNo,
-           boost::posix_time::time_duration timeout = boost::posix_time::seconds (30), // this time is not precise, but sets min bound
-                                                                                  // actual time depends on how fast Interests timeout
-           const Ndnx::Name &forwardingHint = Ndnx::Name ());
-  virtual ~Fetcher ();
+  Fetcher(Ccnx::CcnxWrapperPtr ccnx, ExecutorPtr executor,
+          const SegmentCallback& segmentCallback, // callback passed by caller of FetchManager
+          const FinishCallback& finishCallback,   // callback passed by caller of FetchManager
+          OnFetchCompleteCallback onFetchComplete,
+          OnFetchFailedCallback onFetchFailed, // callbacks provided by FetchManager
+          const Ccnx::Name& deviceName, const Ccnx::Name& name, int64_t minSeqNo, int64_t maxSeqNo,
+          boost::posix_time::time_duration timeout =
+            boost::posix_time::seconds(30), // this time is not precise, but sets min bound
+                                            // actual time depends on how fast Interests timeout
+          const Ccnx::Name& forwardingHint = Ccnx::Name());
+  virtual ~Fetcher();
 
   inline bool
-  IsActive () const;
+  IsActive() const;
 
   inline bool
-  IsTimedWait() const { return m_timedwait; }
+  IsTimedWait() const
+  {
+    return m_timedwait;
+  }
 
   void
-  RestartPipeline ();
+  RestartPipeline();
 
   void
-  SetForwardingHint (const Ndnx::Name &forwardingHint);
+  SetForwardingHint(const Ccnx::Name& forwardingHint);
 
-  const Ndnx::Name &
-  GetForwardingHint () const { return m_forwardingHint; }
+  const Ccnx::Name&
+  GetForwardingHint() const
+  {
+    return m_forwardingHint;
+  }
 
-  const Ndnx::Name &
-  GetName () const { return m_name; }
+  const Ccnx::Name&
+  GetName() const
+  {
+    return m_name;
+  }
 
-  const Ndnx::Name &
-  GetDeviceName () const { return m_deviceName; }
+  const Ccnx::Name&
+  GetDeviceName() const
+  {
+    return m_deviceName;
+  }
 
   double
-  GetRetryPause () const { return m_retryPause; }
+  GetRetryPause() const
+  {
+    return m_retryPause;
+  }
 
   void
-  SetRetryPause (double pause) { m_retryPause = pause; }
+  SetRetryPause(double pause)
+  {
+    m_retryPause = pause;
+  }
 
   boost::posix_time::ptime
-  GetNextScheduledRetry () const { return m_nextScheduledRetry; }
+  GetNextScheduledRetry() const
+  {
+    return m_nextScheduledRetry;
+  }
 
   void
-  SetNextScheduledRetry (boost::posix_time::ptime nextScheduledRetry) { m_nextScheduledRetry = nextScheduledRetry; }
+  SetNextScheduledRetry(boost::posix_time::ptime nextScheduledRetry)
+  {
+    m_nextScheduledRetry = nextScheduledRetry;
+  }
 
 private:
   void
-  FillPipeline ();
+  FillPipeline();
 
   void
-  OnData (uint64_t seqno, const Ndnx::Name &name, Ndnx::PcoPtr data);
+  OnData(uint64_t seqno, const Ccnx::Name& name, Ccnx::PcoPtr data);
 
   void
-  OnData_Execute (uint64_t seqno, Ndnx::Name name, Ndnx::PcoPtr data);
+  OnData_Execute(uint64_t seqno, Ccnx::Name name, Ccnx::PcoPtr data);
 
   void
-  OnTimeout (uint64_t seqno, const Ndnx::Name &name, const Ndnx::Closure &closure, Ndnx::Selectors selectors);
+  OnTimeout(uint64_t seqno, const Ccnx::Name& name, const Ccnx::Closure& closure,
+            Ccnx::Selectors selectors);
 
   void
-  OnTimeout_Execute (uint64_t seqno, Ndnx::Name name, Ndnx::Closure closure, Ndnx::Selectors selectors);
+  OnTimeout_Execute(uint64_t seqno, Ccnx::Name name, Ccnx::Closure closure,
+                    Ccnx::Selectors selectors);
 
 public:
   boost::intrusive::list_member_hook<> m_managerListHook;
@@ -153,13 +182,15 @@ private:
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;
 
 namespace Error {
-struct Fetcher : virtual boost::exception, virtual std::exception { };
+struct Fetcher : virtual boost::exception, virtual std::exception
+{
+};
 }
 
 typedef boost::shared_ptr<Fetcher> FetcherPtr;
 
 bool
-Fetcher::IsActive () const
+Fetcher::IsActive() const
 {
   return m_active;
 }

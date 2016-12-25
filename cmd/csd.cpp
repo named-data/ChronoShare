@@ -20,10 +20,10 @@
 
 #include <QtCore>
 
+#include "ccnx-wrapper.hpp"
 #include "dispatcher.hpp"
 #include "fs-watcher.hpp"
 #include "logging.hpp"
-#include "ccnx-wrapper.hpp"
 
 #include <boost/make_shared.hpp>
 
@@ -31,29 +31,30 @@ using namespace boost;
 using namespace std;
 using namespace Ndnx;
 
-int main(int argc, char *argv[])
+int
+main(int argc, char* argv[])
 {
-  INIT_LOGGERS ();
+  INIT_LOGGERS();
 
   QCoreApplication app(argc, argv);
 
-  if (argc != 4)
-    {
-      cerr << "Usage: ./csd <username> <shared-folder> <path>" << endl;
-      return 1;
-    }
+  if (argc != 4) {
+    cerr << "Usage: ./csd <username> <shared-folder> <path>" << endl;
+    return 1;
+  }
 
   string username = argv[1];
   string sharedFolder = argv[2];
   string path = argv[3];
 
-  cout << "Starting ChronoShare for [" << username << "] shared-folder [" << sharedFolder << "] at [" << path << "]" << endl;
+  cout << "Starting ChronoShare for [" << username << "] shared-folder [" << sharedFolder
+       << "] at [" << path << "]" << endl;
 
-  Dispatcher dispatcher (username, sharedFolder, path, make_shared<NdnxWrapper> ());
+  Dispatcher dispatcher(username, sharedFolder, path, make_shared<CcnxWrapper>());
 
-  FsWatcher watcher (path.c_str (),
-                     bind (&Dispatcher::Did_LocalFile_AddOrModify, &dispatcher, _1),
-                     bind (&Dispatcher::Did_LocalFile_Delete,      &dispatcher, _1));
+  FsWatcher watcher(path.c_str(),
+                    bind(&Dispatcher::Did_LocalFile_AddOrModify, &dispatcher, _1),
+                    bind(&Dispatcher::Did_LocalFile_Delete, &dispatcher, _1));
 
-  return app.exec ();
+  return app.exec();
 }

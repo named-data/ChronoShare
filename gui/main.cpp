@@ -22,9 +22,10 @@
 #include "logging.hpp"
 #include <QApplication>
 
-int main(int argc, char *argv[])
+int
+main(int argc, char* argv[])
 {
-  INIT_LOGGERS ();
+  INIT_LOGGERS();
 
   QApplication app(argc, argv);
 

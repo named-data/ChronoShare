@@ -21,10 +21,10 @@
 #ifndef SYNC_CORE_H
 #define SYNC_CORE_H
 
-#include "sync-log.hpp"
-#include "ccnx-wrapper.hpp"
 #include "ccnx-selectors.hpp"
+#include "ccnx-wrapper.hpp"
 #include "scheduler.hpp"
+#include "sync-log.hpp"
 #include "task.hpp"
 
 #include <boost/function.hpp>
@@ -32,25 +32,26 @@
 class SyncCore
 {
 public:
-  typedef boost::function<void (SyncStateMsgPtr stateMsg) > StateMsgCallback;
+  typedef boost::function<void(SyncStateMsgPtr stateMsg)> StateMsgCallback;
 
   static const int FRESHNESS = 2; // seconds
   static const string RECOVER;
-  static const double WAIT; // seconds;
+  static const double WAIT;           // seconds;
   static const double RANDOM_PERCENT; // seconds;
 
 public:
-  SyncCore(SyncLogPtr syncLog
-           , const Ndnx::Name &userName
-           , const Ndnx::Name &localPrefix      // routable name used by the local user
-           , const Ndnx::Name &syncPrefix       // the prefix for the sync collection
-           , const StateMsgCallback &callback   // callback when state change is detected
-           , Ndnx::NdnxWrapperPtr ndnx
-           , double syncInterestInterval = -1.0);
+  SyncCore(SyncLogPtr syncLog, const Ccnx::Name& userName,
+           const Ccnx::Name& localPrefix // routable name used by the local user
+           ,
+           const Ccnx::Name& syncPrefix // the prefix for the sync collection
+           ,
+           const StateMsgCallback& callback // callback when state change is detected
+           ,
+           Ccnx::CcnxWrapperPtr ccnx, double syncInterestInterval = -1.0);
   ~SyncCore();
 
   void
-  localStateChanged ();
+  localStateChanged();
 
   /**
    * @brief Schedule an event to update local state with a small delay
@@ -59,37 +60,41 @@ public:
    * are anticipated within a short period of time
    */
   void
-  localStateChangedDelayed ();
+  localStateChangedDelayed();
 
-  void
-  updateLocalState (sqlite3_int64);
+  void updateLocalState(sqlite3_int64);
 
-// ------------------ only used in test -------------------------
+  // ------------------ only used in test -------------------------
 public:
   HashPtr
-  root() const { return m_rootHash; }
+  root() const
+  {
+    return m_rootHash;
+  }
 
   sqlite3_int64
-  seq (const Ndnx::Name &name);
+  seq(const Ccnx::Name& name);
 
 private:
   void
-  handleInterest(const Ndnx::Name &name);
+  handleInterest(const Ccnx::Name& name);
 
   void
-  handleSyncData(const Ndnx::Name &name, Ndnx::PcoPtr content);
+  handleSyncData(const Ccnx::Name& name, Ccnx::PcoPtr content);
 
   void
-  handleRecoverData(const Ndnx::Name &name, Ndnx::PcoPtr content);
+  handleRecoverData(const Ccnx::Name& name, Ccnx::PcoPtr content);
 
   void
-  handleSyncInterestTimeout(const Ndnx::Name &name, const Ndnx::Closure &closure, Ndnx::Selectors selectors);
+  handleSyncInterestTimeout(const Ccnx::Name& name, const Ccnx::Closure& closure,
+                            Ccnx::Selectors selectors);
 
   void
-  handleRecoverInterestTimeout(const Ndnx::Name &name, const Ndnx::Closure &closure, Ndnx::Selectors selectors);
+  handleRecoverInterestTimeout(const Ccnx::Name& name, const Ccnx::Closure& closure,
+                               Ccnx::Selectors selectors);
 
   void
-  deregister(const Ndnx::Name &name);
+  deregister(const Ccnx::Name& name);
 
   void
   recover(HashPtr hash);
@@ -99,13 +104,13 @@ private:
   sendSyncInterest();
 
   void
-  handleSyncInterest(const Ndnx::Name &name);
+  handleSyncInterest(const Ccnx::Name& name);
 
   void
-  handleRecoverInterest(const Ndnx::Name &name);
+  handleRecoverInterest(const Ccnx::Name& name);
 
   void
-  handleStateData(const Ndnx::Bytes &content);
+  handleStateData(const Ccnx::Bytes& content);
 
 private:
   Ndnx::NdnxWrapperPtr m_ndnx;

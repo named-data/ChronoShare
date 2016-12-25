@@ -24,13 +24,13 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
-#include <boost/test/unit_test.hpp>
-#include <unistd.h>
 #include <boost/make_shared.hpp>
+#include <boost/test/unit_test.hpp>
 #include <iostream>
 #include <iterator>
+#include <unistd.h>
 
-INIT_LOGGER ("Test.ObjectManager");
+INIT_LOGGER("Test.ObjectManager");
 
 using namespace Ndnx;
 using namespace std;
@@ -39,36 +39,35 @@ namespace fs = boost::filesystem;
 
 BOOST_AUTO_TEST_SUITE(TestObjectManager)
 
-BOOST_AUTO_TEST_CASE (ObjectManagerTest)
+BOOST_AUTO_TEST_CASE(ObjectManagerTest)
 {
-  INIT_LOGGERS ();
+  INIT_LOGGERS();
 
-  fs::path tmpdir = fs::unique_path (fs::temp_directory_path () / "%%%%-%%%%-%%%%-%%%%");
-  _LOG_DEBUG ("tmpdir: " << tmpdir);
-  Name deviceName ("/device");
+  fs::path tmpdir = fs::unique_path(fs::temp_directory_path() / "%%%%-%%%%-%%%%-%%%%");
+  _LOG_DEBUG("tmpdir: " << tmpdir);
+  Name deviceName("/device");
 
-  NdnxWrapperPtr ndnx = make_shared<NdnxWrapper> ();
-  ObjectManager manager (ndnx, tmpdir, "test-chronoshare");
+  CcnxWrapperPtr ccnx = make_shared<CcnxWrapper>();
+  ObjectManager manager(ccnx, tmpdir, "test-chronoshare");
 
-  tuple<HashPtr,int> hash_semgents = manager.localFileToObjects (fs::path("test") / "test-object-manager.cc", deviceName);
+  tuple<HashPtr, int> hash_semgents =
+    manager.localFileToObjects(fs::path("test") / "test-object-manager.cc", deviceName);
 
-  BOOST_CHECK_EQUAL (hash_semgents.get<1> (), 3);
+  BOOST_CHECK_EQUAL(hash_semgents.get<1>(), 3);
 
-  bool ok = manager.objectsToLocalFile (deviceName, *hash_semgents.get<0> (), tmpdir / "test.cc");
-  BOOST_CHECK_EQUAL (ok, true);
+  bool ok = manager.objectsToLocalFile(deviceName, *hash_semgents.get<0>(), tmpdir / "test.cc");
+  BOOST_CHECK_EQUAL(ok, true);
 
   {
-    fs::ifstream origFile (fs::path("test") / "test-object-manager.cc");
-    fs::ifstream newFile (tmpdir / "test.cc");
+    fs::ifstream origFile(fs::path("test") / "test-object-manager.cc");
+    fs::ifstream newFile(tmpdir / "test.cc");
 
-    istream_iterator<char> eof,
-      origFileI (origFile),
-      newFileI (newFile);
+    istream_iterator<char> eof, origFileI(origFile), newFileI(newFile);
 
-    BOOST_CHECK_EQUAL_COLLECTIONS (origFileI, eof, newFileI, eof);
+    BOOST_CHECK_EQUAL_COLLECTIONS(origFileI, eof, newFileI, eof);
   }
 
-  remove_all (tmpdir);
+  remove_all(tmpdir);
 }
 
 

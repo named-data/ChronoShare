@@ -22,78 +22,79 @@
 #define SYNC_LOG_H
 
 #include "db-helper.hpp"
-#include <sync-state.pb.h>
-#include <ndnx-name.h>
-#include <map>
 #include <boost/thread/shared_mutex.hpp>
+#include <ccnx-name.h>
+#include <map>
+#include <sync-state.pb.hpp>
 
 typedef boost::shared_ptr<SyncStateMsg> SyncStateMsgPtr;
 
 class SyncLog : public DbHelper
 {
 public:
-  SyncLog (const boost::filesystem::path &path, const Ndnx::Name &localName);
+  SyncLog(const boost::filesystem::path& path, const Ccnx::Name& localName);
 
   /**
    * @brief Get local username
    */
-  inline const Ndnx::Name &
-  GetLocalName () const;
+  inline const Ccnx::Name&
+  GetLocalName() const;
 
   sqlite3_int64
-  GetNextLocalSeqNo (); // side effect: local seq_no will be increased
+  GetNextLocalSeqNo(); // side effect: local seq_no will be increased
 
   // done
   void
-  UpdateDeviceSeqNo (const Ndnx::Name &name, sqlite3_int64 seqNo);
+  UpdateDeviceSeqNo(const Ccnx::Name& name, sqlite3_int64 seqNo);
 
   void
-  UpdateLocalSeqNo (sqlite3_int64 seqNo);
+  UpdateLocalSeqNo(sqlite3_int64 seqNo);
 
-  Ndnx::Name
-  LookupLocator (const Ndnx::Name &deviceName);
+  Ccnx::Name
+  LookupLocator(const Ccnx::Name& deviceName);
 
-  Ndnx::Name
-  LookupLocalLocator ();
-
-  void
-  UpdateLocator (const Ndnx::Name &deviceName, const Ndnx::Name &locator);
+  Ccnx::Name
+  LookupLocalLocator();
 
   void
-  UpdateLocalLocator (const Ndnx::Name &locator);
+  UpdateLocator(const Ccnx::Name& deviceName, const Ccnx::Name& locator);
+
+  void
+  UpdateLocalLocator(const Ccnx::Name& locator);
 
   // done
   /**
    * Create an entry in SyncLog and SyncStateNodes corresponding to the current state of SyncNodes
    */
   HashPtr
-  RememberStateInStateLog ();
+  RememberStateInStateLog();
 
   // done
   sqlite3_int64
-  LookupSyncLog (const std::string &stateHash);
+  LookupSyncLog(const std::string& stateHash);
 
   // done
   sqlite3_int64
-  LookupSyncLog (const Hash &stateHash);
+  LookupSyncLog(const Hash& stateHash);
 
   // How difference is exposed will be determined later by the actual protocol
   SyncStateMsgPtr
-  FindStateDifferences (const std::string &oldHash, const std::string &newHash, bool includeOldSeq = false);
+  FindStateDifferences(const std::string& oldHash, const std::string& newHash,
+                       bool includeOldSeq = false);
 
   SyncStateMsgPtr
-  FindStateDifferences (const Hash &oldHash, const Hash &newHash, bool includeOldSeq = false);
+  FindStateDifferences(const Hash& oldHash, const Hash& newHash, bool includeOldSeq = false);
 
   //-------- only used in test -----------------
   sqlite3_int64
-  SeqNo(const Ndnx::Name &name);
+  SeqNo(const Ccnx::Name& name);
 
   sqlite3_int64
-  LogSize ();
+  LogSize();
 
 protected:
   void
-  UpdateDeviceSeqNo (sqlite3_int64 deviceId, sqlite3_int64 seqNo);
+  UpdateDeviceSeqNo(sqlite3_int64 deviceId, sqlite3_int64 seqNo);
 
 protected:
   Ndnx::Name m_localName;
@@ -108,8 +109,8 @@ protected:
 
 typedef boost::shared_ptr<SyncLog> SyncLogPtr;
 
-const Ndnx::Name &
-SyncLog::GetLocalName () const
+const Ccnx::Name&
+SyncLog::GetLocalName() const
 {
   return m_localName;
 }

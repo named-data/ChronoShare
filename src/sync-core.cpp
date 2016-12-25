@@ -19,16 +19,16 @@
  */
 
 #include "sync-core.hpp"
-#include "sync-state-helper.hpp"
 #include "logging.hpp"
+#include "periodic-task.hpp"
 #include "random-interval-generator.hpp"
 #include "simple-interval-generator.hpp"
-#include "periodic-task.hpp"
+#include "sync-state-helper.hpp"
 
 #include <boost/lexical_cast.hpp>
 #include <boost/make_shared.hpp>
 
-INIT_LOGGER ("Sync.Core");
+INIT_LOGGER("Sync.Core");
 
 const string SyncCore::RECOVER = "RECOVER";
 const double SyncCore::WAIT = 0.05;
@@ -42,40 +42,46 @@ const std::string LOCAL_STATE_CHANGE_DELAYED_TAG = "local-state-changed";
 using namespace boost;
 using namespace Ndnx;
 
-SyncCore::SyncCore(SyncLogPtr syncLog, const Name &userName, const Name &localPrefix, const Name &syncPrefix,
-                   const StateMsgCallback &callback, NdnxWrapperPtr ndnx, double syncInterestInterval/*= -1.0*/)
-  : m_ndnx (ndnx)
+SyncCore::SyncCore(SyncLogPtr syncLog, const Name& userName, const Name& localPrefix,
+                   const Name& syncPrefix, const StateMsgCallback& callback, CcnxWrapperPtr ccnx,
+                   double syncInterestInterval /*= -1.0*/)
+  : m_ccnx(ccnx)
   , m_log(syncLog)
-  , m_scheduler(new Scheduler ())
+  , m_scheduler(new Scheduler())
   , m_stateMsgCallback(callback)
   , m_syncPrefix(syncPrefix)
-  , m_recoverWaitGenerator(new RandomIntervalGenerator(WAIT, RANDOM_PERCENT, RandomIntervalGenerator::UP))
+  , m_recoverWaitGenerator(
+      new RandomIntervalGenerator(WAIT, RANDOM_PERCENT, RandomIntervalGenerator::UP))
   , m_syncInterestInterval(syncInterestInterval)
 {
   m_rootHash = m_log->RememberStateInStateLog();
 
   m_ndnx->setInterestFilter(m_syncPrefix, boost::bind(&SyncCore::handleInterest, this, _1));
   // m_log->initYP(m_yp);
-  m_log->UpdateLocalLocator (localPrefix);
+  m_log->UpdateLocalLocator(localPrefix);
 
   m_scheduler->start();
 
-  double interval = (m_syncInterestInterval > 0 && m_syncInterestInterval < 30.0) ? m_syncInterestInterval : 4.0;
-  m_sendSyncInterestTask = make_shared<PeriodicTask>(bind(&SyncCore::sendSyncInterest, this), SYNC_INTEREST_TAG, m_scheduler, make_shared<SimpleIntervalGenerator>(interval));
+  double interval =
+    (m_syncInterestInterval > 0 && m_syncInterestInterval < 30.0) ? m_syncInterestInterval : 4.0;
+  m_sendSyncInterestTask =
+    make_shared<PeriodicTask>(bind(&SyncCore::sendSyncInterest, this), SYNC_INTEREST_TAG,
+                              m_scheduler, make_shared<SimpleIntervalGenerator>(interval));
   // sendSyncInterest();
-  Scheduler::scheduleOneTimeTask (m_scheduler, 0.1, bind(&SyncCore::sendSyncInterest, this), SYNC_INTEREST_TAG2);
+  Scheduler::scheduleOneTimeTask(m_scheduler, 0.1, bind(&SyncCore::sendSyncInterest, this),
+                                 SYNC_INTEREST_TAG2);
 }
 
 SyncCore::~SyncCore()
 {
-  m_scheduler->shutdown ();
+  m_scheduler->shutdown();
   // need to "deregister" closures
 }
 
 void
 SyncCore::updateLocalState(sqlite3_int64 seqno)
 {
-  m_log->UpdateLocalSeqNo (seqno);
+  m_log->UpdateLocalSeqNo(seqno);
   localStateChanged();
 }
 
@@ -88,119 +94,110 @@ SyncCore::localStateChanged()
   SyncStateMsgPtr msg = m_log->FindStateDifferences(*oldHash, *m_rootHash);
 
   // reply sync Interest with oldHash as last component
-  Name syncName = Name (m_syncPrefix)(oldHash->GetHash(), oldHash->GetHashBytes());
-  BytesPtr syncData = serializeGZipMsg (*msg);
+  Name syncName = Name(m_syncPrefix)(oldHash->GetHash(), oldHash->GetHashBytes());
+  BytesPtr syncData = serializeGZipMsg(*msg);
 
-  m_ndnx->publishData(syncName, *syncData, FRESHNESS);
-  _LOG_DEBUG ("[" << m_log->GetLocalName () << "] localStateChanged ");
-  _LOG_TRACE ("[" << m_log->GetLocalName () << "] publishes: " << oldHash->shortHash ());
+  m_ccnx->publishData(syncName, *syncData, FRESHNESS);
+  _LOG_DEBUG("[" << m_log->GetLocalName() << "] localStateChanged ");
+  _LOG_TRACE("[" << m_log->GetLocalName() << "] publishes: " << oldHash->shortHash());
   // _LOG_TRACE (msg);
 
-  m_scheduler->deleteTask (SYNC_INTEREST_TAG2);
+  m_scheduler->deleteTask(SYNC_INTEREST_TAG2);
   // no hurry in sending out new Sync Interest; if others send the new Sync Interest first, no problem, we know the new root hash already;
   // this is trying to avoid the situation that the order of SyncData and new Sync Interest gets reversed at receivers
-  Scheduler::scheduleOneTimeTask (m_scheduler, 0.05,
-                                  bind(&SyncCore::sendSyncInterest, this),
-                                  SYNC_INTEREST_TAG2);
+  Scheduler::scheduleOneTimeTask(m_scheduler, 0.05, bind(&SyncCore::sendSyncInterest, this),
+                                 SYNC_INTEREST_TAG2);
 
-  //sendSyncInterest();
+  // sendSyncInterest();
 }
 
 void
-SyncCore::localStateChangedDelayed ()
+SyncCore::localStateChangedDelayed()
 {
   // many calls to localStateChangedDelayed within 0.5 second will be suppressed to one localStateChanged calls
-  Scheduler::scheduleOneTimeTask (m_scheduler, 0.5,
-                                  bind (&SyncCore::localStateChanged, this),
-                                  LOCAL_STATE_CHANGE_DELAYED_TAG);
+  Scheduler::scheduleOneTimeTask(m_scheduler, 0.5, bind(&SyncCore::localStateChanged, this),
+                                 LOCAL_STATE_CHANGE_DELAYED_TAG);
 }
 
 void
-SyncCore::handleInterest(const Name &name)
+SyncCore::handleInterest(const Name& name)
 {
   int size = name.size();
   int prefixSize = m_syncPrefix.size();
-  if (size == prefixSize + 1)
-  {
+  if (size == prefixSize + 1) {
     // this is normal sync interest
     handleSyncInterest(name);
   }
-  else if (size == prefixSize + 2 && name.getCompAsString(m_syncPrefix.size()) == RECOVER)
-  {
+  else if (size == prefixSize + 2 && name.getCompAsString(m_syncPrefix.size()) == RECOVER) {
     // this is recovery interest
     handleRecoverInterest(name);
   }
 }
 
 void
-SyncCore::handleRecoverInterest(const Name &name)
+SyncCore::handleRecoverInterest(const Name& name)
 {
-  _LOG_DEBUG ("[" << m_log->GetLocalName () << "] <<<<< RECOVER Interest with name " << name);
+  _LOG_DEBUG("[" << m_log->GetLocalName() << "] <<<<< RECOVER Interest with name " << name);
 
   Bytes hashBytes = name.getComp(name.size() - 1);
   // this is the hash unkonwn to the sender of the interest
   Hash hash(head(hashBytes), hashBytes.size());
-  if (m_log->LookupSyncLog(hash) > 0)
-  {
+  if (m_log->LookupSyncLog(hash) > 0) {
     // we know the hash, should reply everything
     SyncStateMsgPtr msg = m_log->FindStateDifferences(*(Hash::Origin), *m_rootHash);
 
-    BytesPtr syncData = serializeGZipMsg (*msg);
-    m_ndnx->publishData(name, *syncData, FRESHNESS);
-    _LOG_TRACE ("[" << m_log->GetLocalName () << "] publishes " << hash.shortHash ());
+    BytesPtr syncData = serializeGZipMsg(*msg);
+    m_ccnx->publishData(name, *syncData, FRESHNESS);
+    _LOG_TRACE("[" << m_log->GetLocalName() << "] publishes " << hash.shortHash());
     // _LOG_TRACE (msg);
   }
-  else
-    {
-      // we don't recognize this hash, can not help
-    }
+  else {
+    // we don't recognize this hash, can not help
+  }
 }
 
 void
-SyncCore::handleSyncInterest(const Name &name)
+SyncCore::handleSyncInterest(const Name& name)
 {
-  _LOG_DEBUG ("[" << m_log->GetLocalName () << "] <<<<< SYNC Interest with name " << name);
+  _LOG_DEBUG("[" << m_log->GetLocalName() << "] <<<<< SYNC Interest with name " << name);
 
   Bytes hashBytes = name.getComp(name.size() - 1);
   HashPtr hash(new Hash(head(hashBytes), hashBytes.size()));
-  if (*hash == *m_rootHash)
-  {
+  if (*hash == *m_rootHash) {
     // we have the same hash; nothing needs to be done
-    _LOG_TRACE ("same as root hash: " << hash->shortHash ());
+    _LOG_TRACE("same as root hash: " << hash->shortHash());
     return;
   }
-  else if (m_log->LookupSyncLog(*hash) > 0)
-  {
+  else if (m_log->LookupSyncLog(*hash) > 0) {
     // we know something more
-    _LOG_TRACE ("found hash in sync log");
+    _LOG_TRACE("found hash in sync log");
     SyncStateMsgPtr msg = m_log->FindStateDifferences(*hash, *m_rootHash);
 
-    BytesPtr syncData = serializeGZipMsg (*msg);
-    m_ndnx->publishData(name, *syncData, FRESHNESS);
-    _LOG_TRACE (m_log->GetLocalName () << " publishes: " << hash->shortHash ());
-    _LOG_TRACE (msg);
+    BytesPtr syncData = serializeGZipMsg(*msg);
+    m_ccnx->publishData(name, *syncData, FRESHNESS);
+    _LOG_TRACE(m_log->GetLocalName() << " publishes: " << hash->shortHash());
+    _LOG_TRACE(msg);
   }
-  else
-  {
+  else {
     // we don't recognize the hash, send recover Interest if still don't know the hash after a randomized wait period
     double wait = m_recoverWaitGenerator->nextInterval();
-    _LOG_TRACE (m_log->GetLocalName () << ", rootHash: " << *m_rootHash << ", hash: " << hash->shortHash ());
-    _LOG_TRACE ("recover task scheduled after wait: " << wait);
+    _LOG_TRACE(m_log->GetLocalName() << ", rootHash: " << *m_rootHash
+                                     << ", hash: " << hash->shortHash());
+    _LOG_TRACE("recover task scheduled after wait: " << wait);
 
-    Scheduler::scheduleOneTimeTask (m_scheduler,
-                                    wait, boost::bind(&SyncCore::recover, this, hash),
-                                    "r-"+lexical_cast<string> (*hash));
+    Scheduler::scheduleOneTimeTask(m_scheduler, wait, boost::bind(&SyncCore::recover, this, hash),
+                                   "r-" + lexical_cast<string>(*hash));
   }
 }
 
 void
-SyncCore::handleSyncInterestTimeout(const Name &name, const Closure &closure, Selectors selectors)
+SyncCore::handleSyncInterestTimeout(const Name& name, const Closure& closure, Selectors selectors)
 {
   // sync interest will be resent by scheduler
 }
 
 void
-SyncCore::handleRecoverInterestTimeout(const Name &name, const Closure &closure, Selectors selectors)
+SyncCore::handleRecoverInterestTimeout(const Name& name, const Closure& closure, Selectors selectors)
 {
   // We do not re-express recovery interest for now
   // if difference is not resolved, the sync interest will trigger
@@ -209,89 +206,78 @@ SyncCore::handleRecoverInterestTimeout(const Name &name, const Closure &closure,
 }
 
 void
-SyncCore::handleRecoverData(const Name &name, PcoPtr content)
+SyncCore::handleRecoverData(const Name& name, PcoPtr content)
 {
-  _LOG_DEBUG ("[" << m_log->GetLocalName () << "] <<<<< RECOVER DATA with name: " << name);
+  _LOG_DEBUG("[" << m_log->GetLocalName() << "] <<<<< RECOVER DATA with name: " << name);
   //cout << "handle recover data" << end;
-  if (content && content->contentPtr () && content->contentPtr ()->size () > 0)
-    {
-      handleStateData(*content->contentPtr ());
-    }
-  else
-    {
-      _LOG_ERROR ("Got recovery DATA with empty content");
-    }
+  if (content && content->contentPtr() && content->contentPtr()->size() > 0) {
+    handleStateData(*content->contentPtr());
+  }
+  else {
+    _LOG_ERROR("Got recovery DATA with empty content");
+  }
 
   // sendSyncInterest();
-  m_scheduler->deleteTask (SYNC_INTEREST_TAG2);
-  Scheduler::scheduleOneTimeTask (m_scheduler, 0,
-                                  bind(&SyncCore::sendSyncInterest, this),
-                                  SYNC_INTEREST_TAG2);
+  m_scheduler->deleteTask(SYNC_INTEREST_TAG2);
+  Scheduler::scheduleOneTimeTask(m_scheduler, 0, bind(&SyncCore::sendSyncInterest, this),
+                                 SYNC_INTEREST_TAG2);
 }
 
 void
-SyncCore::handleSyncData(const Name &name, PcoPtr content)
+SyncCore::handleSyncData(const Name& name, PcoPtr content)
 {
-  _LOG_DEBUG ("[" << m_log->GetLocalName () << "] <<<<< SYNC DATA with name: " << name);
+  _LOG_DEBUG("[" << m_log->GetLocalName() << "] <<<<< SYNC DATA with name: " << name);
 
   // suppress recover in interest - data out of order case
-  if (content && content->contentPtr () && content->contentPtr ()->size () > 0)
-    {
-      handleStateData(*content->contentPtr ());
-    }
-  else
-    {
-      _LOG_ERROR ("Got sync DATA with empty content");
-    }
+  if (content && content->contentPtr() && content->contentPtr()->size() > 0) {
+    handleStateData(*content->contentPtr());
+  }
+  else {
+    _LOG_ERROR("Got sync DATA with empty content");
+  }
 
   // resume outstanding sync interest
   // sendSyncInterest();
 
-  m_scheduler->deleteTask (SYNC_INTEREST_TAG2);
-  Scheduler::scheduleOneTimeTask (m_scheduler, 0,
-                                  bind(&SyncCore::sendSyncInterest, this),
-                                  SYNC_INTEREST_TAG2);
+  m_scheduler->deleteTask(SYNC_INTEREST_TAG2);
+  Scheduler::scheduleOneTimeTask(m_scheduler, 0, bind(&SyncCore::sendSyncInterest, this),
+                                 SYNC_INTEREST_TAG2);
 }
 
 void
-SyncCore::handleStateData(const Bytes &content)
+SyncCore::handleStateData(const Bytes& content)
 {
   SyncStateMsgPtr msg = deserializeGZipMsg<SyncStateMsg>(content);
-  if(!(msg))
-  {
+  if (!(msg)) {
     // ignore misformed SyncData
-    _LOG_ERROR ("Misformed SyncData");
+    _LOG_ERROR("Misformed SyncData");
     return;
   }
 
-  _LOG_TRACE (m_log->GetLocalName () << " receives Msg ");
-  _LOG_TRACE (msg);
+  _LOG_TRACE(m_log->GetLocalName() << " receives Msg ");
+  _LOG_TRACE(msg);
   int size = msg->state_size();
   int index = 0;
-  while (index < size)
-  {
+  while (index < size) {
     SyncState state = msg->state(index);
     string devStr = state.name();
-    Name deviceName((const unsigned char *)devStr.c_str(), devStr.size());
-  //  cout << "Got Name: " << deviceName;
-    if (state.type() == SyncState::UPDATE)
-    {
+    Name deviceName((const unsigned char*)devStr.c_str(), devStr.size());
+    //  cout << "Got Name: " << deviceName;
+    if (state.type() == SyncState::UPDATE) {
       sqlite3_int64 seqno = state.seq();
-   //   cout << ", Got seq: " << seqno << endl;
       m_log->UpdateDeviceSeqNo(deviceName, seqno);
-      if (state.has_locator())
-      {
+      if (state.has_locator()) {
         string locStr = state.locator();
-        Name locatorName((const unsigned char *)locStr.c_str(), locStr.size());
-    //    cout << ", Got loc: " << locatorName << endl;
+        Name locatorName((const unsigned char*)locStr.c_str(), locStr.size());
+        //    cout << ", Got loc: " << locatorName << endl;
         m_log->UpdateLocator(deviceName, locatorName);
 
-        _LOG_TRACE ("self: " << m_log->GetLocalName () << ", device: " << deviceName << " < == > " << locatorName);
+        _LOG_TRACE("self: " << m_log->GetLocalName() << ", device: " << deviceName << " < == > "
+                            << locatorName);
       }
     }
-    else
-    {
-      _LOG_ERROR ("Receive SYNC DELETE, but we don't support it yet");
+    else {
+      _LOG_ERROR("Receive SYNC DELETE, but we don't support it yet");
       deregister(deviceName);
     }
     index++;
@@ -303,28 +289,28 @@ SyncCore::handleStateData(const Bytes &content)
   // get diff with both new SeqNo and old SeqNo
   SyncStateMsgPtr diff = m_log->FindStateDifferences(*oldHash, *m_rootHash, true);
 
-  if (diff->state_size() > 0)
-  {
-    m_stateMsgCallback (diff);
+  if (diff->state_size() > 0) {
+    m_stateMsgCallback(diff);
   }
 }
 
 void
 SyncCore::sendSyncInterest()
 {
-  Name syncInterest = Name (m_syncPrefix)(m_rootHash->GetHash(), m_rootHash->GetHashBytes());
+  Name syncInterest = Name(m_syncPrefix)(m_rootHash->GetHash(), m_rootHash->GetHashBytes());
 
-  _LOG_DEBUG ("[" << m_log->GetLocalName () << "] >>> SYNC Interest for " << m_rootHash->shortHash () << ": " << syncInterest);
+  _LOG_DEBUG("[" << m_log->GetLocalName() << "] >>> SYNC Interest for " << m_rootHash->shortHash()
+                 << ": "
+                 << syncInterest);
 
   Selectors selectors;
-  if (m_syncInterestInterval > 0 && m_syncInterestInterval < 30.0)
-  {
+  if (m_syncInterestInterval > 0 && m_syncInterestInterval < 30.0) {
     selectors.interestLifetime(m_syncInterestInterval);
   }
-  m_ndnx->sendInterest(syncInterest,
-                         Closure (boost::bind(&SyncCore::handleSyncData, this, _1, _2),
-                                  boost::bind(&SyncCore::handleSyncInterestTimeout, this, _1, _2, _3)),
-                          selectors);
+  m_ccnx->sendInterest(syncInterest,
+                       Closure(boost::bind(&SyncCore::handleSyncData, this, _1, _2),
+                               boost::bind(&SyncCore::handleSyncInterestTimeout, this, _1, _2, _3)),
+                       selectors);
 
   // if there is a pending syncSyncInterest task, reschedule it to be m_syncInterestInterval seconds from now
   // if no such task exists, it will be added
@@ -334,38 +320,36 @@ SyncCore::sendSyncInterest()
 void
 SyncCore::recover(HashPtr hash)
 {
-  if (!(*hash == *m_rootHash) && m_log->LookupSyncLog(*hash) <= 0)
-  {
-    _LOG_TRACE (m_log->GetLocalName () << ", Recover for: " << hash->shortHash ());
+  if (!(*hash == *m_rootHash) && m_log->LookupSyncLog(*hash) <= 0) {
+    _LOG_TRACE(m_log->GetLocalName() << ", Recover for: " << hash->shortHash());
     // unfortunately we still don't recognize this hash
     Bytes bytes;
-    readRaw(bytes, (const unsigned char *)hash->GetHash(), hash->GetHashBytes());
+    readRaw(bytes, (const unsigned char*)hash->GetHash(), hash->GetHashBytes());
 
     // append the unknown hash
-    Name recoverInterest = Name (m_syncPrefix)(RECOVER)(bytes);
+    Name recoverInterest = Name(m_syncPrefix)(RECOVER)(bytes);
 
-    _LOG_DEBUG ("[" << m_log->GetLocalName () << "] >>> RECOVER Interests for " << hash->shortHash ());
+    _LOG_DEBUG("[" << m_log->GetLocalName() << "] >>> RECOVER Interests for " << hash->shortHash());
 
-    m_ndnx->sendInterest(recoverInterest,
-                         Closure (boost::bind(&SyncCore::handleRecoverData, this, _1, _2),
-                                  boost::bind(&SyncCore::handleRecoverInterestTimeout, this, _1, _2, _3)));
-
+    m_ccnx->sendInterest(recoverInterest,
+                         Closure(boost::bind(&SyncCore::handleRecoverData, this, _1, _2),
+                                 boost::bind(&SyncCore::handleRecoverInterestTimeout, this, _1, _2,
+                                             _3)));
   }
-  else
-  {
+  else {
     // we already learned the hash; cheers!
   }
 }
 
 void
-SyncCore::deregister(const Name &name)
+SyncCore::deregister(const Name& name)
 {
   // Do nothing for now
   // TODO: handle deregistering
 }
 
 sqlite3_int64
-SyncCore::seq(const Name &name)
+SyncCore::seq(const Name& name)
 {
   return m_log->SeqNo(name);
 }

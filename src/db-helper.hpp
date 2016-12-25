@@ -21,44 +21,46 @@
 #ifndef DB_HELPER_H
 #define DB_HELPER_H
 
-#include <stdint.h>
-#include <sqlite3.h>
-#include <openssl/evp.h>
-#include <boost/exception/all.hpp>
-#include <string>
 #include "hash-helper.hpp"
+#include <boost/exception/all.hpp>
 #include <boost/filesystem.hpp>
+#include <openssl/evp.h>
+#include <sqlite3.h>
+#include <stdint.h>
+#include <string>
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;
 
 class DbHelper
 {
 public:
-  DbHelper (const boost::filesystem::path &path, const std::string &dbname);
-  virtual ~DbHelper ();
+  DbHelper(const boost::filesystem::path& path, const std::string& dbname);
+  virtual ~DbHelper();
 
 private:
   static void
-  hash_xStep (sqlite3_context *context, int argc, sqlite3_value **argv);
+  hash_xStep(sqlite3_context* context, int argc, sqlite3_value** argv);
 
   static void
-  hash_xFinal (sqlite3_context *context);
+  hash_xFinal(sqlite3_context* context);
 
   static void
-  is_prefix_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
+  is_prefix_xFun(sqlite3_context* context, int argc, sqlite3_value** argv);
 
   static void
-  directory_name_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
+  directory_name_xFun(sqlite3_context* context, int argc, sqlite3_value** argv);
 
   static void
-  is_dir_prefix_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
+  is_dir_prefix_xFun(sqlite3_context* context, int argc, sqlite3_value** argv);
 
 protected:
-  sqlite3 *m_db;
+  sqlite3* m_db;
 };
 
 namespace Error {
-struct Db : virtual boost::exception, virtual std::exception { };
+struct Db : virtual boost::exception, virtual std::exception
+{
+};
 }
 
 typedef boost::shared_ptr<DbHelper> DbHelperPtr;

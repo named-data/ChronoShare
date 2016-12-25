@@ -28,21 +28,21 @@
 #include "sparkle-auto-update.hpp"
 #endif
 
-#include <QtGui>
-#include <QWidget>
-#include <QSystemTrayIcon>
-#include <QMenu>
+#include <QApplication>
+#include <QCloseEvent>
 #include <QDebug>
-#include <QProcess>
-#include <QSettings>
 #include <QDir>
 #include <QFileDialog>
-#include <QCloseEvent>
+#include <QMenu>
 #include <QMessageBox>
-#include <QApplication>
+#include <QProcess>
+#include <QSettings>
+#include <QSystemTrayIcon>
+#include <QWidget>
+#include <QtGui>
 
-#include "fs-watcher.hpp"
 #include "dispatcher.hpp"
+#include "fs-watcher.hpp"
 #include "server.hpp"
 #include <boost/thread/thread.hpp>
 
@@ -50,7 +50,7 @@ class ChronoShareGui : public QDialog
 {
   Q_OBJECT
 
-  public:
+public:
   // constructor
   explicit ChronoShareGui(QWidget* parent = 0);
 
@@ -59,83 +59,102 @@ class ChronoShareGui : public QDialog
 
 private slots:
   // open the shared folder
-  void openSharedFolder();
+  void
+  openSharedFolder();
 
-  void openFile();
+  void
+  openFile();
 
-  void openInWebBrowser();
+  void
+  openInWebBrowser();
 
-  void updateRecentFilesMenu();
+  void
+  updateRecentFilesMenu();
 
   // open file dialog
-  void openFileDialog();
+  void
+  openFileDialog();
 
   // handle left click of tray icon
-  void trayIconClicked(QSystemTrayIcon::ActivationReason reason);
+  void
+  trayIconClicked(QSystemTrayIcon::ActivationReason reason);
 
   // view chronoshare settings
-  void viewSettings();
+  void
+  viewSettings();
 
   // change chronoshare settings
-  void changeSettings();
+  void
+  changeSettings();
 
   // click on adhoc button
-  void onAdHocChange (bool state); // cannot be protected with #ifdef. otherwise something fishy with QT
+  void
+  onAdHocChange(bool state); // cannot be protected with #ifdef. otherwise something fishy with QT
 
-  void onCheckForUpdates();
+  void
+  onCheckForUpdates();
 
 private:
-  void checkFileAction(const std::string &, int, int);
+  void
+  checkFileAction(const std::string&, int, int);
   // create actions that result from clicking a menu option
-  void createActionsAndMenu();
+  void
+  createActionsAndMenu();
 
   // create tray icon
-  void createTrayIcon();
+  void
+  createTrayIcon();
 
   // set icon image
-  void setIcon();
+  void
+  setIcon();
 
   // load persistent settings
-  bool loadSettings();
+  bool
+  loadSettings();
 
   // save persistent settings
-  void saveSettings();
+  void
+  saveSettings();
 
   // prompt user dialog box
-  void openMessageBox(QString title, QString text);
+  void
+  openMessageBox(QString title, QString text);
 
   // overload
-  void openMessageBox(QString title, QString text, QString infotext);
+  void
+  openMessageBox(QString title, QString text, QString infotext);
 
   // capture close event
-  void closeEvent(QCloseEvent* event);
+  void
+  closeEvent(QCloseEvent* event);
 
   // starts/restarts fs watcher and dispatcher
   void
-  startBackend(bool restart=false);
+  startBackend(bool restart = false);
 
 private:
   QSystemTrayIcon* m_trayIcon; // tray icon
-  QMenu* m_trayIconMenu; // tray icon menu
+  QMenu* m_trayIconMenu;       // tray icon menu
 
-  QAction* m_openFolder; // open the shared folder action
+  QAction* m_openFolder;   // open the shared folder action
   QAction* m_viewSettings; // chronoShare settings
   QAction* m_changeFolder; // change the shared folder action
-  QAction* m_quitProgram; // quit program action
-  QAction *m_checkForUpdates;
-  QAction *m_openWeb;
-  QMenu *m_recentFilesMenu;
-  QAction *m_fileActions[5];
+  QAction* m_quitProgram;  // quit program action
+  QAction* m_checkForUpdates;
+  QAction* m_openWeb;
+  QMenu* m_recentFilesMenu;
+  QAction* m_fileActions[5];
 
-  QAction *m_wifiAction;
+  QAction* m_wifiAction;
 
-  QString m_dirPath; // shared directory
-  QString m_username; // username
+  QString m_dirPath;          // shared directory
+  QString m_username;         // username
   QString m_sharedFolderName; // shared folder name
 
-  FsWatcher  *m_watcher;
-  Dispatcher *m_dispatcher;
-  http::server::server *m_httpServer;
+  FsWatcher* m_watcher;
+  Dispatcher* m_dispatcher;
+  http::server::server* m_httpServer;
   boost::thread m_httpServerThread;
 
   QLabel* labelUsername;
@@ -145,15 +164,15 @@ private:
   QLineEdit* editUsername;
   QLineEdit* editSharedFolder;
   QLineEdit* editSharedFolderPath;
-  QLabel *label;
-  QVBoxLayout *mainLayout;
+  QLabel* label;
+  QVBoxLayout* mainLayout;
 
 #ifdef ADHOC_SUPPORTED
   Executor m_executor;
 #endif
 
 #ifdef SPARKLE_SUPPORTED
-  AutoUpdate *m_autoUpdate;
+  AutoUpdate* m_autoUpdate;
 #endif
   // QString m_settingsFilePath; // settings file path
   // QString m_settings;

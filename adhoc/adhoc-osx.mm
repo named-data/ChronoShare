@@ -28,92 +28,93 @@
 
 using namespace std;
 
-INIT_LOGGER ("Adhoc.OSX");
+INIT_LOGGER("Adhoc.OSX");
 
+#import <CoreWLAN/CWInterface.h>
 #import <CoreWLAN/CoreWLAN.h>
 #import <CoreWLAN/CoreWLANConstants.h>
-#import <CoreWLAN/CWInterface.h>
 #import <CoreWLAN/CoreWLANTypes.h>
 
 const NSUInteger g_channel = 11;
-static NSString * g_priorNetwork = 0;
+static NSString* g_priorNetwork = 0;
 
 bool
-Adhoc::CreateAdhoc ()
+Adhoc::CreateAdhoc()
 {
-  NSString *networkName = [[NSString alloc] initWithCString:"NDNdirect" encoding:NSASCIIStringEncoding];
-  NSString *passphrase = [[NSString alloc] initWithCString:"NDNhello" encoding:NSASCIIStringEncoding];
-  NSString *securityMode = [[NSString alloc] initWithCString:"Open" encoding:NSASCIIStringEncoding];
+  NSString* networkName =
+    [[NSString alloc] initWithCString:"NDNdirect" encoding:NSASCIIStringEncoding];
+  NSString* passphrase =
+    [[NSString alloc] initWithCString:"NDNhello" encoding:NSASCIIStringEncoding];
+  NSString* securityMode = [[NSString alloc] initWithCString:"Open" encoding:NSASCIIStringEncoding];
 
-  NSArray *airportInterfaces = [[CWInterface interfaceNames] allObjects];
+  NSArray* airportInterfaces = [[CWInterface interfaceNames] allObjects];
 
   //Choose the desired interface . the first one will be enought for this example
-  NSString *interfaceName =[airportInterfaces objectAtIndex:0];
+  NSString* interfaceName = [airportInterfaces objectAtIndex:0];
 
-  CWInterface *airport = [CWInterface interfaceWithName:interfaceName];
+  CWInterface* airport = [CWInterface interfaceWithName:interfaceName];
 
   g_priorNetwork = airport.ssid;
-  _LOG_DEBUG ("Prior network: " << [g_priorNetwork cStringUsingEncoding:NSASCIIStringEncoding]);
+  _LOG_DEBUG("Prior network: " << [g_priorNetwork cStringUsingEncoding:NSASCIIStringEncoding]);
 
-  _LOG_DEBUG ("Starting adhoc connection");
+  _LOG_DEBUG("Starting adhoc connection");
 
-  NSError *error = nil;
+  NSError* error = nil;
   NSData* data = [networkName dataUsingEncoding:NSUTF8StringEncoding];
-  BOOL created = [airport startIBSSModeWithSSID:data security:kCWIBSSModeSecurityNone channel:g_channel password:passphrase error:&error];
+  BOOL created = [airport startIBSSModeWithSSID:data
+                                       security:kCWIBSSModeSecurityNone
+                                        channel:g_channel
+                                       password:passphrase
+                                          error:&error];
 
-  if (!created)
-    {
-      return false;
-    }
+  if (!created) {
+    return false;
+  }
 
-  _LOG_DEBUG ("Creating face for the adhoc connection");
+  _LOG_DEBUG("Creating face for the adhoc connection");
 
   // should do a better job later, when Ndnx::Control will be implemented
 
   ostringstream cmd;
-  cmd << NDNX_PATH << "/bin/ndndc add / udp 169.254.255.255";
-  int ret = system (cmd.str ().c_str ());
-  if (ret == 0)
-    {
-      return true;
-    }
-  else
-    {
-      DestroyAdhoc ();
-      return false;
-    }
+  cmd << CCNX_PATH << "/bin/ccndc add / udp 169.254.255.255";
+  int ret = system(cmd.str().c_str());
+  if (ret == 0) {
+    return true;
+  }
+  else {
+    DestroyAdhoc();
+    return false;
+  }
 }
 
 void
-Adhoc::DestroyAdhoc ()
+Adhoc::DestroyAdhoc()
 {
-  NSArray *airportInterfaces = [[CWInterface interfaceNames] allObjects];
+  NSArray* airportInterfaces = [[CWInterface interfaceNames] allObjects];
 
   //Choose the desired interface . the first one will be enought for this example
-  NSString *interfaceName = [airportInterfaces objectAtIndex:0];
+  NSString* interfaceName = [airportInterfaces objectAtIndex:0];
 
-  CWInterface *airport = [CWInterface interfaceWithName:interfaceName];
+  CWInterface* airport = [CWInterface interfaceWithName:interfaceName];
 
   [airport disassociate];
 
-  NSError *err;
+  NSError* err;
 
-  if (g_priorNetwork != 0)
-    {
-      NSSet *scanResults = [airport scanForNetworksWithName:g_priorNetwork error:&err];
+  if (g_priorNetwork != 0) {
+    NSSet* scanResults = [airport scanForNetworksWithName:g_priorNetwork error:&err];
 
-      if([scanResults count] > 0)
-        {
-          CWNetwork *previousNetwork = [[scanResults allObjects] objectAtIndex:0];
+    if ([scanResults count] > 0) {
+      CWNetwork* previousNetwork = [[scanResults allObjects] objectAtIndex:0];
 
-          [airport associateToNetwork:previousNetwork password:nil error:&err];
-
-          g_priorNetwork = 0;
-          return;
-        }
+      [airport associateToNetwork:previousNetwork password:nil error:&err];
 
       g_priorNetwork = 0;
+      return;
     }
+
+    g_priorNetwork = 0;
+  }
 
   [airport setPower:NO error:&err];
   [airport setPower:YES error:&err];

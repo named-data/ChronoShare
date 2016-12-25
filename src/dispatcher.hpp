@@ -22,17 +22,17 @@
 #define DISPATCHER_H
 
 #include "action-log.hpp"
-#include "sync-core.hpp"
 #include "ccnx-wrapper.hpp"
+#include "content-server.hpp"
 #include "executor.hpp"
+#include "fetch-manager.hpp"
 #include "object-db.hpp"
 #include "object-manager.hpp"
-#include "content-server.hpp"
 #include "state-server.hpp"
-#include "fetch-manager.hpp"
+#include "sync-core.hpp"
 
-#include <boost/function.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/function.hpp>
 #include <boost/shared_ptr.hpp>
 #include <map>
 
@@ -46,12 +46,9 @@ class Dispatcher
 public:
   // sharedFolder is the name to be used in NDN name;
   // rootDir is the shared folder dir in local file system;
-  Dispatcher(const std::string &localUserName
-             , const std::string &sharedFolder
-             , const boost::filesystem::path &rootDir
-             , Ndnx::NdnxWrapperPtr ndnx
-             , bool enablePrefixDiscovery = true
-             );
+  Dispatcher(const std::string& localUserName, const std::string& sharedFolder,
+             const boost::filesystem::path& rootDir, Ccnx::CcnxWrapperPtr ccnx,
+             bool enablePrefixDiscovery = true);
   ~Dispatcher();
 
   // ----- Callbacks, they only submit the job to executor and immediately return so that event processing thread won't be blocked for too long -------
@@ -59,33 +56,42 @@ public:
 
   // callback to process local file change
   void
-  Did_LocalFile_AddOrModify (const boost::filesystem::path &relativeFilepath);
+  Did_LocalFile_AddOrModify(const boost::filesystem::path& relativeFilepath);
 
   void
-  Did_LocalFile_Delete (const boost::filesystem::path &relativeFilepath);
+  Did_LocalFile_Delete(const boost::filesystem::path& relativeFilepath);
 
   /**
    * @brief Invoked when FileState is detected to have a file which does not exist on a file system
    */
   void
-  Restore_LocalFile (FileItemPtr file);
+  Restore_LocalFile(FileItemPtr file);
 
   // for test
   HashPtr
-  SyncRoot() { return m_core->root(); }
+  SyncRoot()
+  {
+    return m_core->root();
+  }
 
   inline void
-  LookupRecentFileActions(const boost::function<void(const std::string &, int, int)> &visitor, int limit) { m_actionLog->LookupRecentFileActions(visitor, limit); }
+  LookupRecentFileActions(const boost::function<void(const std::string&, int, int)>& visitor,
+                          int limit)
+  {
+    m_actionLog->LookupRecentFileActions(visitor, limit);
+  }
 
 private:
   void
-  Did_LocalFile_AddOrModify_Execute (boost::filesystem::path relativeFilepath); // cannot be const & for Execute event!!! otherwise there will be segfault
+  Did_LocalFile_AddOrModify_Execute(
+    boost::filesystem::path relativeFilepath); // cannot be const & for Execute event!!! otherwise there will be segfault
 
   void
-  Did_LocalFile_Delete_Execute (boost::filesystem::path relativeFilepath); // cannot be const & for Execute event!!! otherwise there will be segfault
+  Did_LocalFile_Delete_Execute(
+    boost::filesystem::path relativeFilepath); // cannot be const & for Execute event!!! otherwise there will be segfault
 
   void
-  Restore_LocalFile_Execute (FileItemPtr file);
+  Restore_LocalFile_Execute(FileItemPtr file);
 
 private:
   /**
@@ -106,42 +112,46 @@ private:
 
   // callback to process remote sync state change
   void
-  Did_SyncLog_StateChange (SyncStateMsgPtr stateMsg);
+  Did_SyncLog_StateChange(SyncStateMsgPtr stateMsg);
 
   void
-  Did_SyncLog_StateChange_Execute (SyncStateMsgPtr stateMsg);
+  Did_SyncLog_StateChange_Execute(SyncStateMsgPtr stateMsg);
 
   void
-  Did_FetchManager_ActionFetch (const Ndnx::Name &deviceName, const Ndnx::Name &actionName, uint32_t seqno, Ndnx::PcoPtr actionPco);
+  Did_FetchManager_ActionFetch(const Ccnx::Name& deviceName, const Ccnx::Name& actionName,
+                               uint32_t seqno, Ccnx::PcoPtr actionPco);
 
   void
-  Did_ActionLog_ActionApply_Delete (const std::string &filename);
+  Did_ActionLog_ActionApply_Delete(const std::string& filename);
 
   void
-  Did_ActionLog_ActionApply_Delete_Execute (std::string filename);
+  Did_ActionLog_ActionApply_Delete_Execute(std::string filename);
 
   // void
   // Did_ActionLog_ActionApply_AddOrModify (const std::string &filename, Ndnx::Name device_name, sqlite3_int64 seq_no,
   //                                        HashPtr hash, time_t m_time, int mode, int seg_num);
 
   void
-  Did_FetchManager_FileSegmentFetch (const Ndnx::Name &deviceName, const Ndnx::Name &fileSegmentName, uint32_t segment, Ndnx::PcoPtr fileSegmentPco);
+  Did_FetchManager_FileSegmentFetch(const Ccnx::Name& deviceName, const Ccnx::Name& fileSegmentName,
+                                    uint32_t segment, Ccnx::PcoPtr fileSegmentPco);
 
   void
-  Did_FetchManager_FileSegmentFetch_Execute (Ndnx::Name deviceName, Ndnx::Name fileSegmentName, uint32_t segment, Ndnx::PcoPtr fileSegmentPco);
+  Did_FetchManager_FileSegmentFetch_Execute(Ccnx::Name deviceName, Ccnx::Name fileSegmentName,
+                                            uint32_t segment, Ccnx::PcoPtr fileSegmentPco);
 
   void
-  Did_FetchManager_FileFetchComplete (const Ndnx::Name &deviceName, const Ndnx::Name &fileBaseName);
+  Did_FetchManager_FileFetchComplete(const Ccnx::Name& deviceName, const Ccnx::Name& fileBaseName);
 
   void
-  Did_FetchManager_FileFetchComplete_Execute (Ndnx::Name deviceName, Ndnx::Name fileBaseName);
+  Did_FetchManager_FileFetchComplete_Execute(Ccnx::Name deviceName, Ccnx::Name fileBaseName);
 
   void
-  Did_LocalPrefix_Updated (const Ndnx::Name &prefix);
+  Did_LocalPrefix_Updated(const Ccnx::Name& prefix);
 
 private:
   void
-  AssembleFile_Execute (const Ndnx::Name &deviceName, const Hash &filehash, const boost::filesystem::path &relativeFilepath);
+  AssembleFile_Execute(const Ccnx::Name& deviceName, const Hash& filehash,
+                       const boost::filesystem::path& relativeFilepath);
 
   // void
   // fileChanged(const boost::filesystem::path &relativeFilepath, ActionType type);
@@ -159,9 +169,9 @@ private:
   // fileReady(const Ndnx::Name &fileNamePrefix);
 
 private:
-  Ndnx::NdnxWrapperPtr m_ndnx;
-  SyncCore *m_core;
-  SyncLogPtr   m_syncLog;
+  Ccnx::CcnxWrapperPtr m_ccnx;
+  SyncCore* m_core;
+  SyncLogPtr m_syncLog;
   ActionLogPtr m_actionLog;
   FileStatePtr m_fileState;
   FileStatePtr m_fileStateCow;
@@ -176,19 +186,19 @@ private:
   std::map<Hash, ObjectDbPtr> m_objectDbMap;
 
   std::string m_sharedFolder;
-  ContentServer *m_server;
-  StateServer   *m_stateServer;
+  ContentServer* m_server;
+  StateServer* m_stateServer;
   bool m_enablePrefixDiscovery;
 
   FetchManagerPtr m_actionFetcher;
   FetchManagerPtr m_fileFetcher;
 };
 
-namespace Error
+namespace Error {
+struct Dispatcher : virtual boost::exception, virtual std::exception
 {
-  struct Dispatcher : virtual boost::exception, virtual std::exception {};
-  typedef boost::error_info<struct tag_errmsg, std::string> error_info_str;
+};
+typedef boost::error_info<struct tag_errmsg, std::string> error_info_str;
 }
 
 #endif // DISPATCHER_H
-

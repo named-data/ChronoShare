@@ -21,72 +21,68 @@
 #ifndef FETCH_MANAGER_H
 #define FETCH_MANAGER_H
 
+#include "ccnx-wrapper.h"
+#include "executor.h"
+#include "fetch-task-db.h"
+#include "scheduler.h"
 #include <boost/exception/all.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/function.hpp>
-#include <string>
+#include <boost/shared_ptr.hpp>
 #include <list>
 #include <stdint.h>
-#include "scheduler.h"
-#include "executor.h"
-#include "ndnx-wrapper.h"
-#include "fetch-task-db.h"
+#include <string>
 
 #include "fetcher.h"
 
 class FetchManager
 {
 public:
-  enum
-    {
-      PRIORITY_NORMAL,
-      PRIORITY_HIGH
-    };
+  enum { PRIORITY_NORMAL, PRIORITY_HIGH };
 
-  typedef boost::function<Ndnx::Name(const Ndnx::Name &)> Mapping;
-  typedef boost::function<void(Ndnx::Name &deviceName, Ndnx::Name &baseName, uint64_t seq, Ndnx::PcoPtr pco)> SegmentCallback;
-  typedef boost::function<void(Ndnx::Name &deviceName, Ndnx::Name &baseName)> FinishCallback;
-  FetchManager (Ndnx::NdnxWrapperPtr ndnx,
-                const Mapping &mapping,
-                const Ndnx::Name &broadcastForwardingHint,
-                uint32_t parallelFetches = 3,
-                const SegmentCallback &defaultSegmentCallback = SegmentCallback(),
-                const FinishCallback &defaultFinishCallback = FinishCallback(),
-                const FetchTaskDbPtr &taskDb = FetchTaskDbPtr()
-                );
-  virtual ~FetchManager ();
+  typedef boost::function<Ccnx::Name(const Ccnx::Name&)> Mapping;
+  typedef boost::function<void(Ccnx::Name& deviceName, Ccnx::Name& baseName, uint64_t seq, Ccnx::PcoPtr pco)>
+    SegmentCallback;
+  typedef boost::function<void(Ccnx::Name& deviceName, Ccnx::Name& baseName)> FinishCallback;
+  FetchManager(Ccnx::CcnxWrapperPtr ccnx,
+               const Mapping& mapping,
+               const Ccnx::Name& broadcastForwardingHint,
+               uint32_t parallelFetches = 3,
+               const SegmentCallback& defaultSegmentCallback = SegmentCallback(),
+               const FinishCallback& defaultFinishCallback = FinishCallback(),
+               const FetchTaskDbPtr& taskDb = FetchTaskDbPtr());
+  virtual ~FetchManager();
 
   void
-  Enqueue (const Ndnx::Name &deviceName, const Ndnx::Name &baseName,
-           const SegmentCallback &segmentCallback, const FinishCallback &finishCallback,
-           uint64_t minSeqNo, uint64_t maxSeqNo, int priority=PRIORITY_NORMAL);
+  Enqueue(const Ccnx::Name& deviceName, const Ccnx::Name& baseName,
+          const SegmentCallback& segmentCallback, const FinishCallback& finishCallback,
+          uint64_t minSeqNo, uint64_t maxSeqNo, int priority = PRIORITY_NORMAL);
 
   // Enqueue using default callbacks
   void
-  Enqueue (const Ndnx::Name &deviceName, const Ndnx::Name &baseName,
-           uint64_t minSeqNo, uint64_t maxSeqNo, int priority=PRIORITY_NORMAL);
+  Enqueue(const Ccnx::Name& deviceName, const Ccnx::Name& baseName, uint64_t minSeqNo,
+          uint64_t maxSeqNo, int priority = PRIORITY_NORMAL);
 
   // only for Fetcher
-  inline Ndnx::NdnxWrapperPtr
-  GetNdnx ();
+  inline Ccnx::CcnxWrapperPtr
+  GetCcnx();
 
 private:
   // Fetch Events
   void
-  DidDataSegmentFetched (Fetcher &fetcher, uint64_t seqno, const Ndnx::Name &basename,
-                         const Ndnx::Name &name, Ndnx::PcoPtr data);
+  DidDataSegmentFetched(Fetcher& fetcher, uint64_t seqno, const Ccnx::Name& basename,
+                        const Ccnx::Name& name, Ccnx::PcoPtr data);
 
   void
-  DidNoDataTimeout (Fetcher &fetcher);
+  DidNoDataTimeout(Fetcher& fetcher);
 
   void
-  DidFetchComplete (Fetcher &fetcher, const Ndnx::Name &deviceName, const Ndnx::Name &baseName);
+  DidFetchComplete(Fetcher& fetcher, const Ccnx::Name& deviceName, const Ccnx::Name& baseName);
 
   void
-  ScheduleFetches ();
+  ScheduleFetches();
 
   void
-  TimedWait (Fetcher &fetcher);
+  TimedWait(Fetcher& fetcher);
 
 private:
   Ndnx::NdnxWrapperPtr m_ndnx;
@@ -97,8 +93,9 @@ private:
   boost::mutex m_parellelFetchMutex;
 
   // optimized list structure for fetch queue
-  typedef boost::intrusive::member_hook< Fetcher,
-                                         boost::intrusive::list_member_hook<>, &Fetcher::m_managerListHook> MemberOption;
+  typedef boost::intrusive::member_hook<Fetcher, boost::intrusive::list_member_hook<>,
+                                        &Fetcher::m_managerListHook>
+    MemberOption;
   typedef boost::intrusive::list<Fetcher, MemberOption> FetchList;
 
   FetchList m_fetchList;
@@ -112,15 +109,17 @@ private:
   const Ndnx::Name m_broadcastHint;
 };
 
-Ndnx::NdnxWrapperPtr
-FetchManager::GetNdnx ()
+Ccnx::CcnxWrapperPtr
+FetchManager::GetCcnx()
 {
   return m_ndnx;
 }
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;
 namespace Error {
-struct FetchManager : virtual boost::exception, virtual std::exception { };
+struct FetchManager : virtual boost::exception, virtual std::exception
+{
+};
 }
 
 typedef boost::shared_ptr<FetchManager> FetchManagerPtr;

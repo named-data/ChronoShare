@@ -20,33 +20,35 @@
 #ifndef FETCH_TASK_DB_H
 #define FETCH_TASK_DB_H
 
-#include <sqlite3.h>
-#include <ndnx-common.h>
-#include <ndnx-name.h>
 #include <boost/filesystem.hpp>
 #include <boost/shared_ptr.hpp>
+#include <ccnx-common.h>
+#include <ccnx-name.h>
+#include <sqlite3.h>
 
 class FetchTaskDb
 {
 public:
-  FetchTaskDb(const boost::filesystem::path &folder, const std::string &tag);
+  FetchTaskDb(const boost::filesystem::path& folder, const std::string& tag);
   ~FetchTaskDb();
 
   // task with same deviceName and baseName combination will be added only once
   // if task already exists, this call does nothing
   void
-  addTask(const Ndnx::Name &deviceName, const Ndnx::Name &baseName, uint64_t minSeqNo, uint64_t maxSeqNo, int priority);
+  addTask(const Ccnx::Name& deviceName, const Ccnx::Name& baseName, uint64_t minSeqNo,
+          uint64_t maxSeqNo, int priority);
 
   void
-  deleteTask(const Ndnx::Name &deviceName, const Ndnx::Name &baseName);
+  deleteTask(const Ccnx::Name& deviceName, const Ccnx::Name& baseName);
 
-  typedef boost::function<void(const Ndnx::Name &, const Ndnx::Name &, uint64_t, uint64_t, int)> FetchTaskCallback;
+  typedef boost::function<void(const Ccnx::Name&, const Ccnx::Name&, uint64_t, uint64_t, int)>
+    FetchTaskCallback;
 
   void
-  foreachTask(const FetchTaskCallback &callback);
+  foreachTask(const FetchTaskCallback& callback);
 
 private:
-  sqlite3 *m_db;
+  sqlite3* m_db;
 };
 
 typedef boost::shared_ptr<FetchTaskDb> FetchTaskDbPtr;

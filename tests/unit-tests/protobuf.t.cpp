@@ -17,16 +17,15 @@
  *
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
-
 #include "ccnx-common.hpp"
 #include "sync-core.hpp"
-#include <boost/make_shared.hpp>
-#include <boost/test/unit_test.hpp>
+#include <boost/iostreams/device/back_inserter.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
-#include <boost/iostreams/device/back_inserter.hpp>
-#include <boost/range/iterator_range.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/make_shared.hpp>
+#include <boost/range/iterator_range.hpp>
+#include <boost/test/unit_test.hpp>
 
 using namespace Ndnx;
 using namespace std;
@@ -35,11 +34,11 @@ using namespace boost;
 BOOST_AUTO_TEST_SUITE(ProtobufTests)
 
 
-BOOST_AUTO_TEST_CASE (TestGzipProtobuf)
+BOOST_AUTO_TEST_CASE(TestGzipProtobuf)
 {
   SyncStateMsgPtr msg = make_shared<SyncStateMsg>();
 
-  SyncState *state = msg->add_state();
+  SyncState* state = msg->add_state();
   state->set_type(SyncState::UPDATE);
   state->set_seq(100);
   char x[100] = {'a'};
@@ -50,7 +49,7 @@ BOOST_AUTO_TEST_CASE (TestGzipProtobuf)
 
   BytesPtr cb = serializeGZipMsg<SyncStateMsg>(*msg);
   BOOST_CHECK(cb->size() < bb->size());
-  cout << cb->size() <<", " << bb->size() << endl;
+  cout << cb->size() << ", " << bb->size() << endl;
 
   SyncStateMsgPtr msg1 = deserializeGZipMsg<SyncStateMsg>(*cb);
 

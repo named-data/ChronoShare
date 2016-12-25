@@ -19,28 +19,28 @@
  */
 
 #include "sparkle-auto-update.hpp"
-#import <Foundation/Foundation.h>
 #import <AppKit/AppKit.h>
+#import <Foundation/Foundation.h>
 #import <Sparkle/Sparkle.h>
 
 #include "logging.hpp"
 
-INIT_LOGGER ("SparkeAutoUpdate");
+INIT_LOGGER("SparkeAutoUpdate");
 
 class SparkleAutoUpdate::Private
 {
 public:
-  SUUpdater *updater;
+  SUUpdater* updater;
 };
 
-SparkleAutoUpdate::SparkleAutoUpdate(const QString &updateUrl)
+SparkleAutoUpdate::SparkleAutoUpdate(const QString& updateUrl)
 {
   d = new Private;
   d->updater = [[SUUpdater sharedUpdater] retain];
-  NSURL *url = [NSURL URLWithString: [NSString stringWithUTF8String: updateUrl.toUtf8().data()]];
-  [d->updater setFeedURL: url];
-  [d->updater setAutomaticallyChecksForUpdates: YES];
-  [d->updater setUpdateCheckInterval: 86400];
+  NSURL* url = [NSURL URLWithString:[NSString stringWithUTF8String:updateUrl.toUtf8().data()]];
+  [d->updater setFeedURL:url];
+  [d->updater setAutomaticallyChecksForUpdates:YES];
+  [d->updater setUpdateCheckInterval:86400];
 }
 
 SparkleAutoUpdate::~SparkleAutoUpdate()
@@ -50,9 +50,10 @@ SparkleAutoUpdate::~SparkleAutoUpdate()
   // presummably SUUpdater handles garbage collection
 }
 
-void SparkleAutoUpdate::checkForUpdates()
+void
+SparkleAutoUpdate::checkForUpdates()
 {
   //[d->updater checkForUpdatesInBackground];
-  [d->updater checkForUpdates : nil];
-  _LOG_DEBUG ("++++++++ checking update +++++");
+  [d->updater checkForUpdates:nil];
+  _LOG_DEBUG("++++++++ checking update +++++");
 }

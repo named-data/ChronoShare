@@ -37,25 +37,17 @@ struct mapping
 {
   const char* extension;
   const char* mime_type;
-} mappings[] =
-{
-  { "gif", "image/gif" },
-  { "htm", "text/html" },
-  { "html", "text/html" },
-  { "css", "text/css" },
-  { "js", "text/javascript" },
-  { "jpg", "image/jpeg" },
-  { "png", "image/png" },
-  { "ico", "image/x-icon" },
-  { 0, 0 } // Marks end of list.
+} mappings[] = {
+  {"gif", "image/gif"}, {"htm", "text/html"},      {"html", "text/html"},
+  {"css", "text/css"},  {"js", "text/javascript"}, {"jpg", "image/jpeg"},
+  {"png", "image/png"}, {"ico", "image/x-icon"},   {0, 0} // Marks end of list.
 };
 
-std::string extension_to_type(const std::string& extension)
+std::string
+extension_to_type(const std::string& extension)
 {
-  for (mapping* m = mappings; m->extension; ++m)
-  {
-    if (m->extension == extension)
-    {
+  for (mapping* m = mappings; m->extension; ++m) {
+    if (m->extension == extension) {
       return m->mime_type;
     }
   }

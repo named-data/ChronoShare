@@ -24,7 +24,7 @@
 #include "core/chronoshare-config.hpp"
 
 #if (__APPLE__ && HAVE_COREWLAN)
-    #define ADHOC_SUPPORTED 1
+#define ADHOC_SUPPORTED 1
 #endif
 
 #ifdef ADHOC_SUPPORTED
@@ -33,10 +33,10 @@ class Adhoc
 {
 public:
   static bool
-  CreateAdhoc ();
+  CreateAdhoc();
 
   static void
-  DestroyAdhoc ();
+  DestroyAdhoc();
 };
 
 #endif

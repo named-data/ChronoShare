@@ -21,27 +21,27 @@
 #ifndef OBJECT_DB_H
 #define OBJECT_DB_H
 
-#include <string>
-#include <sqlite3.h>
-#include <ndnx-common.h>
-#include <ndnx-name.h>
 #include <boost/filesystem.hpp>
 #include <boost/shared_ptr.hpp>
+#include <ccnx-common.h>
+#include <ccnx-name.h>
 #include <ctime>
+#include <sqlite3.h>
+#include <string>
 #include <vector>
 
 class ObjectDb
 {
 public:
   // database will be create in <folder>/<first-pair-of-hash-bytes>/<rest-of-hash>
-  ObjectDb (const boost::filesystem::path &folder, const std::string &hash);
-  ~ObjectDb ();
+  ObjectDb(const boost::filesystem::path& folder, const std::string& hash);
+  ~ObjectDb();
 
   void
-  saveContentObject (const Ndnx::Name &deviceName, sqlite3_int64 segment, const Ndnx::Bytes &data);
+  saveContentObject(const Ccnx::Name& deviceName, sqlite3_int64 segment, const Ccnx::Bytes& data);
 
-  Ndnx::BytesPtr
-  fetchSegment (const Ndnx::Name &deviceName, sqlite3_int64 segment);
+  Ccnx::BytesPtr
+  fetchSegment(const Ccnx::Name& deviceName, sqlite3_int64 segment);
 
   // sqlite3_int64
   // getNumberOfSegments (const Ndnx::Name &deviceName);
@@ -50,17 +50,18 @@ public:
   secondsSinceLastUse();
 
   static bool
-  DoesExist (const boost::filesystem::path &folder, const Ndnx::Name &deviceName, const std::string &hash);
+  DoesExist(const boost::filesystem::path& folder, const Ccnx::Name& deviceName,
+            const std::string& hash);
 
 private:
   void
-  willStartSave ();
+  willStartSave();
 
   void
-  didStopSave ();
+  didStopSave();
 
 private:
-  sqlite3 *m_db;
+  sqlite3* m_db;
   time_t m_lastUsed;
 };
 

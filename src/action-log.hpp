@@ -21,13 +21,13 @@
 #ifndef ACTION_LOG_H
 #define ACTION_LOG_H
 
+#include "action-item.pb.hpp"
+#include "ccnx-pco.hpp"
+#include "ccnx-wrapper.hpp"
 #include "db-helper.hpp"
+#include "file-item.pb.hpp"
 #include "file-state.hpp"
 #include "sync-log.hpp"
-#include "action-item.pb.hpp"
-#include "file-item.pb.hpp"
-#include "ccnx-wrapper.hpp"
-#include "ccnx-pco.hpp"
 
 #include <boost/tuple/tuple.hpp>
 
@@ -38,41 +38,43 @@ typedef boost::shared_ptr<ActionItem> ActionItemPtr;
 class ActionLog : public DbHelper
 {
 public:
-  typedef boost::function<void (std::string /*filename*/, Ndnx::Name /*device_name*/, sqlite3_int64 /*seq_no*/,
-                                HashPtr /*hash*/, time_t /*m_time*/, int /*mode*/, int /*seg_num*/)> OnFileAddedOrChangedCallback;
+  typedef boost::function<void(std::string /*filename*/, Ccnx::Name /*device_name*/, sqlite3_int64 /*seq_no*/,
+                               HashPtr /*hash*/, time_t /*m_time*/, int /*mode*/, int /*seg_num*/)>
+    OnFileAddedOrChangedCallback;
 
-  typedef boost::function<void (std::string /*filename*/)> OnFileRemovedCallback;
+  typedef boost::function<void(std::string /*filename*/)> OnFileRemovedCallback;
 
 public:
-  ActionLog (Ndnx::NdnxWrapperPtr ndnx, const boost::filesystem::path &path,
-             SyncLogPtr syncLog,
-             const std::string &sharedFolder, const std::string &appName,
-             OnFileAddedOrChangedCallback onFileAddedOrChanged, OnFileRemovedCallback onFileRemoved);
+  ActionLog(Ccnx::CcnxWrapperPtr ccnx, const boost::filesystem::path& path, SyncLogPtr syncLog,
+            const std::string& sharedFolder, const std::string& appName,
+            OnFileAddedOrChangedCallback onFileAddedOrChanged, OnFileRemovedCallback onFileRemoved);
 
-  virtual ~ActionLog () { }
+  virtual ~ActionLog()
+  {
+  }
 
   //////////////////////////
   // Local operations     //
   //////////////////////////
   ActionItemPtr
-  AddLocalActionUpdate (const std::string &filename,
-                        const Hash &hash,
-                        time_t wtime,
-                        int mode,
-                        int seg_num);
+  AddLocalActionUpdate(const std::string& filename,
+                       const Hash& hash,
+                       time_t wtime,
+                       int mode,
+                       int seg_num);
 
   // void
   // AddActionMove (const std::string &oldFile, const std::string &newFile);
 
   ActionItemPtr
-  AddLocalActionDelete (const std::string &filename);
+  AddLocalActionDelete(const std::string& filename);
 
   //////////////////////////
   // Remote operations    //
   //////////////////////////
 
   ActionItemPtr
-  AddRemoteAction (const Ndnx::Name &deviceName, sqlite3_int64 seqno, Ndnx::PcoPtr actionPco);
+  AddRemoteAction(const Ccnx::Name& deviceName, sqlite3_int64 seqno, Ccnx::PcoPtr actionPco);
 
   /**
    * @brief Add remote action using just action's parsed content object
@@ -80,56 +82,59 @@ public:
    * This function extracts device name and sequence number from the content object's and calls the overloaded method
    */
   ActionItemPtr
-  AddRemoteAction (Ndnx::PcoPtr actionPco);
+  AddRemoteAction(Ccnx::PcoPtr actionPco);
 
   ///////////////////////////
   // General operations    //
   ///////////////////////////
 
-  Ndnx::PcoPtr
-  LookupActionPco (const Ndnx::Name &deviceName, sqlite3_int64 seqno);
+  Ccnx::PcoPtr
+  LookupActionPco(const Ccnx::Name& deviceName, sqlite3_int64 seqno);
 
-  Ndnx::PcoPtr
-  LookupActionPco (const Ndnx::Name &actionName);
-
-  ActionItemPtr
-  LookupAction (const Ndnx::Name &deviceName, sqlite3_int64 seqno);
+  Ccnx::PcoPtr
+  LookupActionPco(const Ccnx::Name& actionName);
 
   ActionItemPtr
-  LookupAction (const Ndnx::Name &actionName);
+  LookupAction(const Ccnx::Name& deviceName, sqlite3_int64 seqno);
+
+  ActionItemPtr
+  LookupAction(const Ccnx::Name& actionName);
 
   FileItemPtr
-  LookupAction (const std::string &filename, sqlite3_int64 version, const Hash &filehash);
+  LookupAction(const std::string& filename, sqlite3_int64 version, const Hash& filehash);
 
   /**
    * @brief Lookup up to [limit] actions starting [offset] in decreasing order (by timestamp) and calling visitor(device_name,seqno,action) for each action
    */
   bool
-  LookupActionsInFolderRecursively (const boost::function<void (const Ndnx::Name &name, sqlite3_int64 seq_no, const ActionItem &)> &visitor,
-                                    const std::string &folder, int offset=0, int limit=-1);
+  LookupActionsInFolderRecursively(
+    const boost::function<void(const Ccnx::Name& name, sqlite3_int64 seq_no, const ActionItem&)>& visitor,
+    const std::string& folder, int offset = 0, int limit = -1);
 
   bool
-  LookupActionsForFile (const boost::function<void (const Ndnx::Name &name, sqlite3_int64 seq_no, const ActionItem &)> &visitor,
-                        const std::string &file, int offset=0, int limit=-1);
+  LookupActionsForFile(
+    const boost::function<void(const Ccnx::Name& name, sqlite3_int64 seq_no, const ActionItem&)>& visitor,
+    const std::string& file, int offset = 0, int limit = -1);
 
   void
-  LookupRecentFileActions(const boost::function<void (const std::string &, int, int)> &visitor, int limit = 5);
+  LookupRecentFileActions(const boost::function<void(const std::string&, int, int)>& visitor,
+                          int limit = 5);
 
   //
   inline FileStatePtr
-  GetFileState ();
+  GetFileState();
 
 public:
   // for test purposes
   sqlite3_int64
-  LogSize ();
+  LogSize();
 
 private:
-  boost::tuple<sqlite3_int64 /*version*/, Ndnx::NdnxCharbufPtr /*device name*/, sqlite3_int64 /*seq_no*/>
-  GetLatestActionForFile (const std::string &filename);
+  boost::tuple<sqlite3_int64 /*version*/, Ccnx::CcnxCharbufPtr /*device name*/, sqlite3_int64 /*seq_no*/>
+  GetLatestActionForFile(const std::string& filename);
 
   static void
-  apply_action_xFun (sqlite3_context *context, int argc, sqlite3_value **argv);
+  apply_action_xFun(sqlite3_context* context, int argc, sqlite3_value** argv);
 
 private:
   SyncLogPtr m_syncLog;
@@ -140,15 +145,17 @@ private:
   std::string m_appName;
 
   OnFileAddedOrChangedCallback m_onFileAddedOrChanged;
-  OnFileRemovedCallback        m_onFileRemoved;
+  OnFileRemovedCallback m_onFileRemoved;
 };
 
 namespace Error {
-struct ActionLog : virtual boost::exception, virtual std::exception { };
+struct ActionLog : virtual boost::exception, virtual std::exception
+{
+};
 }
 
 inline FileStatePtr
-ActionLog::GetFileState ()
+ActionLog::GetFileState()
 {
   return m_fileState;
 }

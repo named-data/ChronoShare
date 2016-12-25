@@ -23,30 +23,27 @@
 
 #include "sync-state.pb.hpp"
 
-inline std::ostream &
-operator << (std::ostream &os, const SyncStateMsgPtr &msg)
+inline std::ostream&
+operator<<(std::ostream& os, const SyncStateMsgPtr& msg)
 {
   os << " ===== start Msg ======" << std::endl;
 
   int size = msg->state_size();
-  if (size > 0)
-  {
+  if (size > 0) {
     int index = 0;
-    while (index < size)
-    {
+    while (index < size) {
       SyncState state = msg->state(index);
       string strName = state.name();
       string strLocator = state.locator();
       sqlite3_int64 seq = state.seq();
 
-      os << "Name: " << Ndnx::Name((const unsigned char *)strName.c_str(), strName.size())
-         << ", Locator: " << Ndnx::Name((const unsigned char *)strLocator.c_str(), strLocator.size())
+      os << "Name: " << Ccnx::Name((const unsigned char*)strName.c_str(), strName.size())
+         << ", Locator: " << Ccnx::Name((const unsigned char*)strLocator.c_str(), strLocator.size())
          << ", seq: " << seq << std::endl;
-      index ++;
+      index++;
     }
   }
-  else
-  {
+  else {
     os << "Msg size 0" << std::endl;
   }
   os << " ++++++++ end Msg  ++++++++ " << std::endl;

@@ -30,10 +30,10 @@
 #ifndef HTTP_REPLY_HPP
 #define HTTP_REPLY_HPP
 
+#include "header.hpp"
+#include <boost/asio.hpp>
 #include <string>
 #include <vector>
-#include <boost/asio.hpp>
-#include "header.hpp"
 
 namespace http {
 namespace server {
@@ -42,8 +42,7 @@ namespace server {
 struct reply
 {
   /// The status of the reply.
-  enum status_type
-  {
+  enum status_type {
     ok = 200,
     created = 201,
     accepted = 202,
@@ -71,10 +70,12 @@ struct reply
   /// Convert the reply into a vector of buffers. The buffers do not own the
   /// underlying memory blocks, therefore the reply object must remain valid and
   /// not be changed until the write operation has completed.
-  std::vector<boost::asio::const_buffer> to_buffers();
+  std::vector<boost::asio::const_buffer>
+  to_buffers();
 
   /// Get a stock reply.
-  static reply stock_reply(status_type status);
+  static reply
+  stock_reply(status_type status);
 };
 
 } // namespace server

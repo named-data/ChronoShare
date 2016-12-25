@@ -18,16 +18,16 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#include <boost/test/unit_test.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/test/unit_test.hpp>
 
-#include "logging.hpp"
 #include "action-log.hpp"
+#include "logging.hpp"
 
-#include <unistd.h>
-#include <iostream>
 #include <boost/filesystem.hpp>
 #include <boost/make_shared.hpp>
+#include <iostream>
+#include <unistd.h>
 
 using namespace std;
 using namespace boost;
@@ -36,110 +36,115 @@ namespace fs = boost::filesystem;
 
 BOOST_AUTO_TEST_SUITE(TestActionLog)
 
-BOOST_AUTO_TEST_CASE (ActionLogTest)
+BOOST_AUTO_TEST_CASE(ActionLogTest)
 {
-  INIT_LOGGERS ();
+  INIT_LOGGERS();
 
-  Name localName ("/alex");
+  Name localName("/alex");
 
-  fs::path tmpdir = fs::unique_path (fs::temp_directory_path () / "%%%%-%%%%-%%%%-%%%%");
-  SyncLogPtr syncLog = make_shared<SyncLog> (tmpdir, localName);
-  NdnxWrapperPtr ndnx = make_shared<NdnxWrapper> ();
+  fs::path tmpdir = fs::unique_path(fs::temp_directory_path() / "%%%%-%%%%-%%%%-%%%%");
+  SyncLogPtr syncLog = make_shared<SyncLog>(tmpdir, localName);
+  CcnxWrapperPtr ccnx = make_shared<CcnxWrapper>();
 
-  ActionLogPtr actionLog = make_shared<ActionLog> (ndnx, tmpdir, syncLog, "top-secret", "test-chronoshare",
-                                                   ActionLog::OnFileAddedOrChangedCallback(), ActionLog::OnFileRemovedCallback ());
+  ActionLogPtr actionLog =
+    make_shared<ActionLog>(ccnx, tmpdir, syncLog, "top-secret", "test-chronoshare",
+                           ActionLog::OnFileAddedOrChangedCallback(),
+                           ActionLog::OnFileRemovedCallback());
 
-// const std::string &filename,
-//                    const Hash &hash,
-//                    time_t wtime,
-//                    int mode,
-//                    int seg_num
-  BOOST_CHECK_EQUAL (syncLog->SeqNo (localName), 0);
+  // const std::string &filename,
+  //                    const Hash &hash,
+  //                    time_t wtime,
+  //                    int mode,
+  //                    int seg_num
+  BOOST_CHECK_EQUAL(syncLog->SeqNo(localName), 0);
 
-  BOOST_CHECK_EQUAL (syncLog->LogSize (), 0);
-  BOOST_CHECK_EQUAL (actionLog->LogSize (), 0);
+  BOOST_CHECK_EQUAL(syncLog->LogSize(), 0);
+  BOOST_CHECK_EQUAL(actionLog->LogSize(), 0);
 
-  actionLog->AddLocalActionUpdate ("file.txt", *Hash::FromString ("2ff304769cdb0125ac039e6fe7575f8576dceffc62618a431715aaf6eea2bf1c"),
-                              time (NULL), 0755, 10);
+  actionLog->AddLocalActionUpdate("file.txt",
+                                  *Hash::FromString(
+                                    "2ff304769cdb0125ac039e6fe7575f8576dceffc62618a431715aaf6eea2bf1c"),
+                                  time(NULL), 0755, 10);
 
-  BOOST_CHECK_EQUAL (syncLog->SeqNo (localName), 1);
-  BOOST_CHECK_EQUAL (syncLog->LogSize (), 0);
-  BOOST_CHECK_EQUAL (actionLog->LogSize (), 1);
+  BOOST_CHECK_EQUAL(syncLog->SeqNo(localName), 1);
+  BOOST_CHECK_EQUAL(syncLog->LogSize(), 0);
+  BOOST_CHECK_EQUAL(actionLog->LogSize(), 1);
 
-  HashPtr hash = syncLog->RememberStateInStateLog ();
-  BOOST_CHECK_EQUAL (syncLog->LogSize (), 1);
-  BOOST_CHECK_EQUAL (lexical_cast<string> (*hash), "3410477233f98d6c3f9a6f8da24494bf5a65e1a7c9f4f66b228128bd4e020558");
+  HashPtr hash = syncLog->RememberStateInStateLog();
+  BOOST_CHECK_EQUAL(syncLog->LogSize(), 1);
+  BOOST_CHECK_EQUAL(lexical_cast<string>(*hash),
+                    "3410477233f98d6c3f9a6f8da24494bf5a65e1a7c9f4f66b228128bd4e020558");
 
-  PcoPtr pco = actionLog->LookupActionPco (localName, 0);
-  BOOST_CHECK_EQUAL ((bool)pco, false);
+  PcoPtr pco = actionLog->LookupActionPco(localName, 0);
+  BOOST_CHECK_EQUAL((bool)pco, false);
 
-  pco = actionLog->LookupActionPco (localName, 1);
-  BOOST_CHECK_EQUAL ((bool)pco, true);
+  pco = actionLog->LookupActionPco(localName, 1);
+  BOOST_CHECK_EQUAL((bool)pco, true);
 
-  BOOST_CHECK_EQUAL (pco->name (), "/alex/test-chronoshare/action/top-secret/%00%01");
+  BOOST_CHECK_EQUAL(pco->name(), "/alex/test-chronoshare/action/top-secret/%00%01");
 
-  ActionItemPtr action = actionLog->LookupAction (Name ("/alex/test-chronoshare/action/top-secret")(0));
-  BOOST_CHECK_EQUAL ((bool)action, false);
+  ActionItemPtr action = actionLog->LookupAction(Name("/alex/test-chronoshare/action/top-secret")(0));
+  BOOST_CHECK_EQUAL((bool)action, false);
 
-  action = actionLog->LookupAction (Name ("/alex/test-chronoshare/action/top-secret")(1));
-  BOOST_CHECK_EQUAL ((bool)action, true);
+  action = actionLog->LookupAction(Name("/alex/test-chronoshare/action/top-secret")(1));
+  BOOST_CHECK_EQUAL((bool)action, true);
 
-  if (action)
-    {
-      BOOST_CHECK_EQUAL (action->version (), 0);
-      BOOST_CHECK_EQUAL (action->action (), 0);
+  if (action) {
+    BOOST_CHECK_EQUAL(action->version(), 0);
+    BOOST_CHECK_EQUAL(action->action(), 0);
 
-      BOOST_CHECK_EQUAL (action->filename (), "file.txt");
-      BOOST_CHECK_EQUAL (action->seg_num (), 10);
-      BOOST_CHECK_EQUAL (action->file_hash ().size (), 32);
-      BOOST_CHECK_EQUAL (action->mode (), 0755);
+    BOOST_CHECK_EQUAL(action->filename(), "file.txt");
+    BOOST_CHECK_EQUAL(action->seg_num(), 10);
+    BOOST_CHECK_EQUAL(action->file_hash().size(), 32);
+    BOOST_CHECK_EQUAL(action->mode(), 0755);
 
-      BOOST_CHECK_EQUAL (action->has_parent_device_name (), false);
-      BOOST_CHECK_EQUAL (action->has_parent_seq_no (), false);
-    }
+    BOOST_CHECK_EQUAL(action->has_parent_device_name(), false);
+    BOOST_CHECK_EQUAL(action->has_parent_seq_no(), false);
+  }
 
-  actionLog->AddLocalActionUpdate ("file.txt", *Hash::FromString ("2ff304769cdb0125ac039e6fe7575f8576dceffc62618a431715aaf6eea2bf1c"),
-                              time (NULL), 0755, 10);
-  BOOST_CHECK_EQUAL (syncLog->SeqNo (localName), 2);
-  BOOST_CHECK_EQUAL (syncLog->LogSize (), 1);
-  BOOST_CHECK_EQUAL (actionLog->LogSize (), 2);
+  actionLog->AddLocalActionUpdate("file.txt",
+                                  *Hash::FromString(
+                                    "2ff304769cdb0125ac039e6fe7575f8576dceffc62618a431715aaf6eea2bf1c"),
+                                  time(NULL), 0755, 10);
+  BOOST_CHECK_EQUAL(syncLog->SeqNo(localName), 2);
+  BOOST_CHECK_EQUAL(syncLog->LogSize(), 1);
+  BOOST_CHECK_EQUAL(actionLog->LogSize(), 2);
 
-  action = actionLog->LookupAction (Name ("/alex"), 2);
-  BOOST_CHECK_EQUAL ((bool)action, true);
+  action = actionLog->LookupAction(Name("/alex"), 2);
+  BOOST_CHECK_EQUAL((bool)action, true);
 
-  if (action)
-    {
-      BOOST_CHECK_EQUAL (action->has_parent_device_name (), true);
-      BOOST_CHECK_EQUAL (action->has_parent_seq_no (), true);
+  if (action) {
+    BOOST_CHECK_EQUAL(action->has_parent_device_name(), true);
+    BOOST_CHECK_EQUAL(action->has_parent_seq_no(), true);
 
-      BOOST_CHECK_EQUAL (action->parent_seq_no (), 1);
-      BOOST_CHECK_EQUAL (action->version (), 1);
-    }
+    BOOST_CHECK_EQUAL(action->parent_seq_no(), 1);
+    BOOST_CHECK_EQUAL(action->version(), 1);
+  }
 
-  BOOST_CHECK_EQUAL ((bool)actionLog->AddRemoteAction (pco), true);
-  BOOST_CHECK_EQUAL (actionLog->LogSize (), 2);
+  BOOST_CHECK_EQUAL((bool)actionLog->AddRemoteAction(pco), true);
+  BOOST_CHECK_EQUAL(actionLog->LogSize(), 2);
 
   // create a real remote action
   ActionItem item;
-  item.set_action (ActionItem::UPDATE);
-  item.set_filename ("file.txt");
-  item.set_version (2);
-  item.set_timestamp (time (NULL));
+  item.set_action(ActionItem::UPDATE);
+  item.set_filename("file.txt");
+  item.set_version(2);
+  item.set_timestamp(time(NULL));
 
-  BytesPtr item_msg = serializeMsg (item);
-  Name actionName = Name ("/")(Name("/zhenkai/test"))("test-chronoshare")("action")("top-secret")(1);
-  Bytes actionData = ndnx->createContentObject (actionName, head (*item_msg), item_msg->size ());
+  BytesPtr item_msg = serializeMsg(item);
+  Name actionName = Name("/")(Name("/zhenkai/test"))("test-chronoshare")("action")("top-secret")(1);
+  Bytes actionData = ccnx->createContentObject(actionName, head(*item_msg), item_msg->size());
 
-  pco = make_shared<ParsedContentObject> (actionData);
-  BOOST_CHECK_EQUAL ((bool)actionLog->AddRemoteAction (pco), true);
-  BOOST_CHECK_EQUAL (actionLog->LogSize (), 3);
+  pco = make_shared<ParsedContentObject>(actionData);
+  BOOST_CHECK_EQUAL((bool)actionLog->AddRemoteAction(pco), true);
+  BOOST_CHECK_EQUAL(actionLog->LogSize(), 3);
 
-  remove_all (tmpdir);
+  remove_all(tmpdir);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
 
-  // catch (boost::exception &err)
-  //   {
-  //     cout << *boost::get_error_info<errmsg_info_str> (err) << endl;
-  //   }
+// catch (boost::exception &err)
+//   {
+//     cout << *boost::get_error_info<errmsg_info_str> (err) << endl;
+//   }
