@@ -122,14 +122,13 @@ def build(bld):
     #     )
     Logs.error("fs-watcher compilation is temporary disabled")
 
-    # http_server = bld(
-    #       target = "http_server",
-    #       features = "qt5 cxx",
-    #       source = bld.path.ant_glob(['server/*.cpp']),
-    #       includes = "server src .",
-    #       use = 'BOOST QT5CORE',
-    #       )
-    Logs.error("http_server compilation is temporary disabled")
+    http_server = bld(
+          target = "http_server",
+          features = "qt5 cxx",
+          source = bld.path.ant_glob(['server/*.cpp']),
+          includes = "server src .",
+          use = 'BOOST QT5CORE',
+          )
 
 #     qt = bld(
 #         target = "ChronoShare",

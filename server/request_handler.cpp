@@ -28,23 +28,26 @@
 //
 
 #include "request_handler.hpp"
-#include "logging.h"
 #include "mime_types.hpp"
 #include "reply.hpp"
 #include "request.hpp"
-#include <boost/lexical_cast.hpp>
-#include <QDataStream>
-#include <QFile>
-#include <QIODevice>
-#include <QString>
+#include "core/logging.hpp"
+
 #include <fstream>
 #include <sstream>
 #include <string>
 
-INIT_LOGGER("HttpServer")
+#include <boost/lexical_cast.hpp>
+
+#include <QDataStream>
+#include <QFile>
+#include <QIODevice>
+#include <QString>
 
 namespace http {
 namespace server {
+
+INIT_LOGGER("HttpServer")
 
 request_handler::request_handler(const std::string& doc_root)
   : doc_root_(doc_root.c_str())
