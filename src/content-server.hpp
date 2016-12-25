@@ -45,7 +45,8 @@ class ContentServer
 public:
   ContentServer(Face& face, ActionLogPtr actionLog, const boost::filesystem::path& rootDir,
                 const Name& userName, const std::string& sharedFolderName,
-                const std::string& appName, KeyChain& keyChain, int freshness = -1);
+                const name::Component& appName, KeyChain& keyChain,
+                time::milliseconds freshness = time::seconds(5));
   ~ContentServer();
 
   // the assumption is, when the interest comes in, interest is informs of
@@ -90,7 +91,7 @@ private:
 
   Mutex m_mutex;
   boost::filesystem::path m_dbFolder;
-  int m_freshness;
+  time::milliseconds m_freshness;
 
   Scheduler m_scheduler;
   util::scheduler::ScopedEventId m_flushStateDbCacheEvent;
@@ -100,7 +101,7 @@ private:
 
   Name m_userName;
   std::string m_sharedFolderName;
-  std::string m_appName;
+  name::Component m_appName;
   KeyChain& m_keyChain;
 };
 

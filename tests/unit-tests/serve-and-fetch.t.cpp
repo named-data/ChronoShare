@@ -151,7 +151,8 @@ BOOST_AUTO_TEST_CASE(TestServeAndFetch)
                         << " seconds ...");
 
   ActionLogPtr dummyLog;
-  ContentServer server(face_serve, dummyLog, root, deviceName, "pentagon's secrets", APPNAME, m_keyChain, 5);
+  ContentServer server(face_serve, dummyLog, root, deviceName, "pentagon's secrets",
+                       name::Component(APPNAME), m_keyChain, time::seconds(5));
   server.registerPrefix(localPrefix);
   server.registerPrefix(broadcastPrefix);
 

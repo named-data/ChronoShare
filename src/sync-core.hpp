@@ -123,7 +123,7 @@ public:
            ,
            const StateMsgCallback& callback // callback when state change is detected
            ,
-           long syncInterestInterval = -1);
+           time::seconds syncInterestInterval = time::seconds(0));
   ~SyncCore();
 
   void updateLocalState(sqlite3_int64);
@@ -214,7 +214,7 @@ private:
 
   IntervalGeneratorPtr m_recoverWaitGenerator;
 
-  long m_syncInterestInterval;
+  time::seconds m_syncInterestInterval;
   KeyChain m_keyChain;
   const RegisteredPrefixId* m_registeredPrefixId;
 };

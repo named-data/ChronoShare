@@ -56,7 +56,7 @@ BOOST_FIXTURE_TEST_SUITE(TestActionLog, TestActionLogFixture)
 BOOST_AUTO_TEST_CASE(UpdateAction)
 {
   auto actionLog = std::make_shared<ActionLog>(forwarder.addFace(), tmpdir, syncLog,
-                                               "top-secret", "test-chronoshare",
+                                               "top-secret", name::Component("test-chronoshare"),
                                                ActionLog::OnFileAddedOrChangedCallback(),
                                                ActionLog::OnFileRemovedCallback());
 
@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE(DeleteAction)
 {
   bool hasDeleteCallbackCalled = false;
   auto actionLog = std::make_shared<ActionLog>(forwarder.addFace(), tmpdir, syncLog,
-                                               "top-secret", "test-chronoshare",
+                                               "top-secret", name::Component("test-chronoshare"),
                                                ActionLog::OnFileAddedOrChangedCallback(),
                                                bind([&] { hasDeleteCallbackCalled = true; }));
 

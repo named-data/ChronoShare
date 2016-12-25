@@ -19,69 +19,63 @@
  */
 
 #include "dispatcher.hpp"
-#include "ccnx-discovery.hpp"
 #include "fetch-task-db.hpp"
-#include "logging.hpp"
+#include "core/logging.hpp"
+
+#include <ndn-cxx/util/digest.hpp>
+#include <ndn-cxx/util/string-helper.hpp>
 
 #include <boost/lexical_cast.hpp>
-#include <boost/make_shared.hpp>
 
-using namespace Ndnx;
-using namespace std;
-using namespace boost;
+namespace ndn {
+namespace chronoshare {
 
 _LOG_INIT(Dispatcher);
 
-static const string CHRONOSHARE_APP = "chronoshare";
-static const string BROADCAST_DOMAIN = "/ndn/broadcast";
+namespace fs = boost::filesystem;
 
-static const int CONTENT_FRESHNESS = 1800;                 // seconds
-const static double DEFAULT_SYNC_INTEREST_INTERVAL = 10.0; // seconds;
+static const name::Component CHRONOSHARE_APP = name::Component("chronoshare");
+static const Name BROADCAST_DOMAIN = "/ndn/multicast";
+
+static const time::seconds DEFAULT_SYNC_INTEREST_INTERVAL = time::seconds(10);
 
 Dispatcher::Dispatcher(const std::string& localUserName, const std::string& sharedFolder,
-                       const filesystem::path& rootDir, Ccnx::CcnxWrapperPtr ccnx,
-                       bool enablePrefixDiscovery)
-  : m_ccnx(ccnx)
-  , m_core(NULL)
+                       const fs::path& rootDir, Face& face, bool enablePrefixDiscovery)
+  : m_face(face)
   , m_rootDir(rootDir)
-  , m_executor(1)
-    // creates problems with file assembly. need to ensure somehow that
-    // FinishExectute is called after all Segment_Execute finished
-  , m_objectManager(ccnx, rootDir, CHRONOSHARE_APP)
+  , m_ioService(face.getIoService())
+  , m_objectManager(face, m_keyChain, rootDir, CHRONOSHARE_APP.toUri())
   , m_localUserName(localUserName)
   , m_sharedFolder(sharedFolder)
-  , m_server(NULL)
   , m_enablePrefixDiscovery(enablePrefixDiscovery)
 {
-  KeyChain keyChain;
   m_syncLog = make_shared<SyncLog>(m_rootDir, localUserName);
   m_actionLog =
-    make_shared<ActionLog>(m_ccnx, m_rootDir, m_syncLog, sharedFolder, CHRONOSHARE_APP,
-                           // bind (&Dispatcher::Did_ActionLog_ActionApply_AddOrModify, this, _1, _2, _3, _4, _5, _6, _7),
+    make_shared<ActionLog>(m_face, m_rootDir, m_syncLog, sharedFolder, CHRONOSHARE_APP,
+                           // bind(&Dispatcher::Did_ActionLog_ActionApply_AddOrModify, this, _1, _2, _3, _4, _5, _6, _7),
                            ActionLog::OnFileAddedOrChangedCallback(), // don't really need this callback
                            bind(&Dispatcher::Did_ActionLog_ActionApply_Delete, this, _1));
   m_fileState = m_actionLog->GetFileState();
 
-  Name syncPrefix = Name(BROADCAST_DOMAIN)(CHRONOSHARE_APP)(sharedFolder);
+  Name syncPrefix = Name(BROADCAST_DOMAIN);
+  syncPrefix.append(CHRONOSHARE_APP);
+  syncPrefix.append(sharedFolder);
 
-  // m_server needs a different ccnx face
-  m_server = new ContentServer(make_shared<CcnxWrapper>(), m_actionLog, rootDir, m_localUserName,
-                               m_sharedFolder, CHRONOSHARE_APP, keyChain, CONTENT_FRESHNESS);
+  m_server = make_unique<ContentServer>(m_face, m_actionLog, rootDir, m_localUserName,
+                                        m_sharedFolder, CHRONOSHARE_APP, m_keyChain);
   m_server->registerPrefix(Name("/"));
   m_server->registerPrefix(Name(BROADCAST_DOMAIN));
 
-  m_stateServer =
-    new StateServer(make_shared<CcnxWrapper>(), m_actionLog, rootDir, m_localUserName,
-                    m_sharedFolder, CHRONOSHARE_APP, m_objectManager, CONTENT_FRESHNESS);
-  // no need to register, right now only listening on localhost prefix
+  //m_stateServer = make_unique<StateServer>(m_face, m_actionLog, rootDir, m_localUserName, m_sharedFolder,
+  //                                         CHRONOSHARE_APP, m_objectManager, m_keyChair);
 
-  m_core = new SyncCore(m_syncLog, localUserName, Name("/"), syncPrefix,
-                        bind(&Dispatcher::Did_SyncLog_StateChange, this, _1), ccnx,
-                        DEFAULT_SYNC_INTEREST_INTERVAL);
+  m_core = make_unique<SyncCore>(m_face, m_syncLog, localUserName, Name("/"), syncPrefix,
+                                 bind(&Dispatcher::Did_SyncLog_StateChange, this, _1),
+                                 DEFAULT_SYNC_INTEREST_INTERVAL);
 
   FetchTaskDbPtr actionTaskDb = make_shared<FetchTaskDb>(m_rootDir, "action");
   m_actionFetcher =
-    make_shared<FetchManager>(m_ccnx, bind(&SyncLog::LookupLocator, &*m_syncLog, _1),
+    make_shared<FetchManager>(m_face, bind(&SyncLog::LookupLocator, &*m_syncLog, _1),
                               Name(BROADCAST_DOMAIN), // no appname suffix now
                               3,
                               bind(&Dispatcher::Did_FetchManager_ActionFetch, this, _1, _2, _3, _4),
@@ -89,60 +83,47 @@ Dispatcher::Dispatcher(const std::string& localUserName, const std::string& shar
 
   FetchTaskDbPtr fileTaskDb = make_shared<FetchTaskDb>(m_rootDir, "file");
   m_fileFetcher =
-    make_shared<FetchManager>(m_ccnx, bind(&SyncLog::LookupLocator, &*m_syncLog, _1),
+    make_shared<FetchManager>(m_face, bind(&SyncLog::LookupLocator, &*m_syncLog, _1),
                               Name(BROADCAST_DOMAIN), // no appname suffix now
                               3, bind(&Dispatcher::Did_FetchManager_FileSegmentFetch, this, _1, _2,
                                       _3, _4),
                               bind(&Dispatcher::Did_FetchManager_FileFetchComplete, this, _1, _2),
                               fileTaskDb);
 
-
   if (m_enablePrefixDiscovery) {
     _LOG_DEBUG("registering prefix discovery in Dispatcher");
-    string tag = "dispatcher" + m_localUserName.toString();
-    Ccnx::CcnxDiscovery::registerCallback(
-      TaggedFunction(bind(&Dispatcher::Did_LocalPrefix_Updated, this, _1), tag));
+    std::string tag = "dispatcher" + m_localUserName.toUri();
+    // Ccnx::CcnxDiscovery::registerCallback(TaggedFunction(bind(&Dispatcher::Did_LocalPrefix_Updated,
+    // this, _1), tag));
+    // TODO registerCallback...?
+    //
+    // this registerCallback is used when the local prefix changes.
+    // the ndn-cxx library does not have this functionality
+    // thus, the application will need to implement this.
+    // send a data packet and get the local prefix. If they are different, call the callback
+    // function, else do nothing.
   }
-
-  m_executor.start();
 }
 
 Dispatcher::~Dispatcher()
 {
   _LOG_DEBUG("Enter destructor of dispatcher");
-  m_executor.shutdown();
-
-  // _LOG_DEBUG (">>");
 
   if (m_enablePrefixDiscovery) {
     _LOG_DEBUG("deregistering prefix discovery in Dispatcher");
-    string tag = "dispatcher" + m_localUserName.toString();
-    Ccnx::CcnxDiscovery::deregisterCallback(
-      TaggedFunction(bind(&Dispatcher::Did_LocalPrefix_Updated, this, _1), tag));
-  }
-
-  if (m_core != NULL) {
-    delete m_core;
-    m_core = NULL;
-  }
-
-  if (m_server != NULL) {
-    delete m_server;
-    m_server = NULL;
-  }
-
-  if (m_stateServer != NULL) {
-    delete m_stateServer;
-    m_stateServer = NULL;
+    std::string tag = "dispatcher" + m_localUserName.toUri();
+    // TODO
+    //    Ccnx::CcnxDiscovery::deregisterCallback(TaggedFunction(bind(&Dispatcher::Did_LocalPrefix_Updated,
+    //    this, _1), tag));
   }
 }
 
 void
-Dispatcher::Did_LocalPrefix_Updated(const Ccnx::Name& forwardingHint)
+Dispatcher::Did_LocalPrefix_Updated(const Name& forwardingHint)
 {
   Name effectiveForwardingHint;
   if (m_localUserName.size() >= forwardingHint.size() &&
-      m_localUserName.getPartialName(0, forwardingHint.size()) == forwardingHint) {
+      m_localUserName.getSubName(0, forwardingHint.size()) == forwardingHint) {
     effectiveForwardingHint = Name("/"); // "directly" accesible
   }
   else {
@@ -177,45 +158,45 @@ Dispatcher::Did_LocalPrefix_Updated(const Ccnx::Name& forwardingHint)
   m_server->deregisterPrefix(oldLocalPrefix);
 }
 
-// moved to state-server
-// void
-// Dispatcher::Restore_LocalFile (FileItemPtr file)
-// {
-//   m_executor.execute (bind (&Dispatcher::Restore_LocalFile_Execute, this, file));
-// }
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void
-Dispatcher::Did_LocalFile_AddOrModify(const filesystem::path& relativeFilePath)
+Dispatcher::Did_LocalFile_AddOrModify(const fs::path& relativeFilePath)
 {
-  m_executor.execute(bind(&Dispatcher::Did_LocalFile_AddOrModify_Execute, this, relativeFilePath));
+  m_ioService.post(bind(&Dispatcher::Did_LocalFile_AddOrModify_Execute, this, relativeFilePath));
 }
 
 void
-Dispatcher::Did_LocalFile_AddOrModify_Execute(filesystem::path relativeFilePath)
+Dispatcher::Did_LocalFile_AddOrModify_Execute(fs::path relativeFilePath)
 {
   _LOG_DEBUG(m_localUserName << " calls LocalFile_AddOrModify_Execute");
-  filesystem::path absolutePath = m_rootDir / relativeFilePath;
-  if (!filesystem::exists(absolutePath)) {
-    //BOOST_THROW_EXCEPTION (Error::Dispatcher() << error_info_str("Update non exist file: " + absolutePath.string() ));
+  fs::path absolutePath = m_rootDir / relativeFilePath;
+  _LOG_DEBUG("relativeFilePath : " << relativeFilePath);
+  _LOG_DEBUG("absolutePath : " << absolutePath);
+  if (!fs::exists(absolutePath)) {
+    // BOOST_THROW_EXCEPTION(Error::Dispatcher() << error_info_str("Update non exist file: " +
+    // absolutePath.string() ));
     _LOG_DEBUG("Update non exist file: " << absolutePath.string());
     return;
   }
 
   FileItemPtr currentFile = m_fileState->LookupFile(relativeFilePath.generic_string());
-  if (currentFile &&
-      *Hash::FromFileContent(absolutePath) ==
-        Hash(currentFile->file_hash().c_str(), currentFile->file_hash().size())
-      // The following two are commented out to prevent front end from reporting intermediate files
-      // should enable it if there is other way to prevent this
-      // && last_write_time (absolutePath) == currentFile->mtime ()
-      // && status (absolutePath).permissions () == static_cast<filesystem::perms> (currentFile->mode ())
-      ) {
-    _LOG_ERROR("Got notification about the same file [" << relativeFilePath << "]");
-    return;
+
+  if (currentFile) {
+    fs::ifstream input(absolutePath);
+    if (*util::Sha256(input).computeDigest() ==
+        Buffer(currentFile->file_hash().c_str(), currentFile->file_hash().size())
+        // The following two are commented out to prevent front end from reporting intermediate files
+        // should enable it if there is other way to prevent this
+        // && last_write_time(absolutePath) == currentFile->mtime()
+        // && status(absolutePath).permissions() ==
+        // static_cast<fs::perms>(currentFile->mode())
+        ) {
+      _LOG_ERROR("Got notification about the same file [" << relativeFilePath << "]");
+      return;
+    }
   }
 
   if (currentFile && !currentFile->is_complete()) {
@@ -223,14 +204,13 @@ Dispatcher::Did_LocalFile_AddOrModify_Execute(filesystem::path relativeFilePath)
     return;
   }
 
-
   int seg_num;
-  HashPtr hash;
+  ConstBufferPtr hash;
+  _LOG_DEBUG("absolutePath: " << absolutePath << " m_localUserName: " << m_localUserName);
   tie(hash, seg_num) = m_objectManager.localFileToObjects(absolutePath, m_localUserName);
 
   try {
-    m_actionLog->AddLocalActionUpdate(relativeFilePath.generic_string(),
-                                      *hash,
+    m_actionLog->AddLocalActionUpdate(relativeFilePath.generic_string(), *hash,
                                       last_write_time(absolutePath),
 #if BOOST_VERSION >= 104900
                                       status(absolutePath).permissions(),
@@ -242,22 +222,24 @@ Dispatcher::Did_LocalFile_AddOrModify_Execute(filesystem::path relativeFilePath)
     // notify SyncCore to propagate the change
     m_core->localStateChangedDelayed();
   }
-  catch (filesystem::filesystem_error& error) {
-    _LOG_ERROR("File operations failed on [" << relativeFilePath << "] (ignoring)");
+  catch (fs::filesystem_error& error) {
+    _LOG_ERROR("File operations failed on [" << relativeFilePath << "](ignoring)");
   }
+
+  _LOG_DEBUG("LocalFile_AddOrModify_Execute Finished!");
 }
 
 void
-Dispatcher::Did_LocalFile_Delete(const filesystem::path& relativeFilePath)
+Dispatcher::Did_LocalFile_Delete(const fs::path& relativeFilePath)
 {
-  m_executor.execute(bind(&Dispatcher::Did_LocalFile_Delete_Execute, this, relativeFilePath));
+  m_ioService.post(bind(&Dispatcher::Did_LocalFile_Delete_Execute, this, relativeFilePath));
 }
 
 void
-Dispatcher::Did_LocalFile_Delete_Execute(filesystem::path relativeFilePath)
+Dispatcher::Did_LocalFile_Delete_Execute(fs::path relativeFilePath)
 {
-  filesystem::path absolutePath = m_rootDir / relativeFilePath;
-  if (filesystem::exists(absolutePath)) {
+  fs::path absolutePath = m_rootDir / relativeFilePath;
+  if (fs::exists(absolutePath)) {
     _LOG_ERROR("DELETE command, but file still exists: " << absolutePath.string());
     return;
   }
@@ -271,27 +253,10 @@ Dispatcher::Did_LocalFile_Delete_Execute(filesystem::path relativeFilePath)
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/**
- * Callbacks:
- *
- * - from SyncLog: when state changes -> to fetch missing actions
- *
- * - from FetchManager/Actions: when action is fetched -> to request a file, specified by the action
- *                                                     -> to add action to the action log
- *
- * - from ActionLog/Delete:      when action applied (file state changed, file deleted)           -> to delete local file
- *
- * - from ActionLog/AddOrUpdate: when action applied (file state changes, file added or modified) -> do nothing?
- *
- * - from FetchManager/Files: when file segment is retrieved -> save it in ObjectDb
- *                            when file fetch is completed   -> if file belongs to FileState, then assemble it to filesystem.
- *                                                              Don't do anything otherwise
- */
-
 void
 Dispatcher::Did_SyncLog_StateChange(SyncStateMsgPtr stateMsg)
 {
-  m_executor.execute(bind(&Dispatcher::Did_SyncLog_StateChange_Execute, this, stateMsg));
+  m_ioService.post(bind(&Dispatcher::Did_SyncLog_StateChange_Execute, this, stateMsg));
 }
 
 void
@@ -305,84 +270,77 @@ Dispatcher::Did_SyncLog_StateChange_Execute(SyncStateMsgPtr stateMsg)
     if (state.has_old_seq() && state.has_seq()) {
       uint64_t oldSeq = state.old_seq();
       uint64_t newSeq = state.seq();
-      Name userName(reinterpret_cast<const unsigned char*>(state.name().c_str()),
-                    state.name().size());
+      Name userName(Block((const unsigned char*)state.name().c_str(), state.name().size()));
 
-      // fetch actions with oldSeq + 1 to newSeq (inclusive)
-      Name actionNameBase = Name("/")(userName)(CHRONOSHARE_APP)("action")(m_sharedFolder);
-
+      // fetch actions with oldSeq + 1 to newSeq(inclusive)
+      Name actionNameBase = Name("/");
+      actionNameBase.append(userName).append(CHRONOSHARE_APP).append("action").append(m_sharedFolder);
       m_actionFetcher->Enqueue(userName, actionNameBase, std::max<uint64_t>(oldSeq + 1, 1), newSeq,
                                FetchManager::PRIORITY_HIGH);
     }
   }
 }
 
-
 void
-Dispatcher::Did_FetchManager_ActionFetch(const Ccnx::Name& deviceName,
-                                         const Ccnx::Name& actionBaseName, uint32_t seqno,
-                                         Ccnx::PcoPtr actionPco)
+Dispatcher::Did_FetchManager_ActionFetch(const Name& deviceName, const Name& actionBaseName,
+                                         uint32_t seqno, shared_ptr<Data> actionData)
 {
   /// @todo Errors and exception checking
   _LOG_DEBUG("Received action deviceName: " << deviceName << ", actionBaseName: " << actionBaseName
                                             << ", seqno: "
                                             << seqno);
 
-  ActionItemPtr action = m_actionLog->AddRemoteAction(deviceName, seqno, actionPco);
+  ActionItemPtr action = m_actionLog->AddRemoteAction(deviceName, seqno, actionData);
   if (!action) {
     _LOG_ERROR("AddRemoteAction did not insert action, ignoring");
     return;
   }
-  // trigger may invoke Did_ActionLog_ActionApply_Delete or Did_ActionLog_ActionApply_AddOrModify callbacks
+  // trigger may invoke Did_ActionLog_ActionApply_Delete or Did_ActionLog_ActionApply_AddOrModify
+  // callbacks
 
   if (action->action() == ActionItem::UPDATE) {
-    Hash hash(action->file_hash().c_str(), action->file_hash().size());
+    ConstBufferPtr hash =
+      make_shared<Buffer>(action->file_hash().c_str(), action->file_hash().size());
 
-    Name fileNameBase =
-      Name("/")(deviceName)(CHRONOSHARE_APP)("file")(hash.GetHash(), hash.GetHashBytes());
+    Name fileNameBase = Name("/");
+    fileNameBase.append(deviceName).append(CHRONOSHARE_APP).append("file");
+    //      fileNameBase.append(name::Component(hash));
+    fileNameBase.appendImplicitSha256Digest(hash);
 
-    string hashStr = lexical_cast<string>(hash);
-    if (ObjectDb::DoesExist(m_rootDir / ".chronoshare", deviceName, hashStr)) {
-      _LOG_DEBUG(
-        "File already exists in the database. No need to refetch, just directly applying the action");
+    std::string hashStr = toHex(*hash);
+    if (ObjectDb::doesExist(m_rootDir / ".chronoshare", deviceName, hashStr)) {
+      _LOG_DEBUG("File already exists in the database. No need to refetch, just directly applying "
+                 "the action");
       Did_FetchManager_FileFetchComplete(deviceName, fileNameBase);
     }
     else {
-      if (m_objectDbMap.find(hash) == m_objectDbMap.end()) {
-        _LOG_DEBUG("create ObjectDb for " << hash);
-        m_objectDbMap[hash] = make_shared<ObjectDb>(m_rootDir / ".chronoshare", hashStr);
+      if (m_objectDbMap.find(*hash) == m_objectDbMap.end()) {
+        _LOG_DEBUG("create ObjectDb for " << toHex(*hash));
+        m_objectDbMap[*hash] = make_shared<ObjectDb>(m_rootDir / ".chronoshare", hashStr);
       }
 
       m_fileFetcher->Enqueue(deviceName, fileNameBase, 0, action->seg_num() - 1,
                              FetchManager::PRIORITY_NORMAL);
     }
   }
-  // if necessary (when version number is the highest) delete will be
-  // applied through the trigger in m_actionLog->AddRemoteAction call
 }
 
 void
 Dispatcher::Did_ActionLog_ActionApply_Delete(const std::string& filename)
 {
-  m_executor.execute(bind(&Dispatcher::Did_ActionLog_ActionApply_Delete_Execute, this, filename));
-}
-
-void
-Dispatcher::Did_ActionLog_ActionApply_Delete_Execute(std::string filename)
-{
   _LOG_DEBUG("Action to delete " << filename);
 
-  filesystem::path absolutePath = m_rootDir / filename;
+  fs::path absolutePath = m_rootDir / filename;
   try {
-    if (filesystem::exists(absolutePath)) {
+    if (fs::exists(absolutePath)) {
       // need some protection from local detection of removal
       remove(absolutePath);
 
       // hack to remove empty parent dirs
-      filesystem::path parentPath = absolutePath.parent_path();
+      fs::path parentPath = absolutePath.parent_path();
       while (parentPath > m_rootDir) {
-        if (filesystem::is_empty(parentPath)) {
-          filesystem::remove(parentPath);
+        if (fs::is_empty(parentPath)) {
+          fs::remove(parentPath);
           parentPath = parentPath.parent_path();
         }
         else {
@@ -392,102 +350,102 @@ Dispatcher::Did_ActionLog_ActionApply_Delete_Execute(std::string filename)
     }
     // don't exist
   }
-  catch (filesystem::filesystem_error& error) {
-    _LOG_ERROR("File operations failed when removing [" << absolutePath << "] (ignoring)");
+  catch (fs::filesystem_error& error) {
+    _LOG_ERROR("File operations failed when removing [" << absolutePath << "](ignoring)");
   }
 }
 
 void
-Dispatcher::Did_FetchManager_FileSegmentFetch(const Ccnx::Name& deviceName,
-                                              const Ccnx::Name& fileSegmentBaseName,
-                                              uint32_t segment, Ccnx::PcoPtr fileSegmentPco)
+Dispatcher::Did_FetchManager_FileSegmentFetch(const Name& deviceName,
+                                              const Name& fileSegmentBaseName,
+                                              uint32_t segment,
+                                              shared_ptr<Data>
+                                                fileSegmentData)
 {
-  m_executor.execute(bind(&Dispatcher::Did_FetchManager_FileSegmentFetch_Execute, this, deviceName,
-                          fileSegmentBaseName, segment, fileSegmentPco));
+  m_ioService.post(bind(&Dispatcher::Did_FetchManager_FileSegmentFetch_Execute, this, deviceName,
+                        fileSegmentBaseName, segment, fileSegmentData));
 }
 
 void
-Dispatcher::Did_FetchManager_FileSegmentFetch_Execute(Ccnx::Name deviceName,
-                                                      Ccnx::Name fileSegmentBaseName,
-                                                      uint32_t segment, Ccnx::PcoPtr fileSegmentPco)
+Dispatcher::Did_FetchManager_FileSegmentFetch_Execute(Name deviceName,
+                                                      Name fileSegmentBaseName,
+                                                      uint32_t segment,
+                                                      shared_ptr<Data> fileSegmentData)
 {
   // fileSegmentBaseName:  /<device_name>/<appname>/file/<hash>
 
-  const Bytes& hashBytes = fileSegmentBaseName.getCompFromBack(0);
-  Hash hash(head(hashBytes), hashBytes.size());
+  Buffer hash(fileSegmentBaseName.get(-1).value(), fileSegmentBaseName.get(-1).value_size());
 
   _LOG_DEBUG("Received segment deviceName: " << deviceName << ", segmentBaseName: " << fileSegmentBaseName
                                              << ", segment: "
                                              << segment);
 
-  // _LOG_DEBUG ("Looking up objectdb for " << hash);
+  // _LOG_DEBUG("Looking up objectdb for " << hash);
 
-  map<Hash, ObjectDbPtr>::iterator db = m_objectDbMap.find(hash);
+  std::map<Buffer, shared_ptr<ObjectDb>>::iterator db = m_objectDbMap.find(hash);
   if (db != m_objectDbMap.end()) {
-    db->second->saveContentObject(deviceName, segment, fileSegmentPco->buf());
+    db->second->saveContentObject(deviceName, segment, *fileSegmentData);
   }
   else {
     _LOG_ERROR("no db available for this content object: " << fileSegmentBaseName << ", size: "
-                                                           << fileSegmentPco->buf().size());
+                                                           << fileSegmentData->getContent().size());
   }
 
-  // ObjectDb objectDb (m_rootDir / ".chronoshare", lexical_cast<string> (hash));
-  // objectDb.saveContentObject(deviceName, segment, fileSegmentPco->buf ());
+  // ObjectDb objectDb(m_rootDir / ".chronoshare", lexical_cast<string>(hash));
+  // objectDb.saveContentObject(deviceName, segment, *fileSegmentData);
 }
 
 void
-Dispatcher::Did_FetchManager_FileFetchComplete(const Ccnx::Name& deviceName,
-                                               const Ccnx::Name& fileBaseName)
+Dispatcher::Did_FetchManager_FileFetchComplete(const Name& deviceName, const Name& fileBaseName)
 {
-  m_executor.execute(
+  m_ioService.post(
     bind(&Dispatcher::Did_FetchManager_FileFetchComplete_Execute, this, deviceName, fileBaseName));
 }
 
 void
-Dispatcher::Did_FetchManager_FileFetchComplete_Execute(Ccnx::Name deviceName, Ccnx::Name fileBaseName)
+Dispatcher::Did_FetchManager_FileFetchComplete_Execute(Name deviceName, Name fileBaseName)
 {
   // fileBaseName:  /<device_name>/<appname>/file/<hash>
 
   _LOG_DEBUG("Finished fetching " << deviceName << ", fileBaseName: " << fileBaseName);
 
-  const Bytes& hashBytes = fileBaseName.getCompFromBack(0);
-  Hash hash(head(hashBytes), hashBytes.size());
-  _LOG_DEBUG("Extracted hash: " << hash.shortHash());
+  Buffer hash(fileBaseName.get(-1).value(), fileBaseName.get(-1).value_size());
+
+  _LOG_DEBUG("Extracted hash: " << toHex(hash));
 
   if (m_objectDbMap.find(hash) != m_objectDbMap.end()) {
     // remove the db handle
     m_objectDbMap.erase(hash); // to commit write
   }
   else {
-    _LOG_ERROR("no db available for this file: " << hash);
+    _LOG_ERROR("no db available for this file: " << toHex(hash));
   }
 
   FileItemsPtr filesToAssemble = m_fileState->LookupFilesForHash(hash);
 
   for (FileItems::iterator file = filesToAssemble->begin(); file != filesToAssemble->end(); file++) {
-    boost::filesystem::path filePath = m_rootDir / file->filename();
+    fs::path filePath = m_rootDir / file->filename();
 
     try {
-      if (filesystem::exists(filePath) && filesystem::last_write_time(filePath) == file->mtime() &&
-#if BOOST_VERSION >= 104900
-          filesystem::status(filePath).permissions() == static_cast<filesystem::perms>(file->mode()) &&
-#endif
-          *Hash::FromFileContent(filePath) == hash) {
-        _LOG_DEBUG("Asking to assemble a file, but file already exists on a filesystem");
-        continue;
+      if (fs::exists(filePath) && fs::last_write_time(filePath) == file->mtime() &&
+          fs::status(filePath).permissions() == static_cast<fs::perms>(file->mode())) {
+          fs::ifstream input(filePath, std::ios::in | std::ios::binary);
+          if (*util::Sha256(input).computeDigest() == hash) {
+            _LOG_DEBUG("Asking to assemble a file, but file already exists on a filesystem");
+            continue;
+          }
       }
     }
-    catch (filesystem::filesystem_error& error) {
-      _LOG_ERROR("File operations failed on [" << filePath << "] (ignoring)");
+    catch (fs::filesystem_error& error) {
+      _LOG_ERROR("File operations failed on [" << filePath << "](ignoring)");
     }
 
-    if (ObjectDb::DoesExist(m_rootDir / ".chronoshare", deviceName,
-                            boost::lexical_cast<string>(hash))) {
+    if (ObjectDb::doesExist(m_rootDir / ".chronoshare", deviceName, toHex(hash))) {
       bool ok = m_objectManager.objectsToLocalFile(deviceName, hash, filePath);
       if (ok) {
         last_write_time(filePath, file->mtime());
 #if BOOST_VERSION >= 104900
-        permissions(filePath, static_cast<filesystem::perms>(file->mode()));
+        permissions(filePath, static_cast<fs::perms>(file->mode()));
 #endif
 
         m_fileState->SetFileComplete(file->filename());
@@ -505,36 +463,5 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute(Ccnx::Name deviceName, Cc
   }
 }
 
-// moved to state-server
-// void
-// Dispatcher::Restore_LocalFile_Execute (FileItemPtr file)
-// {
-//   _LOG_DEBUG ("Got request to restore local file [" << file->filename () << "]");
-//   // the rest will gracefully fail if object-db is missing or incomplete
-
-//   boost::filesystem::path filePath = m_rootDir / file->filename ();
-//   Name deviceName (file->device_name ().c_str (), file->device_name ().size ());
-//   Hash hash (file->file_hash ().c_str (), file->file_hash ().size ());
-
-//   try
-//     {
-//       if (filesystem::exists (filePath) &&
-//           filesystem::last_write_time (filePath) == file->mtime () &&
-//           filesystem::status (filePath).permissions () == static_cast<filesystem::perms> (file->mode ()) &&
-//           *Hash::FromFileContent (filePath) == hash)
-//         {
-//           _LOG_DEBUG ("Asking to assemble a file, but file already exists on a filesystem");
-//           return;
-//         }
-//     }
-//   catch (filesystem::filesystem_error &error)
-//     {
-//       _LOG_ERROR ("File operations failed on [" << filePath << "] (ignoring)");
-//     }
-
-//   m_objectManager.objectsToLocalFile (deviceName, hash, filePath);
-
-//   last_write_time (filePath, file->mtime ());
-//   permissions (filePath, static_cast<filesystem::perms> (file->mode ()));
-
-// }
+} // namespace chronoshare
+} // namespace ndn

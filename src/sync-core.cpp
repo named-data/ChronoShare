@@ -38,7 +38,7 @@ const double SyncCore::RANDOM_PERCENT = 0.5;
 
 SyncCore::SyncCore(Face& face, SyncLogPtr syncLog, const Name& userName, const Name& localPrefix,
                    const Name& syncPrefix, const StateMsgCallback& callback,
-                   long syncInterestInterval /*= -1.0*/)
+                   time::seconds syncInterestInterval /*= -1.0*/)
   : m_face(face)
   , m_log(syncLog)
   , m_scheduler(m_face.getIoService())
@@ -60,8 +60,9 @@ SyncCore::SyncCore(Face& face, SyncLogPtr syncLog, const Name& userName, const N
 
   m_log->UpdateLocalLocator(localPrefix);
 
-  time::seconds interval = time::seconds(
-    (m_syncInterestInterval > 0 && m_syncInterestInterval < 30) ? m_syncInterestInterval : 4);
+  time::seconds interval =
+    (m_syncInterestInterval > time::seconds(0) && m_syncInterestInterval < time::seconds(30)) ?
+      m_syncInterestInterval : time::seconds(4);
 
   m_periodicInterestEvent =
     m_scheduler.scheduleEvent(interval, bind(&SyncCore::sendPeriodicSyncInterest, this, interval));
@@ -156,8 +157,8 @@ SyncCore::sendSyncInterest()
                  << syncInterest);
 
   Interest interest(syncInterest);
-  if (m_syncInterestInterval > 0 && m_syncInterestInterval < 30) {
-    interest.setInterestLifetime(time::seconds(m_syncInterestInterval));
+  if (m_syncInterestInterval > time::seconds(0) && m_syncInterestInterval < time::seconds(30)) {
+    interest.setInterestLifetime(m_syncInterestInterval);
   }
 
   m_face.expressInterest(interest, bind(&SyncCore::handleSyncData, this, _1, _2),

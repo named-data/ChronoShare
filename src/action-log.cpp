@@ -90,7 +90,7 @@ CREATE TRIGGER ActionLogInsert_trigger                                  \n\
 // }
 
 ActionLog::ActionLog(Face& face, const boost::filesystem::path& path, SyncLogPtr syncLog,
-                     const std::string& sharedFolder, const std::string& appName,
+                     const std::string& sharedFolder, const name::Component& appName,
                      OnFileAddedOrChangedCallback onFileAddedOrChanged,
                      OnFileRemovedCallback onFileRemoved)
   : DbHelper(path / ".chronoshare", "action-log.db")
@@ -631,15 +631,12 @@ ActionLog::AddRemoteAction(shared_ptr<Data> actionData)
     return ActionItemPtr();
   }
 
-  std::string action = name.get(-3).toUri();
-
-  if (action != "action") {
+  if (name.get(-3).toUri() != "action") {
     _LOG_ERROR("not an action");
     return ActionItemPtr();
   }
 
-  std::string appName = name.get(-4).toUri();
-  if (appName != m_appName) {
+  if (name.get(-4) != m_appName) {
     _LOG_ERROR("Action doesn't belong to this application");
     return ActionItemPtr();
   }

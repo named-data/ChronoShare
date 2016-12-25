@@ -35,8 +35,8 @@ static const int DB_CACHE_LIFETIME = 60;
 
 ContentServer::ContentServer(Face& face, ActionLogPtr actionLog,
                              const boost::filesystem::path& rootDir, const Name& userName,
-                             const std::string& sharedFolderName, const std::string& appName,
-                             KeyChain& keyChain, int freshness)
+                             const std::string& sharedFolderName, const name::Component& appName,
+                             KeyChain& keyChain, time::milliseconds freshness)
   : m_face(face)
   , m_actionLog(actionLog)
   , m_dbFolder(rootDir / ".chronoshare")
@@ -98,7 +98,7 @@ ContentServer::filterAndServeImpl(const Name& forwardingHint, const Name& name, 
   // name for files:   /<device_name>/<appname>/file/<hash>/<segment>
   // name for actions: /<device_name>/<appname>/action/<shared-folder>/<action-seq>
 
-  if (name.size() >= 4 && name.get(-4).toUri() == m_appName) {
+  if (name.size() >= 4 && name.get(-4) == m_appName) {
     std::string type = name.get(-3).toUri();
     if (type == "file") {
       serve_File(forwardingHint, name, interest);
@@ -199,7 +199,7 @@ ContentServer::serve_File_Execute(const Name& forwardingHint, const Name& name, 
         shared_ptr<Data> outerData = make_shared<Data>();
 
         outerData->setContent(data->wireEncode());
-        outerData->setFreshnessPeriod(time::seconds(m_freshness));
+        outerData->setFreshnessPeriod(m_freshness);
         outerData->setName(interest);
 
         m_keyChain.sign(*outerData, signingWithSha256());;
@@ -235,9 +235,7 @@ ContentServer::serve_Action_Execute(const Name& forwardingHint, const Name& name
     }
     else {
       data->setName(interest);
-      if (m_freshness > 0) {
-        data->setFreshnessPeriod(time::seconds(m_freshness));
-      }
+      data->setFreshnessPeriod(m_freshness);
       m_keyChain.sign(*data);
       m_face.put(*data);
     }

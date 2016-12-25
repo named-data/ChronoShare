@@ -50,7 +50,7 @@ public:
 
     syncLog = make_shared<SyncLog>(root, deviceName);
     actionLog = std::make_shared<ActionLog>(face, root, syncLog,
-                                            "top-secret", "test-chronoshare",
+                                            "top-secret", name::Component("test-chronoshare"),
                                             ActionLog::OnFileAddedOrChangedCallback(),
                                             ActionLog::OnFileRemovedCallback());
 
@@ -61,9 +61,8 @@ public:
 
     ndn::ConstBufferPtr hash = syncLog->RememberStateInStateLog();
 
-    server = make_unique<ContentServer>(face, actionLog, root,
-                                        deviceName, shareFolderName,
-                                        "test-chronoshare", m_keyChain, 5);
+    server = make_unique<ContentServer>(face, actionLog, root, deviceName, shareFolderName,
+                                        name::Component("test-chronoshare"), m_keyChain, time::seconds(5));
 
     Name localPrefix("/local");
     Name broadcastPrefix("/multicast");

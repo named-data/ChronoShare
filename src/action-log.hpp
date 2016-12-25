@@ -60,7 +60,7 @@ public:
 
 public:
   ActionLog(Face& face, const boost::filesystem::path& path, SyncLogPtr syncLog,
-            const std::string& sharedFolder, const std::string& appName,
+            const std::string& sharedFolder, const name::Component& appName,
             OnFileAddedOrChangedCallback onFileAddedOrChanged, OnFileRemovedCallback onFileRemoved);
 
   virtual ~ActionLog()
@@ -154,7 +154,7 @@ private:
 
   // Face& m_face;
   std::string m_sharedFolderName;
-  std::string m_appName;
+  name::Component m_appName;
 
   OnFileAddedOrChangedCallback m_onFileAddedOrChanged;
   OnFileRemovedCallback m_onFileRemoved;
