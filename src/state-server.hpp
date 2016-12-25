@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -21,13 +21,12 @@
 #ifndef STATE_SERVER_H
 #define STATE_SERVER_H
 
+#include "core/chronoshare-common.hpp"
+
 #include "action-log.hpp"
-#include "ccnx-wrapper.hpp"
-#include "executor.hpp"
 #include "object-db.hpp"
 #include "object-manager.hpp"
-#include <boost/thread/locks.hpp>
-#include <boost/thread/shared_mutex.hpp>
+
 #include <map>
 #include <set>
 
@@ -38,6 +37,9 @@
 #error Please define JSON_SPIRIT_VALUE_ENABLED for the Value type to be enabled
 #endif
 
+namespace ndn {
+namespace chronoshare {
+
 /**
  * @brief Class serving state information from ChronoShare
  *
@@ -45,30 +47,33 @@
  *
  * Information available:
  *
- * For now serving only locally (using <PREFIX> = /localhost/<user's-device-name>/"chronoshare"/<FOLDER>/"info")
+ * For now serving only locally(using <PREFIX> =
+ * ndn:/localhop/<user's-device-name>/"chronoshare"/<FOLDER>/"info")
  *
- * - state: get list of SyncNodes, their sequence numbers, and forwarding hint (almost the same as RECOVERY interest)
+ * - state: get list of SyncNodes, their sequence numbers, and forwarding hint(almost the same as
+ *   RECOVERY interest)
  *
- *   <PREFIX_INFO>/"state"   (@todo: authentification code or authentication code should in addition somewhere)
+ *   <PREFIX_INFO>/"state"  (@todo: authentification code or authentication code should in addition
+ *   somewhere)
  *
  * - action
  *
- *   Get list of actions for a folder (for all files under this folder)
+ *   Get list of actions for a folder(for all files under this folder)
  *
- *   <PREFIX_INFO>/"actions"/"folder"/<offset>   (all actions)
+ *   <PREFIX_INFO>/"actions"/"folder"/<offset>  (all actions)
  *   or
  *   <PREFIX_INFO>/"actions"/"folder"/<one-component-relative-file-name>/<offset>
  *
- *   Actions are ordered in decreasing order (latest will go first).
+ *   Actions are ordered in decreasing order(latest will go first).
  *
  *   Each data packet contains up to 100 actions.
  *
- *   TEMPORARILY LIMIT IS REDUCED TO 10 ! (for debug purposes)
- *   (may be even not temporarily...)
+ *   TEMPORARILY LIMIT IS REDUCED TO 10 !(for debug purposes)
+ *  (may be even not temporarily...)
  *
  *   If more items are available, application data will specify URL for the next packet
  *
- *   Format of returned data (JSON):
+ *   Format of returned data(JSON):
  *   {
  *      "actions": [
  *      {
@@ -86,7 +91,7 @@
  *              "hash": "<FILE-HASH>",
  *              "timestamp": "<FILE-TIMESTAMP>",
  *              "chmod": "<FILE-MODE>",
- *              "segNum": "<NUMBER-OF-SEGMENTS (~file size)>"
+ *              "segNum": "<NUMBER-OF-SEGMENTS(~file size)>"
  *          },
  *
  *          // if parent_device_name is set
@@ -103,17 +108,17 @@
  *
  * - file
  *
- *   <PREFIX_INFO>/"files"/"folder"/<offset>   (full filestate)
+ *   <PREFIX_INFO>/"files"/"folder"/<offset>  (full filestate)
  *   or
  *   <PREFIX_INFO>/"files"/"folder"/<one-component-relative-folder-name>/<offset>
  *
  *   Each Data packets contains a list of up to 100 files.
  *   If more items are available, application data will specify URL for the next packet
  *
- *   TEMPORARILY LIMIT IS REDUCED TO 10 ! (for debug purposes)
- *   (may be even not temporarily...)
+ *   TEMPORARILY LIMIT IS REDUCED TO 10 !(for debug purposes)
+ *  (may be even not temporarily...)
  *
- *   Format of returned data (JSON):
+ *   Format of returned data(JSON):
  *   {
  *      "files": [
  *      {
@@ -126,7 +131,7 @@
  *          "hash": "<FILE-HASH>",
  *          "timestamp": "<FILE-TIMESTAMP>",
  *          "chmod": "<FILE-MODE>",
- *          "segNum": "<NUMBER-OF-SEGMENTS (~file size)>"
+ *          "segNum": "<NUMBER-OF-SEGMENTS(~file size)>"
  *      }, ...,
  *      ]
  *
@@ -136,7 +141,8 @@
  *
  * Commands available:
  *
- * For now serving only locally (using <PREFIX_CMD> = /localhost/<user's-device-name>/"chronoshare"/<FOLDER>/"cmd")
+ * For now serving only locally(using <PREFIX_CMD> =
+ * ndn:/localhop/<user's-device-name>/"chronoshare"/<FOLDER>/"cmd")
  *
  * - restore version of the file
  *
@@ -145,39 +151,39 @@
  *   <PREFIX_CMD>/"restore"/"file"/<one-component-relative-file-name>/<version>/<file-hash>
  *
  * - clean state log
- *   (this may not need to be here, if we implement periodic cleaning)
- * - ? flatten action log (should be supported eventually, but not supported now)
+ *  (this may not need to be here, if we implement periodic cleaning)
+ * - ? flatten action log(should be supported eventually, but not supported now)
  */
 class StateServer
 {
 public:
-  StateServer(Ccnx::CcnxWrapperPtr ccnx, ActionLogPtr actionLog,
-              const boost::filesystem::path& rootDir, const Ccnx::Name& userName,
-              const std::string& sharedFolderName, const std::string& appName,
-              ObjectManager& objectManager, int freshness = -1);
+  StateServer(Face& face, ActionLogPtr actionLog, const boost::filesystem::path& rootDir,
+              const Name& userName, const std::string& sharedFolderName, const name::Component& appName,
+              ObjectManager& objectManager, KeyChain& keyChain,
+              time::milliseconds freshness = time::seconds(5));
   ~StateServer();
 
 private:
   void
-  info_actions_folder(const Ccnx::Name& interest);
+  info_actions_folder(const InterestFilter&, const Interest&);
 
   void
-  info_actions_file(const Ccnx::Name& interest);
+  info_actions_file(const InterestFilter&, const Interest&);
 
   void
-  info_actions_fileOrFolder_Execute(const Ccnx::Name& interest, bool isFolder = true);
+  info_actions_fileOrFolder_Execute(const Name& interest, bool isFolder = true);
 
   void
-  info_files_folder(const Ccnx::Name& interest);
+  info_files_folder(const InterestFilter&, const Interest&);
 
   void
-  info_files_folder_Execute(const Ccnx::Name& interest);
+  info_files_folder_Execute(const Name& interest);
 
   void
-  cmd_restore_file(const Ccnx::Name& interest);
+  cmd_restore_file(const InterestFilter&, const Interest&);
 
   void
-  cmd_restore_file_Execute(const Ccnx::Name& interest);
+  cmd_restore_file_Execute(const Name& interest);
 
 private:
   void
@@ -187,27 +193,37 @@ private:
   deregisterPrefixes();
 
   static void
-  formatActionJson(json_spirit::Array& actions, const Ccnx::Name& name, sqlite3_int64 seq_no,
+  formatActionJson(json_spirit::Array& actions, const Name& name, sqlite3_int64 seq_no,
                    const ActionItem& action);
 
   static void
   formatFilestateJson(json_spirit::Array& files, const FileItem& file);
 
 private:
-  Ndnx::NdnxWrapperPtr m_ndnx;
+  Face& m_face;
   ActionLogPtr m_actionLog;
   ObjectManager& m_objectManager;
 
-  Ndnx::Name m_PREFIX_INFO;
-  Ndnx::Name m_PREFIX_CMD;
+  Name m_PREFIX_INFO;
+  Name m_PREFIX_CMD;
+
+  const RegisteredPrefixId* actionsFolderId;
+  const RegisteredPrefixId* actionsFileId;
+  const RegisteredPrefixId* filesFolderId;
+  const RegisteredPrefixId* restoreFileId;
 
   boost::filesystem::path m_rootDir;
-  int m_freshness;
+  time::milliseconds m_freshness;
 
-  Executor m_executor;
-
-  Ccnx::Name m_userName;
+  Name m_userName;
   std::string m_sharedFolderName;
-  std::string m_appName;
+  name::Component m_appName;
+  KeyChain& m_keyChain;
+
+  boost::asio::io_service& m_ioService;
 };
+
+} // namespace chronoshare
+} // namespace ndn
+
 #endif // CONTENT_SERVER_H

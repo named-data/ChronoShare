@@ -25,6 +25,7 @@
 
 #include "action-log.hpp"
 #include "content-server.hpp"
+#include "state-server.hpp"
 #include "fetch-manager.hpp"
 #include "object-db.hpp"
 #include "object-manager.hpp"
@@ -216,7 +217,7 @@ private:
 
   std::string m_sharedFolder;
   unique_ptr<ContentServer> m_server;
-  //unique_ptr<StateServer> m_stateServer;
+  unique_ptr<StateServer> m_stateServer;
   bool m_enablePrefixDiscovery;
 
   FetchManagerPtr m_actionFetcher;

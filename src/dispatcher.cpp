@@ -66,8 +66,8 @@ Dispatcher::Dispatcher(const std::string& localUserName, const std::string& shar
   m_server->registerPrefix(Name("/"));
   m_server->registerPrefix(Name(BROADCAST_DOMAIN));
 
-  //m_stateServer = make_unique<StateServer>(m_face, m_actionLog, rootDir, m_localUserName, m_sharedFolder,
-  //                                         CHRONOSHARE_APP, m_objectManager, m_keyChair);
+  m_stateServer = make_unique<StateServer>(m_face, m_actionLog, rootDir, m_localUserName, m_sharedFolder,
+                                           CHRONOSHARE_APP, m_objectManager, m_keyChain);
 
   m_core = make_unique<SyncCore>(m_face, m_syncLog, localUserName, Name("/"), syncPrefix,
                                  bind(&Dispatcher::Did_SyncLog_StateChange, this, _1),
