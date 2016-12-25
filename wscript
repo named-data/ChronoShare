@@ -207,7 +207,7 @@ def build(bld):
 #         )
     Logs.error("dump-db app compilation is temporary disabled")
 
-    bld.recurse('test');
+    bld.recurse('tests');
 
 from waflib import TaskGen
 @TaskGen.extension('.mm')
