@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -22,20 +22,20 @@
 #define FILE_STATE_H
 
 #include "db-helper.hpp"
+#include "core/chronoshare-common.hpp"
 
-#include "ccnx-name.hpp"
-#include "file-item.pb.hpp"
-#include "hash-helper.hpp"
+#include "file-item.pb.h"
 
-#include <boost/exception/all.hpp>
-#include <boost/tuple/tuple.hpp>
+#include <ndn-cxx/util/digest.hpp>
 
 #include <list>
 
-typedef std::list<FileItem> FileItems;
-typedef boost::shared_ptr<FileItem> FileItemPtr;
-typedef boost::shared_ptr<FileItems> FileItemsPtr;
+namespace ndn {
+namespace chronoshare {
 
+typedef std::list<FileItem> FileItems;
+typedef shared_ptr<FileItem> FileItemPtr;
+typedef shared_ptr<FileItems> FileItemsPtr;
 
 class FileState : public DbHelper
 {
@@ -47,8 +47,8 @@ public:
    * @brief Update or add a file
    */
   void
-  UpdateFile(const std::string& filename, sqlite3_int64 version, const Hash& hash,
-             const Ccnx::CcnxCharbuf& device_name, sqlite3_int64 seqno, time_t atime, time_t mtime,
+  UpdateFile(const std::string& filename, sqlite3_int64 version, const Buffer& hash,
+             const Buffer& device_name, sqlite3_int64 seqno, time_t atime, time_t mtime,
              time_t ctime, int mode, int seg_num);
 
   /**
@@ -60,7 +60,8 @@ public:
   /**
    * @brief Set "complete" flag
    *
-   * The call will do nothing if FileState does not have a record for the file (e.g., file got subsequently deleted)
+   * The call will do nothing if FileState does not have a record for the file(e.g., file got
+   * subsequently deleted)
    */
   void
   SetFileComplete(const std::string& filename);
@@ -72,45 +73,49 @@ public:
   LookupFile(const std::string& filename);
 
   /**
-   * @brief Lookup file state using content hash (multiple items may be returned)
+   * @brief Lookup file state using content hash(multiple items may be returned)
    */
   FileItemsPtr
-  LookupFilesForHash(const Hash& hash);
+  LookupFilesForHash(const Buffer& hash);
 
   /**
    * @brief Lookup all files in the specified folder and call visitor(file) for each file
    */
   void
-  LookupFilesInFolder(const boost::function<void(const FileItem&)>& visitor,
-                      const std::string& folder, int offset = 0, int limit = -1);
+  LookupFilesInFolder(const function<void(const FileItem&)>& visitor, const std::string& folder,
+                      int offset = 0, int limit = -1);
 
   /**
-   * @brief Lookup all files in the specified folder (wrapper around the overloaded version)
+   * @brief Lookup all files in the specified folder(wrapper around the overloaded version)
    */
   FileItemsPtr
   LookupFilesInFolder(const std::string& folder, int offset = 0, int limit = -1);
 
   /**
-   * @brief Recursively lookup all files in the specified folder and call visitor(file) for each file
+   * @brief Recursively lookup all files in the specified folder and call visitor(file) for each
+   * file
    */
   bool
-  LookupFilesInFolderRecursively(const boost::function<void(const FileItem&)>& visitor,
+  LookupFilesInFolderRecursively(const function<void(const FileItem&)>& visitor,
                                  const std::string& folder, int offset = 0, int limit = -1);
 
   /**
-   * @brief Recursively lookup all files in the specified folder (wrapper around the overloaded version)
+   * @brief Recursively lookup all files in the specified folder(wrapper around the overloaded
+   * version)
    */
   FileItemsPtr
   LookupFilesInFolderRecursively(const std::string& folder, int offset = 0, int limit = -1);
 };
 
-typedef boost::shared_ptr<FileState> FileStatePtr;
+typedef shared_ptr<FileState> FileStatePtr;
 
-namespace Error {
+namespace error {
 struct FileState : virtual boost::exception, virtual std::exception
 {
 };
-}
+} // namespace error
 
+} // namespace chronoshare
+} // namespace ndn
 
 #endif // ACTION_LOG_H
