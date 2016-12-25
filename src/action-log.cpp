@@ -19,8 +19,8 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#include "action-log.h"
-#include "logging.h"
+#include "action-log.hpp"
+#include "logging.hpp"
 
 #include <boost/make_shared.hpp>
 

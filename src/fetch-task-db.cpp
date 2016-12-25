@@ -18,8 +18,8 @@
  * Author: Zhenkai Zhu <zhenkai@cs.ucla.edu>
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
-#include "fetch-task-db.h"
-#include "db-helper.h"
+#include "fetch-task-db.hpp"
+#include "db-helper.hpp"
 
 using namespace std;
 using namespace boost;

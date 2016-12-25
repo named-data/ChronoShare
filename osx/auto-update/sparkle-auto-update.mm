@@ -19,12 +19,12 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#include "sparkle-auto-update.h"
+#include "sparkle-auto-update.hpp"
 #import <Foundation/Foundation.h>
 #import <AppKit/AppKit.h>
 #import <Sparkle/Sparkle.h>
 
-#include "logging.h"
+#include "logging.hpp"
 
 INIT_LOGGER ("SparkeAutoUpdate");
 

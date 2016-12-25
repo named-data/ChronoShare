@@ -19,13 +19,12 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#include "fetch-manager.h"
-#include "fetcher.h"
-#include "ndnx-wrapper.h"
+#include "fetch-manager.hpp"
+#include "fetcher.hpp"
+#include "ccnx-wrapper.hpp"
 #include <boost/test/unit_test.hpp>
 #include <boost/make_shared.hpp>
-#include <boost/thread/thread.hpp>
-#include "logging.h"
+#include "logging.hpp"
 
 
 INIT_LOGGER ("Test.FetchManager");

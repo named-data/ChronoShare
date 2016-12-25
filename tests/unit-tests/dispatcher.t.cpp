@@ -19,9 +19,9 @@
  *          Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#include "ndnx-wrapper.h"
-#include "logging.h"
-#include "dispatcher.h"
+#include "ccnx-wrapper.hpp"
+#include "logging.hpp"
+#include "dispatcher.hpp"
 #include <boost/test/unit_test.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/filesystem.hpp>

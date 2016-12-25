@@ -19,8 +19,8 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#include "logging.h"
-#include "object-manager.h"
+#include "logging.hpp"
+#include "object-manager.hpp"
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>

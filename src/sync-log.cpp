@@ -19,8 +19,8 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#include "sync-log.h"
-#include "logging.h"
+#include "sync-log.hpp"
+#include "logging.hpp"
 #include <utility>
 
 #include <boost/make_shared.hpp>

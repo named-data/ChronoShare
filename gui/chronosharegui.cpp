@@ -21,11 +21,11 @@
  *         Ilya Moiseenko <iliamo@ucla.edu>
  */
 
-#include "chronosharegui.h"
+#include "chronosharegui.hpp"
 #include "core/chronoshare-config.hpp"
 
-#include "logging.h"
-#include "ndnx-wrapper.h"
+#include "logging.hpp"
+#include "ccnx-wrapper.hpp"
 #include <QValidator>
 #include <QDir>
 #include <QFileInfo>

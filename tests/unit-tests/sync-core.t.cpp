@@ -1,5 +1,5 @@
-#include "sync-core.h"
-#include "logging.h"
+#include "sync-core.hpp"
+#include "logging.hpp"
 
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem.hpp>

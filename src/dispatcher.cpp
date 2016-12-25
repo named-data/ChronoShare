@@ -19,10 +19,10 @@
  * Author: Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#include "dispatcher.h"
-#include "logging.h"
-#include "ndnx-discovery.h"
-#include "fetch-task-db.h"
+#include "dispatcher.hpp"
+#include "logging.hpp"
+#include "ccnx-discovery.hpp"
+#include "fetch-task-db.hpp"
 
 #include <boost/make_shared.hpp>
 #include <boost/lexical_cast.hpp>

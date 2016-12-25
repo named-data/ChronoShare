@@ -22,13 +22,13 @@
 #ifndef ACTION_LOG_H
 #define ACTION_LOG_H
 
-#include "db-helper.h"
-#include "file-state.h"
-#include "sync-log.h"
-#include "action-item.pb.h"
-#include "file-item.pb.h"
-#include "ndnx-wrapper.h"
-#include "ndnx-pco.h"
+#include "db-helper.hpp"
+#include "file-state.hpp"
+#include "sync-log.hpp"
+#include "action-item.pb.hpp"
+#include "file-item.pb.hpp"
+#include "ccnx-wrapper.hpp"
+#include "ccnx-pco.hpp"
 
 #include <boost/tuple/tuple.hpp>
 

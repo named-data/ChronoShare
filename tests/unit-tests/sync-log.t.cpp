@@ -22,9 +22,9 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include "logging.h"
+#include "logging.hpp"
 #include <unistd.h>
-#include "action-log.h"
+#include "action-log.hpp"
 #include <iostream>
 #include <ndnx-name.h>
 #include <boost/filesystem.hpp>

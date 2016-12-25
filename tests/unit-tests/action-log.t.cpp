@@ -22,8 +22,8 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include "logging.h"
-#include "action-log.h"
+#include "logging.hpp"
+#include "action-log.hpp"
 
 #include <unistd.h>
 #include <iostream>

@@ -19,13 +19,13 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#include "content-server.h"
-#include "logging.h"
+#include "content-server.hpp"
+#include "logging.hpp"
 #include <boost/make_shared.hpp>
 #include <utility>
-#include "task.h"
-#include "periodic-task.h"
-#include "simple-interval-generator.h"
+#include "task.hpp"
+#include "periodic-task.hpp"
+#include "simple-interval-generator.hpp"
 #include <boost/lexical_cast.hpp>
 
 INIT_LOGGER ("ContentServer");

@@ -19,12 +19,12 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#include "object-manager.h"
-#include "ndnx-name.h"
-#include "ndnx-common.h"
-#include "ndnx-pco.h"
-#include "object-db.h"
-#include "logging.h"
+#include "object-manager.hpp"
+#include "ccnx-name.hpp"
+#include "ccnx-common.hpp"
+#include "ccnx-pco.hpp"
+#include "object-db.hpp"
+#include "logging.hpp"
 
 #include <sys/stat.h>
 

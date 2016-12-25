@@ -18,8 +18,8 @@
  * Author: Jared Lindblom <lindblom@cs.ucla.edu>
  */
 
-#include "chronosharegui.h"
-#include "logging.h"
+#include "chronosharegui.hpp"
+#include "logging.hpp"
 #include <QApplication>
 
 int main(int argc, char *argv[])

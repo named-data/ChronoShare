@@ -20,7 +20,7 @@
  *	   Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#include "logging.h"
+#include "logging.hpp"
 
 #ifdef HAVE_LOG4CXX
 

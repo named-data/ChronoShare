@@ -27,7 +27,7 @@
 #include <boost/filesystem.hpp>
 #include <sqlite3.h>
 
-#include "scheduler.h"
+#include "scheduler.hpp"
 
 class FsWatcher : public QObject
 {

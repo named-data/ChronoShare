@@ -22,15 +22,15 @@
 #ifndef STATE_SERVER_H
 #define STATE_SERVER_H
 
-#include "ndnx-wrapper.h"
-#include "object-manager.h"
-#include "object-db.h"
-#include "action-log.h"
+#include "ccnx-wrapper.hpp"
+#include "object-manager.hpp"
+#include "object-db.hpp"
+#include "action-log.hpp"
 #include <set>
 #include <map>
 #include <boost/thread/shared_mutex.hpp>
 #include <boost/thread/locks.hpp>
-#include "executor.h"
+#include "executor.hpp"
 
 #include "../contrib/json_spirit/json_spirit_writer_template.h"
 #include "../contrib/json_spirit/json_spirit_value.h"

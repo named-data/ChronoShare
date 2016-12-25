@@ -19,12 +19,12 @@
  *         Alexander Afanasyev <alexander.afanasyev@ucla.edu>
  */
 
-#include "sync-core.h"
-#include "sync-state-helper.h"
-#include "logging.h"
-#include "random-interval-generator.h"
-#include "simple-interval-generator.h"
-#include "periodic-task.h"
+#include "sync-core.hpp"
+#include "sync-state-helper.hpp"
+#include "logging.hpp"
+#include "random-interval-generator.hpp"
+#include "simple-interval-generator.hpp"
+#include "periodic-task.hpp"
 
 #include <boost/lexical_cast.hpp>
 #include <boost/make_shared.hpp>

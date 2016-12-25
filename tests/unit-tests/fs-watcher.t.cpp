@@ -1,4 +1,4 @@
-#include "fs-watcher.h"
+#include "fs-watcher.hpp"
 #include <boost/make_shared.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/test/unit_test.hpp>

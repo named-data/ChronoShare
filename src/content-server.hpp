@@ -22,14 +22,14 @@
 #ifndef CONTENT_SERVER_H
 #define CONTENT_SERVER_H
 
-#include "ndnx-wrapper.h"
-#include "object-db.h"
-#include "action-log.h"
+#include "ccnx-wrapper.hpp"
+#include "object-db.hpp"
+#include "action-log.hpp"
 #include <set>
 #include <map>
 #include <boost/thread/shared_mutex.hpp>
 #include <boost/thread/locks.hpp>
-#include "scheduler.h"
+#include "scheduler.hpp"
 
 class ContentServer
 {

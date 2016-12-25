@@ -22,7 +22,7 @@
 #ifndef SYNC_STATE_HELPER_H
 #define SYNC_STATE_HELPER_H
 
-#include "sync-state.pb.h"
+#include "sync-state.pb.hpp"
 
 inline std::ostream &
 operator << (std::ostream &os, const SyncStateMsgPtr &msg)

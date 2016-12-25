@@ -20,12 +20,12 @@
  *         Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#include "adhoc.h"
+#include "adhoc.hpp"
 #include "core/chronoshare-config.hpp"
 
 #if (__APPLE__ && HAVE_COREWLAN)
 
-#include "logging.h"
+#include "logging.hpp"
 #include <sstream>
 
 using namespace std;

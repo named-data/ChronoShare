@@ -20,10 +20,10 @@
 
 #include <QtCore>
 
-#include "dispatcher.h"
-#include "fs-watcher.h"
-#include "logging.h"
-#include "ndnx-wrapper.h"
+#include "dispatcher.hpp"
+#include "fs-watcher.hpp"
+#include "logging.hpp"
+#include "ccnx-wrapper.hpp"
 
 #include <boost/make_shared.hpp>
 

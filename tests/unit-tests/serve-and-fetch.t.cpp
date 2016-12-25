@@ -19,13 +19,13 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#include "fetch-manager.h"
-#include "ndnx-wrapper.h"
-#include "ndnx-common.h"
-#include "scheduler.h"
-#include "object-db.h"
-#include "object-manager.h"
-#include "content-server.h"
+#include "fetch-manager.hpp"
+#include "ccnx-wrapper.hpp"
+#include "ccnx-common.hpp"
+#include "scheduler.hpp"
+#include "object-db.hpp"
+#include "object-manager.hpp"
+#include "content-server.hpp"
 #include <boost/test/unit_test.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/filesystem.hpp>
@@ -36,7 +36,7 @@
 #include <stdio.h>
 #include <ctime>
 
-#include "logging.h"
+#include "logging.hpp"
 
 INIT_LOGGER("Test.ServerAndFetch");
 

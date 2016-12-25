@@ -23,11 +23,11 @@
 #ifndef CHRONOSHAREGUI_H
 #define CHRONOSHAREGUI_H
 
-#include "adhoc.h"
+#include "adhoc.hpp"
 
 #if __APPLE__ && HAVE_SPARKLE
 #define SPARKLE_SUPPORTED 1
-#include "sparkle-auto-update.h"
+#include "sparkle-auto-update.hpp"
 #endif
 
 #include <QtGui>
@@ -43,8 +43,8 @@
 #include <QMessageBox>
 #include <QApplication>
 
-#include "fs-watcher.h"
-#include "dispatcher.h"
+#include "fs-watcher.hpp"
+#include "dispatcher.hpp"
 #include "server.hpp"
 #include <boost/thread/thread.hpp>
 

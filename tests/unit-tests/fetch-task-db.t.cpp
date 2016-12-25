@@ -19,8 +19,8 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#include "logging.h"
-#include "fetch-task-db.h"
+#include "logging.hpp"
+#include "fetch-task-db.hpp"
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>

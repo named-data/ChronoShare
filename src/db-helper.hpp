@@ -27,7 +27,7 @@
 #include <openssl/evp.h>
 #include <boost/exception/all.hpp>
 #include <string>
-#include "hash-helper.h"
+#include "hash-helper.hpp"
 #include <boost/filesystem.hpp>
 
 typedef boost::error_info<struct tag_errmsg, std::string> errmsg_info_str;

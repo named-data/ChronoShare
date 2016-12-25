@@ -22,7 +22,7 @@
 #ifndef SYNC_LOG_H
 #define SYNC_LOG_H
 
-#include "db-helper.h"
+#include "db-helper.hpp"
 #include <sync-state.pb.h>
 #include <ndnx-name.h>
 #include <map>

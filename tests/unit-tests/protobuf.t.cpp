@@ -1,5 +1,5 @@
-#include "ndnx-common.h"
-#include "sync-core.h"
+#include "ccnx-common.hpp"
+#include "sync-core.hpp"
 #include <boost/make_shared.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/iostreams/filter/gzip.hpp>

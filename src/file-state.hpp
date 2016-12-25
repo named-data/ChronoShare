@@ -22,11 +22,11 @@
 #ifndef FILE_STATE_H
 #define FILE_STATE_H
 
-#include "db-helper.h"
+#include "db-helper.hpp"
 
-#include "ndnx-name.h"
-#include "file-item.pb.h"
-#include "hash-helper.h"
+#include "ccnx-name.hpp"
+#include "file-item.pb.hpp"
+#include "hash-helper.hpp"
 
 #include <boost/tuple/tuple.hpp>
 #include <boost/exception/all.hpp>

@@ -22,11 +22,11 @@
 #ifndef SYNC_CORE_H
 #define SYNC_CORE_H
 
-#include "sync-log.h"
-#include "ndnx-wrapper.h"
-#include "ndnx-selectors.h"
-#include "scheduler.h"
-#include "task.h"
+#include "sync-log.hpp"
+#include "ccnx-wrapper.hpp"
+#include "ccnx-selectors.hpp"
+#include "scheduler.hpp"
+#include "task.hpp"
 
 #include <boost/function.hpp>
 

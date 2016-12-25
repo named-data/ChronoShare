@@ -19,14 +19,14 @@
  *	   Zhenkai Zhu <zhenkai@cs.ucla.edu>
  */
 
-#include "fetch-manager.h"
+#include "fetch-manager.hpp"
 #include <boost/make_shared.hpp>
 #include <boost/ref.hpp>
 #include <boost/throw_exception.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include "simple-interval-generator.h"
-#include "logging.h"
+#include "simple-interval-generator.hpp"
+#include "logging.hpp"
 
 INIT_LOGGER ("FetchManager");
 

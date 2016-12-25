@@ -22,15 +22,15 @@
 #ifndef DISPATCHER_H
 #define DISPATCHER_H
 
-#include "action-log.h"
-#include "sync-core.h"
-#include "ndnx-wrapper.h"
-#include "executor.h"
-#include "object-db.h"
-#include "object-manager.h"
-#include "content-server.h"
-#include "state-server.h"
-#include "fetch-manager.h"
+#include "action-log.hpp"
+#include "sync-core.hpp"
+#include "ccnx-wrapper.hpp"
+#include "executor.hpp"
+#include "object-db.hpp"
+#include "object-manager.hpp"
+#include "content-server.hpp"
+#include "state-server.hpp"
+#include "fetch-manager.hpp"
 
 #include <boost/function.hpp>
 #include <boost/filesystem.hpp>
