@@ -88,17 +88,6 @@ def build(bld):
         includes='.',
         export_includes='.')
 
-    # if Utils.unversioned_sys_platform() == 'darwin':
-    #     bld(
-    #         target='adhoc',
-    #         mac_app = True,
-    #         features=['cxx'],
-    #         source='adhoc/adhoc-osx.mm'
-    #         includes='. src',
-    #         use='OSX_FOUNDATION OSX_COREWLAN',
-    #     )
-    Logs.error("Ad hoc network creation routines are temporary disabled")
-
     chornoshare = bld(
         target="chronoshare",
         features=['cxx'],

@@ -36,7 +36,6 @@
 #include <QtWidgets>
 
 #ifndef Q_MOC_RUN
-#include "adhoc.hpp"
 #include "dispatcher.hpp"
 #include "fs-watcher.hpp"
 #include "server.hpp"
@@ -147,8 +146,6 @@ private:
   QAction* m_openWeb;
   QMenu* m_recentFilesMenu;
   QAction* m_fileActions[5];
-
-  QAction* m_wifiAction;
 
   QString m_dirPath;          // shared directory
   QString m_username;         // username

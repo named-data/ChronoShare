@@ -212,9 +212,6 @@ ChronoShareGui::~ChronoShareGui()
   // cleanup
   delete m_trayIcon;
   delete m_trayIconMenu;
-#ifdef D_ADHOC_SUPPORTED
-  delete m_wifiAction;
-#endif
 #ifdef SPARKLE_SUPPORTED
   delete m_autoUpdate;
   delete m_checkForUpdates;
@@ -234,7 +231,6 @@ ChronoShareGui::~ChronoShareGui()
 
   // to avoid `private field 'm_checkForUpdates' is not used` warning/error
   (void)(m_checkForUpdates);
-  (void)(m_wifiAction);
 }
 
 void
