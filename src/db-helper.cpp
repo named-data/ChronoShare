@@ -18,17 +18,19 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#include "db-helper.h"
-#include "logging.h"
+#include "db-helper.hpp"
+#include "core/logging.hpp"
 
-#include <boost/make_shared.hpp>
-#include <boost/ref.hpp>
-#include <boost/throw_exception.hpp>
+#include <ndn-cxx/util/digest.hpp>
+
+namespace ndn {
+namespace chronoshare {
 
 INIT_LOGGER("DbHelper");
 
-using namespace boost;
 namespace fs = boost::filesystem;
+
+using util::Sha256;
 
 const std::string INIT_DATABASE = "\
     PRAGMA foreign_keys = ON;      \
@@ -40,32 +42,30 @@ DbHelper::DbHelper(const fs::path& path, const std::string& dbname)
 
   int res = sqlite3_open((path / dbname).c_str(), &m_db);
   if (res != SQLITE_OK) {
-    BOOST_THROW_EXCEPTION(Error::Db() << errmsg_info_str("Cannot open/create dabatabase: [" +
-                                                         (path / dbname).string() + "]"));
+    BOOST_THROW_EXCEPTION(Error("Cannot open/create database: [" + (path / dbname).string() + "]"));
   }
 
   res = sqlite3_create_function(m_db, "hash", 2, SQLITE_ANY, 0, 0, DbHelper::hash_xStep,
                                 DbHelper::hash_xFinal);
   if (res != SQLITE_OK) {
-    BOOST_THROW_EXCEPTION(Error::Db() << errmsg_info_str("Cannot create function ``hash''"));
+    BOOST_THROW_EXCEPTION(Error("Cannot create function ``hash''"));
   }
 
   res = sqlite3_create_function(m_db, "is_prefix", 2, SQLITE_ANY, 0, DbHelper::is_prefix_xFun, 0, 0);
   if (res != SQLITE_OK) {
-    BOOST_THROW_EXCEPTION(Error::Db() << errmsg_info_str("Cannot create function ``is_prefix''"));
+    BOOST_THROW_EXCEPTION(Error("Cannot create function ``is_prefix''"));
   }
 
   res = sqlite3_create_function(m_db, "directory_name", -1, SQLITE_ANY, 0,
                                 DbHelper::directory_name_xFun, 0, 0);
   if (res != SQLITE_OK) {
-    BOOST_THROW_EXCEPTION(Error::Db()
-                          << errmsg_info_str("Cannot create function ``directory_name''"));
+    BOOST_THROW_EXCEPTION(Error("Cannot create function ``directory_name''"));
   }
 
   res = sqlite3_create_function(m_db, "is_dir_prefix", 2, SQLITE_ANY, 0,
                                 DbHelper::is_dir_prefix_xFun, 0, 0);
   if (res != SQLITE_OK) {
-    BOOST_THROW_EXCEPTION(Error::Db() << errmsg_info_str("Cannot create function ``is_dir_prefix''"));
+    BOOST_THROW_EXCEPTION(Error("Cannot create function ``is_dir_prefix''"));
   }
 
   sqlite3_exec(m_db, INIT_DATABASE.c_str(), NULL, NULL, NULL);
@@ -84,66 +84,56 @@ void
 DbHelper::hash_xStep(sqlite3_context* context, int argc, sqlite3_value** argv)
 {
   if (argc != 2) {
-    // _LOG_ERROR ("Wrong arguments are supplied for ``hash'' function");
+    // _LOG_ERROR("Wrong arguments are supplied for ``hash'' function");
     sqlite3_result_error(context, "Wrong arguments are supplied for ``hash'' function", -1);
     return;
   }
+
   if (sqlite3_value_type(argv[0]) != SQLITE_BLOB || sqlite3_value_type(argv[1]) != SQLITE_INTEGER) {
-    // _LOG_ERROR ("Hash expects (blob,integer) parameters");
-    sqlite3_result_error(context, "Hash expects (blob,integer) parameters", -1);
+    // _LOG_ERROR("Hash expects(blob,integer) parameters");
+    sqlite3_result_error(context, "Hash expects(blob,integer) parameters", -1);
     return;
   }
 
-  EVP_MD_CTX** hash_context =
-    reinterpret_cast<EVP_MD_CTX**>(sqlite3_aggregate_context(context, sizeof(EVP_MD_CTX*)));
+  Sha256** digest = reinterpret_cast<Sha256**>(sqlite3_aggregate_context(context, sizeof(Sha256*)));
 
-  if (hash_context == 0) {
+  if (digest == nullptr) {
     sqlite3_result_error_nomem(context);
     return;
   }
 
-  if (*hash_context == 0) {
-    *hash_context = EVP_MD_CTX_create();
-    EVP_DigestInit_ex(*hash_context, HASH_FUNCTION(), 0);
+  if (*digest == nullptr) {
+    *digest = new Sha256();
   }
 
   int nameBytes = sqlite3_value_bytes(argv[0]);
   const void* name = sqlite3_value_blob(argv[0]);
   sqlite3_int64 seqno = sqlite3_value_int64(argv[1]);
 
-  EVP_DigestUpdate(*hash_context, name, nameBytes);
-  EVP_DigestUpdate(*hash_context, &seqno, sizeof(sqlite3_int64));
+  (*digest)->update(reinterpret_cast<const uint8_t*>(name), nameBytes);
+  (*digest)->update(reinterpret_cast<const uint8_t*>(&seqno), sizeof(sqlite3_int64));
 }
 
 void
 DbHelper::hash_xFinal(sqlite3_context* context)
 {
-  EVP_MD_CTX** hash_context =
-    reinterpret_cast<EVP_MD_CTX**>(sqlite3_aggregate_context(context, sizeof(EVP_MD_CTX*)));
+  Sha256** digest = reinterpret_cast<Sha256**>(sqlite3_aggregate_context(context, sizeof(Sha256*)));
 
-  if (hash_context == 0) {
+  if (digest == nullptr) {
     sqlite3_result_error_nomem(context);
     return;
   }
 
-  if (*hash_context == 0) // no rows
-  {
+  if (*digest == nullptr) {
     char charNullResult = 0;
-    sqlite3_result_blob(context, &charNullResult, 1,
-                        SQLITE_TRANSIENT); //SQLITE_TRANSIENT forces to make a copy
+    sqlite3_result_blob(context, &charNullResult, 1, SQLITE_TRANSIENT);
     return;
   }
 
-  unsigned char* hash = new unsigned char[EVP_MAX_MD_SIZE];
-  unsigned int hashLength = 0;
+  shared_ptr<const Buffer> hash = (*digest)->computeDigest();
+  sqlite3_result_blob(context, hash->buf(), hash->size(), SQLITE_TRANSIENT);
 
-  int ok = EVP_DigestFinal_ex(*hash_context, hash, &hashLength);
-
-  sqlite3_result_blob(context, hash, hashLength,
-                      SQLITE_TRANSIENT); //SQLITE_TRANSIENT forces to make a copy
-  delete[] hash;
-
-  EVP_MD_CTX_destroy(*hash_context);
+  delete *digest;
 }
 
 void
@@ -232,3 +222,6 @@ DbHelper::is_dir_prefix_xFun(sqlite3_context* context, int argc, sqlite3_value**
     sqlite3_result_int(context, 0);
   }
 }
+
+} // chronoshare
+} // ndn
