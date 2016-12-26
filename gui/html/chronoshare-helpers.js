@@ -99,7 +99,7 @@ fileExtension = function(fileName) {
 
 
 openHistoryForItem = function(fileName) {
-  url = new HistoryClosure(null).base_no_item_url("fileHistory")
+  url = new HistoryDisplay(null).base_no_item_url("fileHistory")
   url += "&item=" + encodeURIComponent(encodeURIComponent(fileName));
   document.location = url;
 };

@@ -26,7 +26,7 @@ function nav_anchor(aurl)
     //     URIPARAMS = aurl[1];
 
     //     if (CHRONOSHARE) {
-    //         CHRONOSHARE.run ();
+    //         CHRONOSHARE.run();
     //     }
     // }
     // else if (aurl[1] != URIPARAMS)
@@ -35,7 +35,7 @@ function nav_anchor(aurl)
     //     URIPARAMS = aurl[1];
 
     //     if (CHRONOSHARE) {
-    //         CHRONOSHARE.run ();
+    //         CHRONOSHARE.run();
     //     }
     // }
 
