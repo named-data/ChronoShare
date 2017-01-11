@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -37,7 +37,7 @@ namespace server {
 
 using namespace ndn::chronoshare;
 
-INIT_LOGGER("HttpServer");
+INIT_LOGGER("HttpServer")
 
 server::server(const std::string& address, const std::string& port, const std::string& doc_root)
   : io_service_()

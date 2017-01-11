@@ -109,6 +109,7 @@ class GccBasicFlags(CompilerFlags):
                               '-Wno-unused-parameter',
                               '-Wno-error=maybe-uninitialized', # Bug #1615
                               '-Wno-error=deprecated-declarations', # Bug #3795
+                              '-Wno-error=unused-local-typedefs',
                               ]
         return flags
 

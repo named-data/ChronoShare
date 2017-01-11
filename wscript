@@ -86,7 +86,7 @@ def build(bld):
         target='core-objects',
         features=['cxx'],
         source=bld.path.ant_glob('core/**/*.cpp'),
-        use='LOG4CXX BOOST',
+        use='NDN_CXX LOG4CXX BOOST',
         includes='.',
         export_includes='.')
 

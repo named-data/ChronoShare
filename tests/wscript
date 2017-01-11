@@ -5,8 +5,10 @@ top = '..'
 from waflib import Logs
 
 def build(bld):
-    Logs.error("Unit tests are temporary disabled")
-    return
+    if not bld.env['WITH_TESTS']:
+        return
+
+    Logs.error("Most unit tests are temporary disabled")
 
     bld(features='cxx',
         target='unit-tests-main',
@@ -19,8 +21,9 @@ def build(bld):
     unit_tests = bld.program(
             target='../unit-tests',
             features='cxx cxxprogram',
-            source=bld.path.ant_glob(['**/*.cpp'], excl=['main.cpp']),
-            use='unit-tests-main chronoshare',
+            source=bld.path.ant_glob(['**/*.cpp'], excl=['main.cpp',
+                                                         'unit-tests/**/*.cpp']),
+            use='unit-tests-main core-objects chronoshare',
             install_path=None,
             defines='UNIT_TEST_CONFIG_PATH=\"%s/tmp-files/\"' % (bld.bldnode),
             includes='.. ../src .',
