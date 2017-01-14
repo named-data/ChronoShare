@@ -34,8 +34,6 @@ class GlobalConfigurationFixture : boost::noncopyable
 public:
   GlobalConfigurationFixture()
   {
-    INIT_LOGGERS();
-
     if (getenv("HOME") != nullptr) {
       m_home = getenv("HOME");
     }

@@ -21,6 +21,7 @@
 #include "sync-core.hpp"
 
 #include "test-common.hpp"
+#include "dummy-forwarder.hpp"
 
 namespace ndn {
 namespace chronoshare {
@@ -28,19 +29,18 @@ namespace tests {
 
 namespace fs = boost::filesystem;
 
-INIT_LOGGER("Test.SyncCore")
+_LOG_INIT(Test.SyncCore);
 
 class TestSyncCoreFixture : public IdentityManagementTimeFixture
 {
 public:
-  void
-  advanceClocks()
+  TestSyncCoreFixture()
+    : forwarder(m_io, m_keyChain)
   {
-    for (int i = 0; i < 100; ++i) {
-      usleep(10000);
-      IdentityManagementTimeFixture::advanceClocks(time::milliseconds(10), 1);
-    }
   }
+
+public:
+  DummyForwarder forwarder;
 };
 
 BOOST_FIXTURE_TEST_SUITE(TestSyncCore, TestSyncCoreFixture)
@@ -77,47 +77,42 @@ BOOST_AUTO_TEST_CASE(TwoNodes)
   Name loc2("/locator2");
   Name syncPrefix("/broadcast/arslan");
 
-  shared_ptr<Face> c1 = make_shared<Face>(this->m_io);
+  Face& c1 = forwarder.addFace();
   auto log1 = make_shared<SyncLog>(dir1, user1);
-  auto core1 = make_shared<SyncCore>(*c1, log1, user1, loc1, syncPrefix, bind(&callback, _1));
+  auto core1 = make_shared<SyncCore>(c1, log1, user1, loc1, syncPrefix, bind(&callback, _1));
 
-  shared_ptr<Face> c2 = make_shared<Face>(this->m_io);
+  Face& c2 = forwarder.addFace();
   auto log2 = make_shared<SyncLog>(dir2, user2);
-  auto core2 = make_shared<SyncCore>(*c2, log2, user2, loc2, syncPrefix, bind(&callback, _1));
+  auto core2 = make_shared<SyncCore>(c2, log2, user2, loc2, syncPrefix, bind(&callback, _1));
 
-  // @TODO: Implement test using the dummy forwarder and disable dependency on real time
-
-  this->advanceClocks();
+  advanceClocks(time::milliseconds(10), 100);
 
   BOOST_CHECK_EQUAL(toHex(*core1->root()), toHex(*core2->root()));
 
-  // _LOG_TRACE("\n\n\n\n\n\n----------\n");
-
   core1->updateLocalState(1);
-  this->advanceClocks();
+  advanceClocks(time::milliseconds(10), 10);
   BOOST_CHECK_EQUAL(toHex(*core1->root()), toHex(*core2->root()));
   BOOST_CHECK_EQUAL(core2->seq(user1), 1);
   BOOST_CHECK_EQUAL(log2->LookupLocator(user1), loc1);
 
   core1->updateLocalState(5);
-  this->advanceClocks();
+  advanceClocks(time::milliseconds(10), 10);
   BOOST_CHECK_EQUAL(toHex(*core1->root()), toHex(*core2->root()));
   BOOST_CHECK_EQUAL(core2->seq(user1), 5);
   BOOST_CHECK_EQUAL(log2->LookupLocator(user1), loc1);
 
   core2->updateLocalState(10);
-  this->advanceClocks();
+  advanceClocks(time::milliseconds(10), 10);
   BOOST_CHECK_EQUAL(toHex(*core1->root()), toHex(*core2->root()));
   BOOST_CHECK_EQUAL(core1->seq(user2), 10);
   BOOST_CHECK_EQUAL(log1->LookupLocator(user2), loc2);
 
   // simple simultaneous data generation
-  _LOG_TRACE("\n\n\n\n\n\n----------Simultaneous\n");
 
   core1->updateLocalState(11);
-  this->advanceClocks();
+  advanceClocks(time::milliseconds(10), 10);
   core2->updateLocalState(15);
-  this->advanceClocks();
+  advanceClocks(time::milliseconds(10), 10);
   BOOST_CHECK_EQUAL(toHex(*core1->root()), toHex(*core2->root()));
   BOOST_CHECK_EQUAL(core1->seq(user2), 15);
   BOOST_CHECK_EQUAL(core2->seq(user1), 11);

@@ -28,8 +28,6 @@ namespace tests {
 
 namespace fs = boost::filesystem;
 
-INIT_LOGGER("Test.SyncLog")
-
 BOOST_FIXTURE_TEST_SUITE(TestSyncLog, IdentityManagementTimeFixture)
 
 BOOST_AUTO_TEST_CASE(BasicDatabaseTest)

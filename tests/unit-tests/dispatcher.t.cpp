@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -32,10 +32,9 @@ using namespace std;
 using namespace boost;
 namespace fs = boost::filesystem;
 
-INIT_LOGGER("Test.Dispatcher");
+_LOG_INIT(Test.Dispatcher);
 
 BOOST_AUTO_TEST_SUITE(TestDispatcher)
-
 
 void
 cleanDir(fs::path dir)
@@ -53,8 +52,6 @@ checkRoots(const HashPtr& root1, const HashPtr& root2)
 
 BOOST_AUTO_TEST_CASE(DispatcherTest)
 {
-  INIT_LOGGERS();
-
   fs::path dir1("./TestDispatcher/test-white-house");
   fs::path dir2("./TestDispatcher/test-black-house");
 

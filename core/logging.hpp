@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -21,43 +21,32 @@
 #ifndef CHRONOSHARE_CORE_LOGGING_HPP
 #define CHRONOSHARE_CORE_LOGGING_HPP
 
-#include "core/chronoshare-config.hpp"
-
-#include <log4cxx/logger.h>
+#include <ndn-cxx/util/logger.hpp>
 
 namespace ndn {
 namespace chronoshare {
 
-#define MEMBER_LOGGER static log4cxx::LoggerPtr staticModuleLogger;
+#define _LOG_INIT(name) NDN_LOG_INIT(chronoshare.name)
 
-#define INIT_MEMBER_LOGGER(className, name) \
-  log4cxx::LoggerPtr className::staticModuleLogger = log4cxx::Logger::getLogger(name);
+#define _LOG_DEBUG(x) NDN_LOG_DEBUG(x)
 
-#define INIT_LOGGER(name) \
-  static log4cxx::LoggerPtr staticModuleLogger = log4cxx::Logger::getLogger(name);
+#define _LOG_TRACE(x) NDN_LOG_TRACE(x)
 
-#define _LOG_DEBUG(x) LOG4CXX_DEBUG(staticModuleLogger, x);
-
-#define _LOG_TRACE(x) LOG4CXX_TRACE(staticModuleLogger, x);
-
-#define _LOG_FUNCTION(x) LOG4CXX_TRACE(staticModuleLogger, __FUNCTION__ << "(" << x << ")");
-
-#define _LOG_FUNCTION_NOARGS LOG4CXX_TRACE(staticModuleLogger, __FUNCTION__ << "()");
-
-#define _LOG_ERROR(x) LOG4CXX_ERROR(staticModuleLogger, x);
+#define _LOG_ERROR(x) NDN_LOG_ERROR(x)
 
 #define _LOG_ERROR_COND(cond, x) \
-  if (cond) {                    \
-    _LOG_ERROR(x)                \
-  }
+  do {                           \
+    if (cond) {                  \
+      _LOG_ERROR(x);             \
+    }                            \
+  } while (false)
 
 #define _LOG_DEBUG_COND(cond, x) \
-  if (cond) {                    \
-    _LOG_DEBUG(x)                \
-  }
-
-void
-INIT_LOGGERS();
+  do {                           \
+    if (cond) {                  \
+      _LOG_DEBUG(x);             \
+    }                            \
+  } while (false)
 
 } // chronoshare
 } // ndn

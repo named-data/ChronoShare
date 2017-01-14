@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -25,8 +25,6 @@
 int
 main(int argc, char* argv[])
 {
-  INIT_LOGGERS();
-
   QApplication app(argc, argv);
 
   // do not quit when last window closes

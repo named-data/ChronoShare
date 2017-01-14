@@ -25,7 +25,7 @@
 
 #include "logging.hpp"
 
-INIT_LOGGER("SparkeAutoUpdate");
+_LOG_INIT(SparkeAutoUpdate);
 
 class SparkleAutoUpdate::Private
 {

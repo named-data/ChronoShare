@@ -26,7 +26,7 @@
 namespace ndn {
 namespace chronoshare {
 
-INIT_LOGGER("DbHelper")
+_LOG_INIT(DbHelper);
 
 namespace fs = boost::filesystem;
 

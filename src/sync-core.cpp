@@ -29,7 +29,7 @@
 namespace ndn {
 namespace chronoshare {
 
-INIT_LOGGER("Sync.Core")
+_LOG_INIT(Sync.Core);
 
 const int SyncCore::FRESHNESS = 2;
 const std::string SyncCore::RECOVER = "RECOVER";

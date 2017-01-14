@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -30,7 +30,7 @@
 using namespace std;
 using namespace boost;
 
-INIT_LOGGER("FsWatcher");
+_LOG_INIT(FsWatcher);
 
 FsWatcher::FsWatcher(QString dirPath, LocalFile_Change_Callback onChange,
                      LocalFile_Change_Callback onDelete, QObject* parent)

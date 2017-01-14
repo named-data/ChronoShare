@@ -18,41 +18,45 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#include <QtCore>
+#include <ndn-cxx/interest.hpp>
+#include <ndn-cxx/data.hpp>
+#include <ndn-cxx/lp/nack.hpp>
+#include <ndn-cxx/util/dummy-client-face.hpp>
+#include <ndn-cxx/security/key-chain.hpp>
 
-#include "ccnx-wrapper.hpp"
-#include "dispatcher.hpp"
-#include "fs-watcher.hpp"
-#include "logging.hpp"
+#ifndef NDN_CHRONOSHARE_TESTS_DUMMY_FORWARDER_HPP
+#define NDN_CHRONOSHARE_TESTS_DUMMY_FORWARDER_HPP
 
-#include <boost/make_shared.hpp>
+namespace ndn {
+namespace chronoshare {
 
-using namespace boost;
-using namespace std;
-using namespace Ndnx;
-
-int
-main(int argc, char* argv[])
+/**
+ * @brief Very basic implementation of the dummy forwarder
+ *
+ * Interests expressed by any added face, will be forwarded to all other faces.
+ * Similarly, any pushed data, will be pushed to all other faces.
+ */
+class DummyForwarder
 {
-  QCoreApplication app(argc, argv);
+public:
+  DummyForwarder(boost::asio::io_service& io, KeyChain& keyChain);
 
-  if (argc != 4) {
-    cerr << "Usage: ./csd <username> <shared-folder> <path>" << endl;
-    return 1;
+  Face&
+  addFace();
+
+  Face&
+  getFace(size_t nFace)
+  {
+    return *m_faces.at(nFace);
   }
 
-  string username = argv[1];
-  string sharedFolder = argv[2];
-  string path = argv[3];
+private:
+  boost::asio::io_service& m_io;
+  KeyChain& m_keyChain;
+  std::vector<shared_ptr<util::DummyClientFace>> m_faces;
+};
 
-  cout << "Starting ChronoShare for [" << username << "] shared-folder [" << sharedFolder
-       << "] at [" << path << "]" << endl;
+} // namespace chronoshare
+} // namespace ndn
 
-  Dispatcher dispatcher(username, sharedFolder, path, make_shared<CcnxWrapper>());
-
-  FsWatcher watcher(path.c_str(),
-                    bind(&Dispatcher::Did_LocalFile_AddOrModify, &dispatcher, _1),
-                    bind(&Dispatcher::Did_LocalFile_Delete, &dispatcher, _1));
-
-  return app.exec();
-}
+#endif // NDN_CHRONOSHARE_TESTS_DUMMY_FORWARDER_HPP

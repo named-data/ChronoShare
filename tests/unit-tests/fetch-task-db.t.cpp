@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -34,7 +34,7 @@
 #include <unistd.h>
 #include <utility>
 
-INIT_LOGGER("Test.FetchTaskDb");
+_LOG_INIT(Test.FetchTaskDb);
 
 using namespace Ndnx;
 using namespace std;
@@ -104,7 +104,6 @@ getChecker(const Name& deviceName, const Name& baseName, uint64_t minSeqNo, uint
 
 BOOST_AUTO_TEST_CASE(FetchTaskDbTest)
 {
-  INIT_LOGGERS();
   fs::path folder("TaskDbTest");
   fs::create_directories(folder / ".chronoshare");
 

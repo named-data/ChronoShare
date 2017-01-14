@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -38,8 +38,6 @@ BOOST_AUTO_TEST_SUITE(TestActionLog)
 
 BOOST_AUTO_TEST_CASE(ActionLogTest)
 {
-  INIT_LOGGERS();
-
   Name localName("/alex");
 
   fs::path tmpdir = fs::unique_path(fs::temp_directory_path() / "%%%%-%%%%-%%%%-%%%%");

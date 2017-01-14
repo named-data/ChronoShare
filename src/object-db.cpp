@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -25,7 +25,7 @@
 #include <iostream>
 #include <sys/stat.h>
 
-INIT_LOGGER("Object.Db");
+_LOG_INIT(Object.Db);
 
 using namespace std;
 using namespace Ndnx;

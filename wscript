@@ -55,17 +55,15 @@ def configure(conf):
     if Utils.unversioned_sys_platform() == "linux":
         conf.define("TRAY_ICON", "chronoshare-ubuntu.png")
 
-    conf.check_cfg(package='liblog4cxx', args=['--cflags', '--libs'], uselib_store='LOG4CXX', mandatory=True)
-
     USED_BOOST_LIBS = ['system', 'filesystem', 'date_time', 'iostreams',
-                       'regex', 'program_options', 'thread']
+                       'regex', 'program_options', 'thread', 'log', 'log_setup']
 
     conf.env['WITH_TESTS'] = conf.options.with_tests
     if conf.env['WITH_TESTS']:
         USED_BOOST_LIBS += ['unit_test_framework']
         conf.define('HAVE_TESTS', 1)
 
-    conf.check_boost(lib=USED_BOOST_LIBS)
+    conf.check_boost(lib=USED_BOOST_LIBS, mt=True)
     if conf.env.BOOST_VERSION_NUMBER < 105400:
         Logs.error("Minimum required boost version is 1.54.0")
         Logs.error("Please upgrade your distribution or install custom boost libraries" +
@@ -86,7 +84,7 @@ def build(bld):
         target='core-objects',
         features=['cxx'],
         source=bld.path.ant_glob('core/**/*.cpp'),
-        use='NDN_CXX LOG4CXX BOOST',
+        use='NDN_CXX BOOST',
         includes='.',
         export_includes='.')
 
@@ -108,7 +106,7 @@ def build(bld):
                                   'src/db-helper.cpp',
                                   'src/sync-*.cpp',
                                   ]),
-        use='core-objects adhoc BOOST LOG4CXX NDN_CXX TINYXML SQLITE3',
+        use='core-objects adhoc BOOST NDN_CXX TINYXML SQLITE3',
         includes="src",
         export_includes="src",
         )

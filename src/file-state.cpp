@@ -22,7 +22,7 @@
 #include "logging.h"
 #include <boost/bind.hpp>
 
-INIT_LOGGER("FileState")
+_LOG_INIT(FileState);
 
 using namespace boost;
 using namespace std;

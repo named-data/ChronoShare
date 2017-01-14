@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -30,7 +30,7 @@
 #include <iterator>
 #include <unistd.h>
 
-INIT_LOGGER("Test.ObjectManager");
+_LOG_INIT(Test.ObjectManager);
 
 using namespace Ndnx;
 using namespace std;
@@ -41,8 +41,6 @@ BOOST_AUTO_TEST_SUITE(TestObjectManager)
 
 BOOST_AUTO_TEST_CASE(ObjectManagerTest)
 {
-  INIT_LOGGERS();
-
   fs::path tmpdir = fs::unique_path(fs::temp_directory_path() / "%%%%-%%%%-%%%%-%%%%");
   _LOG_DEBUG("tmpdir: " << tmpdir);
   Name deviceName("/device");

@@ -28,7 +28,7 @@
 #include <boost/make_shared.hpp>
 #include <utility>
 
-INIT_LOGGER("StateServer")
+_LOG_INIT(StateServer);
 
 using namespace Ndnx;
 using namespace std;

@@ -29,7 +29,7 @@ namespace chronoshare {
 
 using util::Sqlite3Statement;
 
-INIT_LOGGER("Sync.Log")
+_LOG_INIT(Sync.Log);
 
 // static void
 // xTrace(void*, const char* q)
@@ -101,7 +101,7 @@ SyncLog::SyncLog(const boost::filesystem::path& path, const Name& localName)
   , m_localName(localName)
 {
   sqlite3_exec(m_db, INIT_DATABASE.c_str(), NULL, NULL, NULL);
-  _LOG_DEBUG_COND(sqlite3_errcode(m_db) != SQLITE_OK, "DB Constructer: " << sqlite3_errmsg(m_db));
+  _LOG_DEBUG_COND(sqlite3_errcode(m_db) != SQLITE_OK, "DB Constructor: " << sqlite3_errmsg(m_db));
 
   UpdateDeviceSeqNo(localName, 0);
 

@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -37,7 +37,7 @@
 
 #include "logging.hpp"
 
-INIT_LOGGER("Test.ServerAndFetch");
+_LOG_INIT(Test.ServerAndFetch);
 
 using namespace Ndnx;
 using namespace std;
@@ -114,8 +114,6 @@ finishCallback(Name& deviceName, Name& baseName)
 
 BOOST_AUTO_TEST_CASE(TestServeAndFetch)
 {
-  INIT_LOGGERS();
-
   _LOG_DEBUG("Setting up test environment ...");
   setup();
 

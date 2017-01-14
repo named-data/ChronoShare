@@ -31,8 +31,6 @@ namespace ndn {
 namespace chronoshare {
 namespace tests {
 
-INIT_LOGGER("Test.protobuf")
-
 BOOST_AUTO_TEST_SUITE(TestSyncStatePb)
 
 BOOST_AUTO_TEST_CASE(Serialize)

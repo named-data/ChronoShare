@@ -37,7 +37,7 @@ namespace server {
 
 using namespace ndn::chronoshare;
 
-INIT_LOGGER("HttpServer")
+_LOG_INIT(HttpServer);
 
 server::server(const std::string& address, const std::string& port, const std::string& doc_root)
   : io_service_()

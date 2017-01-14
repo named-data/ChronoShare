@@ -34,12 +34,11 @@ git submodule init
 git submodule sync
 git submodule update
 
-## Cleanup
-sudo ./waf -j1 --color=yes distclean
-
 ./waf -j1 --color=yes configure
 ./waf -j1 --color=yes build
 sudo ./waf -j1 --color=yes install
+
+# Install default config
 sudo cp /usr/local/etc/ndn/nfd.conf.sample /usr/local/etc/ndn/nfd.conf
 
 popd >/dev/null
