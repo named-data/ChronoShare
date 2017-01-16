@@ -13,12 +13,8 @@ if [[ $JOB_NAME == *"code-coverage" ]]; then
           --root=. \
           --xml
 
-    # Generate also a detailed HTML output
-    mkdir build/coverage
-    gcovr --object-directory=build \
-          --output=build/coverage/index.html \
-          --exclude="$PWD/(tests)" \
-          --root=. \
-          --html \
-          --html-details
+    # # Generate also a detailed HTML output, but using lcov (slower, but better results)
+    lcov -q -c -d . --no-external -o build/coverage-with-tests.info
+    lcov -q -r build/coverage-with-tests.info "$PWD/tests/*" -o build/coverage.info
+    genhtml build/coverage.info --output-directory build/coverage --legend
 fi
