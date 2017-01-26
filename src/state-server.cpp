@@ -321,8 +321,8 @@ StateServer::formatFilestateJson(json_spirit::Array& files, const FileItem& file
   json.push_back(Pair("version", file.version()));
   {
     Object owner;
-    Name device_name(file.device_name());
-    owner.push_back(Pair("userName", boost::lexical_cast<std::string>(device_name)));
+    Name device_name(Block(file.device_name().data(), file.device_name().size()));
+    owner.push_back(Pair("userName", device_name.toUri()));
     owner.push_back(Pair("seqNo", file.seq_no()));
 
     json.push_back(Pair("owner", owner));

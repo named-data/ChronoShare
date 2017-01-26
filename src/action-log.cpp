@@ -178,8 +178,9 @@ ActionLog::AddLocalActionUpdate(const std::string& filename, const Buffer& hash,
                        "file_hash, file_atime, file_mtime, file_ctime, file_chmod, file_seg_num, "
                        "parent_device_name, parent_seq_no, "
                        "action_name, action_content_object) "
-                       "VALUES (?, ?, ?, ?, ?, datetime(?, 'unixepoch'),"
-                       "        ?, datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), datetime(?, 'unixepoch'), ?,?, "
+                       "VALUES (?, ?, ?, ?, ?, datetime(?, 'unixepoch', 'localtime'),"
+                       "        ?, datetime(?, 'unixepoch', 'localtime'), datetime(?, 'unixepoch', 'localtime'), "
+                       "        datetime(?, 'unixepoch', 'localtime'), ?, ?, "
                        "        ?, ?, "
                        "        ?, ?);",
                        -1, &stmt, 0);
@@ -330,7 +331,7 @@ ActionLog::AddLocalActionDelete(const std::string& filename)
                            "(device_name, seq_no, action, filename, version, action_timestamp, "
                            "parent_device_name, parent_seq_no, "
                            "action_name, action_content_object) "
-                           "VALUES(?, ?, ?, ?, ?, datetime(?, 'unixepoch'),"
+                           "VALUES(?, ?, ?, ?, ?, datetime(?, 'unixepoch', 'localtime'),"
                            "        ?, ?,"
                            "        ?, ?)",
                      -1, &stmt, 0);
