@@ -57,8 +57,20 @@ class ChronoShareGui : public QDialog
   Q_OBJECT
 
 public:
+  class Error : public std::runtime_error
+  {
+  public:
+    explicit Error(const std::string& what)
+      : std::runtime_error(what)
+    {
+    }
+  };
+
+public:
   // constructor
   explicit ChronoShareGui(QWidget* parent = 0);
+
+  explicit ChronoShareGui(QString dirPath, QString username, QString sharedFolderName, QWidget* parent = 0);
 
   // destructor
   ~ChronoShareGui();
@@ -156,7 +168,7 @@ private:
   QString m_sharedFolderName; // shared folder name
 
   http::server::server* m_httpServer;
-  IoServiceManager* m_ioSerciceManager;
+  IoServiceManager* m_ioServiceManager;
   std::thread m_httpServerThread;
 
   QLabel* labelUsername;
@@ -175,7 +187,6 @@ private:
   // QString m_settingsFilePath; // settings file path
   // QString m_settings;
 
-  std::thread m_chronoshareThread;
   std::thread m_NetworkThread;
   std::unique_ptr<boost::asio::io_service> m_ioService;
   std::unique_ptr<boost::asio::io_service::work> m_ioServiceWork;

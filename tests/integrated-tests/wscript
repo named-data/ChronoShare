@@ -1,0 +1,15 @@
+from waflib import Utils
+
+top = '..'
+
+def build(bld):
+
+    for i in bld.path.ant_glob(['*.cpp']):
+        name = str(i)[str.rfind(str(i),'/'):-len(".cpp")]
+        bld(features='qt5 cxx cxxprogram',
+            target=name,
+            source=[i],
+            use='chronoshare core-objects adhoc http_server chronoshare_gui boost-tests-base QT5CORE QT5WIDGETS',
+            includes='..',
+            defines=['UNIT_TEST_CONFIG_PATH=\"%s/tmp-files/\"' % (bld.bldnode)],
+            install_path=None)

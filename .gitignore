@@ -4,3 +4,4 @@
 build/
 .lock*
 gui/html.qrc
+osx/

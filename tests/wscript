@@ -8,32 +8,37 @@ def build(bld):
     if not bld.env['WITH_TESTS']:
         return
 
+    # precompiled headers (if enabled)
     bld(features='cxx',
-        target='tests-base',
         name='tests-base',
+        target='tests-base',
+        headers=['boost-test.hpp'],
+        use='NDN_CXX BOOST',
+        includes='.')
+
+    # core modules that can be shared between unit and integrated tests
+    bld(features="cxx",
+        target="boost-tests-base",
         source=bld.path.ant_glob(['*.cpp'], excl='main.cpp'),
-        use='core-objects',
-        includes='.. .',
-        defines='UNIT_TEST_CONFIG_PATH=\"%s/tmp-files/\"' % (bld.bldnode)
-      )
+        use='core-objects tests-base BOOST',
+        includes='.',
+        defines=['UNIT_TEST_CONFIG_PATH=\"%s/tmp-files/\"' % (bld.bldnode)],
+        install_path=None)
 
-    for module, name in {"unit": "Unit Tests",
-                         "integrated": "Integrated Tests"}.items():
-        bld(target='%s-tests-main' % module,
-            name='%s-tests-main' % module,
-            features='cxx',
-            use='core-objects BOOST',
-            source='main.cpp',
-            defines=['BOOST_TEST_MODULE=%s' % name]
-        )
+    bld(target='unit-tests-main',
+        name='unit-tests-main',
+        features='cxx',
+        use='tests-base boost-tests-base BOOST',
+        source='main.cpp',
+        defines=['BOOST_TEST_MODULE=Unit Test'])
 
-        tests = bld.program(
-            target='../%s-tests' % module,
-            features='qt5 cxx cxxprogram',
-            moc='' if module == 'unit' else 'integrated-tests/fs-watcher.t.hpp',
-            source=bld.path.ant_glob(['%s-tests/*.cpp' % module]),
-            use='chronoshare core-objects fs-watcher tests-base %s-tests-main QT5CORE QT5WIDGETS' % module,
-            install_path=None,
-            defines=['UNIT_TEST_CONFIG_PATH=\"%s/tmp-files/\"' % (bld.bldnode)],
-            includes='.. ../src .',
-        )
+    unit_tests=bld(
+        target='../unit-tests',
+        features='cxx cxxprogram',
+        source=bld.path.ant_glob(['unit-tests/*.cpp']),
+        use='core-objects adhoc chronoshare http_server chronoshare_gui unit-tests-main',
+        install_path=None,
+        defines=['UNIT_TEST_CONFIG_PATH=\"%s/tmp-files/\"' % (bld.bldnode)],
+        includes='.. ../src .')
+
+    bld.recurse('integrated-tests')

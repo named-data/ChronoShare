@@ -17,6 +17,9 @@
  *
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
+#define BOOST_TEST_MAIN 1
+#define BOOST_TEST_DYN_LINK 1
+#define BOOST_TEST_MODULE ChronoShare Integrated Tests (FsWatcher)
 
 #include "fs-watcher.hpp"
 #include "test-common.hpp"
@@ -32,8 +35,7 @@
 #include <iostream>
 #include <thread>
 #include <set>
-
-#include "fs-watcher.t.hpp"
+#include <QtWidgets>
 
 using namespace std;
 namespace fs = boost::filesystem;
@@ -43,14 +45,6 @@ _LOG_INIT(Test.FSWatcher);
 namespace ndn {
 namespace chronoshare {
 namespace tests {
-
-fsWatcherApp::fsWatcherApp(int& argc, char** argv)
-  : QCoreApplication(argc, argv)
-{
-  connect(this, SIGNAL(stopApp()), this, SLOT(quit()), Qt::QueuedConnection);
-}
-
-fsWatcherApp::~fsWatcherApp() = default;
 
 class TestFSWatcherFixture : public IdentityManagementFixture
 {
@@ -115,19 +109,21 @@ public:
   void
   run()
   {
-    app = new fsWatcherApp(argc, nullptr);
+    QApplication app(argc, nullptr);
     new FsWatcher(m_io, dir.string().c_str(),
                   std::bind(&TestFSWatcherFixture::onChange, this, std::ref(files), _1),
                   std::bind(&TestFSWatcherFixture::onDelete, this, std::ref(files), _1),
-                  app);
-    app->exec();
+                  &app);
+
+    QTimer::singleShot(21000, &app, SLOT(quit()));
+    app.exec();
   }
 
 public:
   fs::path dir;
   set<string> files;
   int argc;
-  fsWatcherApp* app;
+  //fsWatcherApp* app;
 };
 
 BOOST_FIXTURE_TEST_SUITE(TestFsWatcher, TestFSWatcherFixture)
@@ -255,7 +251,7 @@ BOOST_AUTO_TEST_CASE(TestFsWatcher)
   this->advanceClocks(std::chrono::seconds(2));
   BOOST_CHECK(files.find("add-removal-check.txt") == files.end());
 
-  emit app->stopApp();
+  //emit app->stopApp();
 
   workThread.join();
 }

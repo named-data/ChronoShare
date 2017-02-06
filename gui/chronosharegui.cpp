@@ -26,6 +26,7 @@
 #include <QFileInfo>
 #include <QValidator>
 
+#include <boost/throw_exception.hpp>
 #include <thread>
 
 namespace ndn {
@@ -110,11 +111,28 @@ ChronoShareGui::ChronoShareGui(QWidget* parent)
   if (!loadSettings() || m_username.isNull() || m_username == "" || m_sharedFolderName.isNull() ||
       m_sharedFolderName == "" || m_dirPath.isNull() || m_dirPath == "") {
     // prompt user to choose folder
+    _LOG_DEBUG("First Time Setup");
     openMessageBox("First Time Setup",
                    "Please enter a username, shared folder name and choose the shared folder path on your local filesystem.");
     viewSettings();
     openFileDialog();
     viewSettings();
+  }
+  else {
+    startBackend();
+  }
+}
+
+ChronoShareGui::ChronoShareGui(QString dirPath, QString username, QString sharedFolderName, QWidget* parent)
+  : QDialog(parent)
+  , m_dirPath(dirPath)
+  , m_username(username)
+  , m_sharedFolderName(sharedFolderName)
+{
+  if (m_username.isNull() || m_username == "" || m_sharedFolderName.isNull() ||
+      m_sharedFolderName == "" || m_dirPath.isNull() || m_dirPath == "") {
+    // prompt user to choose folder
+    BOOST_THROW_EXCEPTION(Error("Some error with init info"));
   }
   else {
     startBackend();
@@ -140,9 +158,9 @@ ChronoShareGui::startBackend(bool restart /*=false*/)
     m_dispatcher.reset(); // stop dispatcher ASAP, but after watcher(to prevent triggering callbacks
                           // on deleted object)
     m_ioServiceWork.reset();
-    m_ioSerciceManager->handle_stop();
+    m_ioServiceManager->handle_stop();
     m_NetworkThread.join();
-    delete m_ioSerciceManager;
+    delete m_ioServiceManager;
   }
 
   fs::path realPathToFolder(m_dirPath.toStdString());
@@ -162,8 +180,8 @@ ChronoShareGui::startBackend(bool restart /*=false*/)
                                 bind(&Dispatcher::Did_LocalFile_AddOrModify, m_dispatcher.get(), _1),
                                 bind(&Dispatcher::Did_LocalFile_Delete, m_dispatcher.get(), _1)));
   try {
-    m_ioSerciceManager = new IoServiceManager(*m_ioService);
-    m_NetworkThread = std::thread(&IoServiceManager::run, m_ioSerciceManager);
+    m_ioServiceManager = new IoServiceManager(*m_ioService);
+    m_NetworkThread = std::thread(&IoServiceManager::run, m_ioServiceManager);
   }
   catch (const std::exception& e) {
     _LOG_ERROR("Start IO service or Face failed");
@@ -212,10 +230,9 @@ ChronoShareGui::~ChronoShareGui()
   m_dispatcher.reset();
 
   m_ioServiceWork.reset();
-  m_ioSerciceManager->handle_stop();
-  m_chronoshareThread.join();
+  m_ioServiceManager->handle_stop();
   m_NetworkThread.join();
-  delete m_ioSerciceManager;
+  delete m_ioServiceManager;
 
   if (m_httpServer != 0) {
     m_httpServer->handle_stop();
@@ -582,8 +599,6 @@ ChronoShareGui::loadSettings()
   // Load Settings
   // QSettings settings(m_settingsFilePath, QSettings::NativeFormat);
   QSettings settings(QSettings::NativeFormat, QSettings::UserScope, "irl.cs.ucla.edu", "ChronoShare");
-
-  // _LOG_DEBUG(lexical_cast<string>(settings.allKeys()));
 
   if (settings.contains("username")) {
     m_username = settings.value("username", "admin").toString();

@@ -116,21 +116,33 @@ def build(bld):
         source = bld.path.ant_glob(['server/*.cpp']),
         includes = "server src .",
         use = 'BOOST QT5CORE',
+        export_includes="server"
         )
 
-    qt = bld(
-        target = "ChronoShare",
-        features = "qt5 cxx cxxprogram html_resources",
+    chronoshare_gui = bld(
+        target = "chronoshare_gui",
+        features = "qt5 cxx",
         defines = "WAF",
-        source = bld.path.ant_glob(['gui/*.cpp', 'gui/images.qrc']),
+        source = bld.path.ant_glob(['gui/*.cpp'], excl='gui/main.cpp'),
         includes = "fs-watcher gui src adhoc server . ",
         use = "fs-watcher chronoshare http_server QT5CORE QT5GUI QT5WIDGETS",
         moc = "gui/chronosharegui.hpp",
+        export_includes='gui',
+        )
+
+    gui = bld(
+        target = "ChronoShare",
+        features = "qt5 cxx cxxprogram html_resources",
+        defines = "WAF",
+        source = bld.path.ant_glob(['gui/main.cpp']),
+        includes = "fs-watcher gui src adhoc server . ",
+        use = "fs-watcher chronoshare http_server chronoshare_gui QT5CORE QT5GUI QT5WIDGETS",
         html_resources = bld.path.find_dir("gui/html").ant_glob([
                 '**/*.js', '**/*.png', '**/*.css',
                 '**/*.html', '**/*.gif', '**/*.ico'
                 ]),
-        )
+        export_includes='gui',
+    )
 
 #     if Utils.unversioned_sys_platform() == "darwin":
 #         app_plist = '''<?xml version="1.0" encoding="UTF-8"?>
@@ -188,14 +200,14 @@ def build(bld):
         defines = "WAF",
         source = 'cmd/csd.cpp',
         moc = 'cmd/csd.hpp',
-        use = "fs-watcher chronoshare http_server QT5CORE",
+        use = "fs-watcher chronoshare http_server chronoshare_gui QT5CORE",
     )
 
     dump_db = bld(
         target = "dump-db",
         features = "cxx cxxprogram",
         source = bld.path.ant_glob(['cmd/dump-db.cpp']),
-        use = "fs-watcher chronoshare http_server QT5CORE",
+        use = "fs-watcher chronoshare http_server chronoshare_gui QT5CORE",
         )
 
     bld.recurse('tests');
