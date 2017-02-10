@@ -166,9 +166,9 @@ ChronoShareGui::startBackend(bool restart /*=false*/)
   fs::path realPathToFolder(m_dirPath.toStdString());
   realPathToFolder /= m_sharedFolderName.toStdString();
 
-  std::cout << "m_dispatcher username:" << m_username.toStdString()
+  _LOG_DEBUG("m_dispatcher username:" << m_username.toStdString()
             << " m_sharedFolderName:" << m_sharedFolderName.toStdString()
-            << " realPathToFolder: " << realPathToFolder << std::endl;
+            << " realPathToFolder: " << realPathToFolder);
 
   m_ioService.reset(new boost::asio::io_service());
   m_face.reset(new Face(*m_ioService));

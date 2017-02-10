@@ -68,7 +68,7 @@ public:
   // sharedFolder is the name to be used in NDN name;
   // rootDir is the shared folder dir in local file system;
   Dispatcher(const std::string& localUserName, const std::string& sharedFolder,
-             const boost::filesystem::path& rootDir, Face& face, bool enablePrefixDiscovery = true);
+             const boost::filesystem::path& rootDir, Face& face);
   ~Dispatcher();
 
   // ----- Callbacks, they only submit the job to executor and immediately return so that event
@@ -154,12 +154,6 @@ private:
   void
   Did_ActionLog_ActionApply_Delete_Execute(std::string filename);
 
-  // void
-  // Did_ActionLog_ActionApply_AddOrModify(const std::string &filename, Name device_name,
-  // sqlite3_int64 seq_no,
-  //                                        ConstBufferPtr hash, time_t m_time, int mode, int
-  //                                        seg_num);
-
   void
   Did_FetchManager_FileSegmentFetch(const Name& deviceName, const Name& fileSegmentName,
                                     uint32_t segment, shared_ptr<Data> fileSegmentData);
@@ -175,27 +169,18 @@ private:
   Did_FetchManager_FileFetchComplete_Execute(Name deviceName, Name fileBaseName);
 
   void
+  Handle_Prefix_Discovery(const Interest& interest, const Data& data);
+
+  void
+  DiscoverPrefix();
+
+  void
   Did_LocalPrefix_Updated(const Name& prefix);
 
 private:
   void
   AssembleFile_Execute(const Name& deviceName, const Buffer& filehash,
                        const boost::filesystem::path& relativeFilepath);
-
-  // void
-  // fileChanged(const boost::filesystem::path &relativeFilepath, ActionType type);
-
-  // void
-  // syncStateChanged(const SyncStateMsgPtr &stateMsg);
-
-  // void
-  // actionReceived(const ActionItemPtr &actionItem);
-
-  // void
-  // fileSegmentReceived(const Name &name, const Ccnx::Bytes &content);
-
-  // void
-  // fileReady(const Name &fileNamePrefix);
 
 private:
   Face& m_face;
@@ -207,6 +192,8 @@ private:
 
   boost::filesystem::path m_rootDir;
   boost::asio::io_service& m_ioService;
+  Scheduler m_scheduler;
+  util::scheduler::ScopedEventId m_autoDiscovery;
 
   ObjectManager m_objectManager;
   Name m_localUserName;
@@ -218,7 +205,6 @@ private:
   std::string m_sharedFolder;
   unique_ptr<ContentServer> m_server;
   unique_ptr<StateServer> m_stateServer;
-  bool m_enablePrefixDiscovery;
 
   FetchManagerPtr m_actionFetcher;
   FetchManagerPtr m_fileFetcher;

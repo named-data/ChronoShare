@@ -38,16 +38,18 @@ static const name::Component CHRONOSHARE_APP = name::Component("chronoshare");
 static const Name BROADCAST_DOMAIN = "/ndn/multicast";
 
 static const time::seconds DEFAULT_SYNC_INTEREST_INTERVAL = time::seconds(10);
+static const time::seconds DEFAULT_AUTO_DISCOVERY_INTERVAL = time::seconds(60);
 
 Dispatcher::Dispatcher(const std::string& localUserName, const std::string& sharedFolder,
-                       const fs::path& rootDir, Face& face, bool enablePrefixDiscovery)
+                       const fs::path& rootDir, Face& face)
   : m_face(face)
   , m_rootDir(rootDir)
   , m_ioService(face.getIoService())
+  , m_scheduler(m_ioService)
+  , m_autoDiscovery(m_scheduler)
   , m_objectManager(face, m_keyChain, rootDir, CHRONOSHARE_APP.toUri())
   , m_localUserName(localUserName)
   , m_sharedFolder(sharedFolder)
-  , m_enablePrefixDiscovery(enablePrefixDiscovery)
 {
   m_syncLog = make_shared<SyncLog>(m_rootDir, localUserName);
   m_actionLog =
@@ -90,32 +92,55 @@ Dispatcher::Dispatcher(const std::string& localUserName, const std::string& shar
                               bind(&Dispatcher::Did_FetchManager_FileFetchComplete, this, _1, _2),
                               fileTaskDb);
 
-  if (m_enablePrefixDiscovery) {
-    _LOG_DEBUG("registering prefix discovery in Dispatcher");
-    std::string tag = "dispatcher" + m_localUserName.toUri();
-    // Ccnx::CcnxDiscovery::registerCallback(TaggedFunction(bind(&Dispatcher::Did_LocalPrefix_Updated,
-    // this, _1), tag));
-    // TODO registerCallback...?
-    //
-    // this registerCallback is used when the local prefix changes.
-    // the ndn-cxx library does not have this functionality
-    // thus, the application will need to implement this.
-    // send a data packet and get the local prefix. If they are different, call the callback
-    // function, else do nothing.
-  }
+  _LOG_DEBUG("registering prefix discovery in Dispatcher");
+  m_autoDiscovery = m_scheduler.scheduleEvent(DEFAULT_AUTO_DISCOVERY_INTERVAL,
+                                              bind(&Dispatcher::DiscoverPrefix, this));
 }
 
 Dispatcher::~Dispatcher()
 {
   _LOG_DEBUG("Enter destructor of dispatcher");
+}
 
-  if (m_enablePrefixDiscovery) {
-    _LOG_DEBUG("deregistering prefix discovery in Dispatcher");
-    std::string tag = "dispatcher" + m_localUserName.toUri();
-    // TODO
-    //    Ccnx::CcnxDiscovery::deregisterCallback(TaggedFunction(bind(&Dispatcher::Did_LocalPrefix_Updated,
-    //    this, _1), tag));
+void
+Dispatcher::DiscoverPrefix()
+{
+  _LOG_DEBUG("Query for local prefix");
+  Interest interest(Name("/localhop/nfd/rib/routable-prefixes"));
+  m_face.expressInterest(interest,
+      bind(&Dispatcher::Handle_Prefix_Discovery, this, _1, _2),
+      bind([this] {m_autoDiscovery = m_scheduler.scheduleEvent(DEFAULT_AUTO_DISCOVERY_INTERVAL,
+                                                               bind(&Dispatcher::DiscoverPrefix, this));
+                   _LOG_DEBUG("query routable-prefixes, nack received"); }),
+      bind([this] {m_autoDiscovery = m_scheduler.scheduleEvent(DEFAULT_AUTO_DISCOVERY_INTERVAL,
+                                                               bind(&Dispatcher::DiscoverPrefix, this));
+                   _LOG_DEBUG("query routable-prefixes interest timeout"); }));
+}
+
+void
+Dispatcher::Handle_Prefix_Discovery(const Interest& interest, const Data& data)
+{
+  const Block& content = data.getContent();
+  content.parse();
+
+  Name prefix;
+
+  for (auto& element : content.elements()) {
+    prefix = Name(element);
+    break;
   }
+
+  _LOG_DEBUG("local prefix:" << prefix << prefix.empty());
+  if(prefix.empty()) {
+    _LOG_DEBUG("Local prefix is empty");
+    return;
+  }
+
+  _LOG_DEBUG("local prefix:" << prefix << "discovered");
+  Did_LocalPrefix_Updated(prefix);
+
+  m_autoDiscovery = m_scheduler.scheduleEvent(DEFAULT_AUTO_DISCOVERY_INTERVAL,
+                                              bind(&Dispatcher::DiscoverPrefix, this));
 }
 
 void
@@ -222,7 +247,7 @@ Dispatcher::Did_LocalFile_AddOrModify_Execute(fs::path relativeFilePath)
     // notify SyncCore to propagate the change
     m_core->localStateChangedDelayed();
   }
-  catch (fs::filesystem_error& error) {
+  catch (const fs::filesystem_error& error) {
     _LOG_ERROR("File operations failed on [" << relativeFilePath << "](ignoring)");
   }
 
@@ -350,7 +375,7 @@ Dispatcher::Did_ActionLog_ActionApply_Delete(const std::string& filename)
     }
     // don't exist
   }
-  catch (fs::filesystem_error& error) {
+  catch (const fs::filesystem_error& error) {
     _LOG_ERROR("File operations failed when removing [" << absolutePath << "](ignoring)");
   }
 }
@@ -436,7 +461,7 @@ Dispatcher::Did_FetchManager_FileFetchComplete_Execute(Name deviceName, Name fil
           }
       }
     }
-    catch (fs::filesystem_error& error) {
+    catch (const fs::filesystem_error& error) {
       _LOG_ERROR("File operations failed on [" << filePath << "](ignoring)");
     }
 

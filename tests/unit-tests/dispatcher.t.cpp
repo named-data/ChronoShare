@@ -77,8 +77,8 @@ BOOST_FIXTURE_TEST_SUITE(TestDispatcher, TestDispatcherFixture)
 
 BOOST_AUTO_TEST_CASE(DispatcherTest)
 {
-  Dispatcher d1(user1, folder, dir1, face1, false);
-  Dispatcher d2(user2, folder, dir2, face2, false);
+  Dispatcher d1(user1, folder, dir1, face1);
+  Dispatcher d2(user2, folder, dir2, face2);
 
   advanceClocks(time::milliseconds(10), 1000);
 
