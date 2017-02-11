@@ -39,6 +39,3 @@ fi
 ./waf -j1 --color=yes build
 
 # (tests will be run against debug version)
-
-# Install
-sudo ./waf -j1 --color=yes install

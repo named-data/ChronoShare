@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist SYSTEM "file://localhost/System/Library/DTDs/PropertyList.dtd">
+<plist version="0.9">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>English</string>
+    <key>CFBundleExecutable</key>
+    <string>ChronoShare</string>
+    <key>CFBundleIconFile</key>
+    <string>chronoshare.icns</string>
+    <key>CFBundleIdentifier</key>
+    <string>edu.ucla.cs.irl.Chronoshare</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>ChronoShare</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>CFBundleShortVersionString</key>
+    <string>@VERSION@</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.6</string>
+    <key>CFBundleVersion</key>
+    <string>@VERSION@</string>
+    <key>NSMainNibFile</key>
+    <string>MainMenu</string>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    <key>NSHighResolutionCapable</key>
+    <string>True</string>
+    <key>LSUIElement</key>
+    <string>1</string>
+    <key>SUFeedURL</key>
+    <string>@APPCAST@</string>
+    <key>SUPublicDSAKeyFile</key>
+    <string>ndn_sparkle_pub.pem</string>
+</dict>
+</plist>

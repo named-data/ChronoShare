@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -18,13 +18,37 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#ifndef AUTO_UPDATE_H
-#define AUTO_UPDATE_H
-class AutoUpdate
+#ifndef NCC_OSX_AUTO_UPDATE_SPARKLE_HPP
+#define NCC_OSX_AUTO_UPDATE_SPARKLE_HPP
+
+#include "core/chronoshare-config.hpp"
+
+#ifndef OSX_BUILD
+#error "Cannot be included for non-OSX build"
+#endif // OSX_BUILD
+
+#include <string>
+#include <ndn-cxx/util/backports.hpp>
+
+namespace ndn {
+namespace chronoshare {
+
+class OsxAutoUpdateSparkle
 {
 public:
-  virtual ~AutoUpdate(){};
-  virtual void
-  checkForUpdates() = 0;
+  OsxAutoUpdateSparkle(const std::string& updateUrl);
+
+  ~OsxAutoUpdateSparkle();
+
+  void
+  checkForUpdates();
+
+private:
+  class Impl;
+  unique_ptr<Impl> m_impl;
 };
-#endif
+
+} // namespace chronoshare
+} // namespace ndn
+
+#endif // NCC_OSX_AUTO_UPDATE_SPARKLE_HPP

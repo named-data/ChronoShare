@@ -42,12 +42,11 @@
 #include "server.hpp"
 #endif // Q_MOC_RUN
 
-#if __APPLE__ && HAVE_SPARKLE
-#define SPARKLE_SUPPORTED 1
-#include "sparkle-auto-update.hpp"
-#endif
-
 #include <thread>
+
+#ifdef AUTOUPDATE
+#include "osx-auto-update-sparkle.hpp"
+#endif // AUTOUPDATE
 
 namespace ndn {
 namespace chronoshare {
@@ -105,8 +104,10 @@ private slots:
   void
   changeSettings();
 
+#ifdef AUTOUPDATE
   void
-  onCheckForUpdates();
+  checkForUpdates();
+#endif // AUTOUPDATE
 
 private:
   void
@@ -158,7 +159,6 @@ private:
   QAction* m_viewSettings; // chronoShare settings
   QAction* m_changeFolder; // change the shared folder action
   QAction* m_quitProgram;  // quit program action
-  QAction* m_checkForUpdates;
   QAction* m_openWeb;
   QMenu* m_recentFilesMenu;
   QAction* m_fileActions[5];
@@ -181,9 +181,6 @@ private:
   QLabel* label;
   QVBoxLayout* mainLayout;
 
-#ifdef SPARKLE_SUPPORTED
-  AutoUpdate* m_autoUpdate;
-#endif
   // QString m_settingsFilePath; // settings file path
   // QString m_settings;
 
@@ -194,6 +191,11 @@ private:
   std::unique_ptr<Face> m_face;
   std::unique_ptr<FsWatcher> m_watcher;
   std::unique_ptr<Dispatcher> m_dispatcher;
+
+#ifdef AUTOUPDATE
+  QAction* m_checkForUpdates;
+  OsxAutoUpdateSparkle m_sparkle;
+#endif // AUTOUPDATE
 };
 
 } // namespace chronoshare

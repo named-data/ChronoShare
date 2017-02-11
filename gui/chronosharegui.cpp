@@ -49,9 +49,8 @@ _LOG_INIT(Gui);
 ChronoShareGui::ChronoShareGui(QWidget* parent)
   : QDialog(parent)
   , m_httpServer(0)
-#ifdef SPARKLE_SUPPORTED
-  , m_autoUpdate(
-      new SparkleAutoUpdate(tr("http://irl.cs.ucla.edu/~zhenkai/chronoshare_dist/chronoshare.xml")))
+#ifdef AUTOUPDATE
+  , m_sparkle(CHRONOSHARE_APPCAST)
 #endif
 {
   setWindowTitle("Settings");
@@ -128,6 +127,9 @@ ChronoShareGui::ChronoShareGui(QString dirPath, QString username, QString shared
   , m_dirPath(dirPath)
   , m_username(username)
   , m_sharedFolderName(sharedFolderName)
+#ifdef AUTOUPDATE
+  , m_sparkle(CHRONOSHARE_APPCAST)
+#endif
 {
   if (m_username.isNull() || m_username == "" || m_sharedFolderName.isNull() ||
       m_sharedFolderName == "" || m_dirPath.isNull() || m_dirPath == "") {
@@ -243,10 +245,7 @@ ChronoShareGui::~ChronoShareGui()
   // cleanup
   delete m_trayIcon;
   delete m_trayIconMenu;
-#ifdef SPARKLE_SUPPORTED
-  delete m_autoUpdate;
-  delete m_checkForUpdates;
-#endif
+
   delete m_openFolder;
   delete m_viewSettings;
   delete m_changeFolder;
@@ -259,9 +258,6 @@ ChronoShareGui::~ChronoShareGui()
   delete button;
   delete label;
   delete mainLayout;
-
-  // to avoid `private field 'm_checkForUpdates' is not used` warning/error
-  (void)(m_checkForUpdates);
 }
 
 void
@@ -332,10 +328,10 @@ ChronoShareGui::createActionsAndMenu()
   m_changeFolder = new QAction(tr("&Change Folder"), this);
   connect(m_changeFolder, SIGNAL(triggered()), this, SLOT(openFileDialog()));
 
-#ifdef SPARKLE_SUPPORTED
-  m_checkForUpdates = new QAction(tr("Check For Updates"), this);
-  connect(m_checkForUpdates, SIGNAL(triggered()), this, SLOT(onCheckForUpdates()));
-#endif
+#ifdef AUTOUPDATE
+  m_checkForUpdates = new QAction("Check for updates", this);
+  connect(m_checkForUpdates, SIGNAL(triggered()), this, SLOT(checkForUpdates()));
+#endif // AUTOUPDATE
 
   // create the "quit program" action
   m_quitProgram = new QAction(tr("&Quit"), this);
@@ -356,10 +352,10 @@ ChronoShareGui::createTrayIcon()
   m_trayIconMenu->addAction(m_viewSettings);
   m_trayIconMenu->addAction(m_changeFolder);
 
-#ifdef SPARKLE_SUPPORTED
+#ifdef AUTOUPDATE
   m_trayIconMenu->addSeparator();
   m_trayIconMenu->addAction(m_checkForUpdates);
-#endif
+#endif // AUTOUPDATE
 
   m_trayIconMenu->addSeparator();
   m_trayIconMenu->addAction(m_quitProgram);
@@ -373,16 +369,6 @@ ChronoShareGui::createTrayIcon()
   // handle left click of icon
   connect(m_trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)), this,
           SLOT(trayIconClicked(QSystemTrayIcon::ActivationReason)));
-}
-
-void
-ChronoShareGui::onCheckForUpdates()
-{
-#ifdef SPARKLE_SUPPORTED
-  cout << "+++++++++++ trying to update +++++++ " << endl;
-  m_autoUpdate->checkForUpdates();
-  cout << "+++++++++++ end trying to update +++++++ " << endl;
-#endif
 }
 
 void
@@ -598,7 +584,9 @@ ChronoShareGui::loadSettings()
 
   // Load Settings
   // QSettings settings(m_settingsFilePath, QSettings::NativeFormat);
-  QSettings settings(QSettings::NativeFormat, QSettings::UserScope, "irl.cs.ucla.edu", "ChronoShare");
+  QSettings settings;
+
+  _LOG_DEBUG("load settings");
 
   if (settings.contains("username")) {
     m_username = settings.value("username", "admin").toString();
@@ -637,7 +625,7 @@ ChronoShareGui::saveSettings()
 {
   // Save Settings
   // QSettings settings(m_settingsFilePath, QSettings::NativeFormat);
-  QSettings settings(QSettings::NativeFormat, QSettings::UserScope, "irl.cs.ucla.edu", "ChronoShare");
+  QSettings settings;
 
   settings.setValue("dirPath", m_dirPath);
   settings.setValue("username", m_username);
@@ -659,6 +647,14 @@ ChronoShareGui::closeEvent(QCloseEvent* event)
   this->hide();
   event->ignore(); // don't let the event propagate to the base class
 }
+
+#ifdef AUTOUPDATE
+void
+ChronoShareGui::checkForUpdates()
+{
+  m_sparkle.checkForUpdates();
+}
+#endif // AUTOUPDATE
 
 } // namespace chronoshare
 } // namespace ndn

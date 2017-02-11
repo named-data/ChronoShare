@@ -1,6 +1,7 @@
 # -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
-VERSION='1.0'
+VERSION='0.1.0'
 APPNAME='ChronoShare'
+APPCAST='https://named-data.net/binaries/ChronoShare/sparkle-appcast.xml'
 
 from waflib import Logs, Utils, Task, TaskGen
 
@@ -77,6 +78,15 @@ def configure(conf):
 
     conf.define('SYSCONFDIR', conf.env['SYSCONFDIR'])
 
+    conf.define('CHRONOSHARE_VERSION', VERSION)
+    conf.define('CHRONOSHARE_APPCAST', APPCAST)
+
+    if Utils.unversioned_sys_platform() == "darwin":
+        conf.define('OSX_BUILD', 1)
+        conf.env['AUTOUPDATE'] = conf.options.autoupdate
+        if conf.env['AUTOUPDATE']:
+            conf.define('AUTOUPDATE', 1)
+
     conf.write_config_header('core/chronoshare-config.hpp')
 
 def build(bld):
@@ -130,13 +140,13 @@ def build(bld):
         export_includes='gui',
         )
 
-    gui = bld(
+    app = bld(
         target = "ChronoShare",
         features = "qt5 cxx cxxprogram html_resources",
         defines = "WAF",
-        source = bld.path.ant_glob(['gui/main.cpp']),
+        source = bld.path.ant_glob(['gui/main.cpp']) + ['gui/images.qrc'],
         includes = "fs-watcher gui src adhoc server . ",
-        use = "fs-watcher chronoshare http_server chronoshare_gui QT5CORE QT5GUI QT5WIDGETS",
+        use = "chronoshare_gui",
         html_resources = bld.path.find_dir("gui/html").ant_glob([
                 '**/*.js', '**/*.png', '**/*.css',
                 '**/*.html', '**/*.gif', '**/*.ico'
@@ -144,55 +154,30 @@ def build(bld):
         export_includes='gui',
     )
 
-#     if Utils.unversioned_sys_platform() == "darwin":
-#         app_plist = '''<?xml version="1.0" encoding="UTF-8"?>
-# <!DOCTYPE plist SYSTEM "file://localhost/System/Library/DTDs/PropertyList.dtd">
-# <plist version="0.9">
-# <dict>
-#     <key>CFBundlePackageType</key>
-#     <string>APPL</string>
-#     <key>CFBundleIconFile</key>
-#     <string>chronoshare.icns</string>
-#     <key>CFBundleGetInfoString</key>
-#     <string>Created by Waf</string>
-#     <key>CFBundleIdentifier</key>
-#     <string>edu.ucla.cs.irl.Chronoshare</string>
-#     <key>CFBundleSignature</key>
-#     <string>????</string>
-#     <key>NOTE</key>
-#     <string>THIS IS A GENERATED FILE, DO NOT MODIFY</string>
-#     <key>CFBundleExecutable</key>
-#     <string>%s</string>
-#     <key>LSUIElement</key>
-#     <string>1</string>
-#     <key>SUPublicDSAKeyFile</key>
-#     <string>dsa_pub.pem</string>
-#     <key>CFBundleIconFile</key>
-#     <string>chronoshare.icns</string>
-# </dict>
-# </plist>'''
-#         qt.mac_app = "ChronoShare.app"
-#         qt.mac_plist = app_plist % "ChronoShare"
-#         qt.mac_resources = 'chronoshare.icns'
-#         qt.use += " OSX_FOUNDATION OSX_COREWLAN adhoc"
+    if Utils.unversioned_sys_platform() == "darwin":
+        bld(features="subst",
+            source='src/Info.plist.in',
+            target='src/Info.plist',
+            install_path=None,
+            VERSION=VERSION,
+            APPCAST=APPCAST)
 
-#         if bld.env['HAVE_SPARKLE']:
-#             qt.use += " OSX_SPARKLE"
-#             qt.source += ["osx/auto-update/sparkle-auto-update.mm"]
-#             qt.includes += " osx/auto-update"
-#             if bld.env['HAVE_LOCAL_SPARKLE']:
-#                 qt.mac_frameworks = "osx/Frameworks/Sparkle.framework"
+        if bld.env['AUTOUPDATE']:
+            chronoshare_gui.source += bld.path.ant_glob(['gui/osx-*.mm'])
+            chronoshare_gui.use += " OSX_FOUNDATION OSX_SPARKLE"
+        app.mac_app = True
+        app.mac_plist = 'src/Info.plist'
+        app.mac_files = [i.path_from(bld.path) for i in bld.path.ant_glob('res/**/*', excl='**/*.ai')]
 
-#     if Utils.unversioned_sys_platform() == "linux":
-#         bld(
-#             features = "process_in",
-#             target = "ChronoShare.desktop",
-#             source = "ChronoShare.desktop.in",
-#             install_prefix = "${DATADIR}/applications",
-#             )
-#         bld.install_files("${DATADIR}/applications", "ChronoShare.desktop")
-#         bld.install_files("${DATADIR}/ChronoShare", "gui/images/chronoshare-big.png")
-    Logs.error("ChronoShare app compilation is temporary disabled")
+    if Utils.unversioned_sys_platform() == "linux":
+        bld(
+            features = "process_in",
+            target = "ChronoShare.desktop",
+            source = "ChronoShare.desktop.in",
+            install_prefix = "${DATADIR}/applications",
+            )
+        bld.install_files("${DATADIR}/applications", "ChronoShare.desktop")
+        bld.install_files("${DATADIR}/ChronoShare", "gui/images/chronoshare-big.png")
 
     cmdline = bld(
         target = "csd",

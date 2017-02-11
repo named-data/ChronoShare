@@ -1,6 +1,6 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * Copyright (c) 2013-2016, Regents of the University of California.
+ * Copyright (c) 2013-2017, Regents of the University of California.
  *
  * This file is part of ChronoShare, a decentralized file sharing application over NDN.
  *
@@ -18,42 +18,44 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#include "sparkle-auto-update.hpp"
+#include "osx-auto-update-sparkle.hpp"
+
 #import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
 #import <Sparkle/Sparkle.h>
 
-#include "logging.hpp"
+namespace ndn {
+namespace chronoshare {
 
-_LOG_INIT(SparkeAutoUpdate);
-
-class SparkleAutoUpdate::Private
+class OsxAutoUpdateSparkle::Impl
 {
 public:
-  SUUpdater* updater;
+  SUUpdater* m_updater;
 };
 
-SparkleAutoUpdate::SparkleAutoUpdate(const QString& updateUrl)
+
+OsxAutoUpdateSparkle::OsxAutoUpdateSparkle(const std::string& updateUrl)
+  : m_impl(make_unique<Impl>())
 {
-  d = new Private;
-  d->updater = [[SUUpdater sharedUpdater] retain];
-  NSURL* url = [NSURL URLWithString:[NSString stringWithUTF8String:updateUrl.toUtf8().data()]];
-  [d->updater setFeedURL:url];
-  [d->updater setAutomaticallyChecksForUpdates:YES];
-  [d->updater setUpdateCheckInterval:86400];
+  m_impl->m_updater = [[SUUpdater sharedUpdater] retain];
+  NSURL* url = [NSURL URLWithString:[NSString stringWithUTF8String:updateUrl.data()]];
+  [m_impl->m_updater setFeedURL:url];
+  [m_impl->m_updater setAutomaticallyChecksForUpdates:YES];
+  [m_impl->m_updater setUpdateCheckInterval:86400];
 }
 
-SparkleAutoUpdate::~SparkleAutoUpdate()
+OsxAutoUpdateSparkle::~OsxAutoUpdateSparkle()
 {
-  [d->updater release];
-  delete d;
+  [m_impl->m_updater release];
   // presummably SUUpdater handles garbage collection
 }
 
 void
-SparkleAutoUpdate::checkForUpdates()
+OsxAutoUpdateSparkle::checkForUpdates()
 {
-  //[d->updater checkForUpdatesInBackground];
-  [d->updater checkForUpdates:nil];
-  _LOG_DEBUG("++++++++ checking update +++++");
+  //[m_impl->m_updater checkForUpdatesInBackground];
+  [m_impl->m_updater checkForUpdates:nil];
 }
+
+} // namespace chronoshare
+} // namespace ndn
