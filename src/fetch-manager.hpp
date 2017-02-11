@@ -18,8 +18,8 @@
  * See AUTHORS.md for complete list of ChronoShare authors and contributors.
  */
 
-#ifndef FETCH_MANAGER_H
-#define FETCH_MANAGER_H
+#ifndef CHRONOSHARE_SRC_FETCH_MANAGER_HPP
+#define CHRONOSHARE_SRC_FETCH_MANAGER_HPP
 
 #include "fetch-task-db.hpp"
 #include "fetcher.hpp"
@@ -54,6 +54,7 @@ public:
 public:
   FetchManager(Face& face, const Mapping& mapping, const Name& broadcastForwardingHint,
                uint32_t parallelFetches = 3,
+               bool isSegment = true,
                const SegmentCallback& defaultSegmentCallback = SegmentCallback(),
                const FinishCallback& defaultFinishCallback = FinishCallback(),
                const FetchTaskDbPtr& taskDb = FetchTaskDbPtr());
@@ -110,6 +111,8 @@ private:
 
   const Name m_broadcastHint;
   boost::asio::io_service& m_ioService;
+
+  bool m_isSegment;
 };
 
 typedef shared_ptr<FetchManager> FetchManagerPtr;
@@ -117,4 +120,4 @@ typedef shared_ptr<FetchManager> FetchManagerPtr;
 } // namespace chronoshare
 } // namespace ndn
 
-#endif // FETCHER_H
+#endif // CHRONOSHARE_SRC_FETCH_MANAGER_HPP

@@ -79,7 +79,7 @@ Dispatcher::Dispatcher(const std::string& localUserName, const std::string& shar
   m_actionFetcher =
     make_shared<FetchManager>(m_face, bind(&SyncLog::LookupLocator, &*m_syncLog, _1),
                               Name(BROADCAST_DOMAIN), // no appname suffix now
-                              3,
+                              3, false,
                               bind(&Dispatcher::Did_FetchManager_ActionFetch, this, _1, _2, _3, _4),
                               FetchManager::FinishCallback(), actionTaskDb);
 
@@ -87,7 +87,7 @@ Dispatcher::Dispatcher(const std::string& localUserName, const std::string& shar
   m_fileFetcher =
     make_shared<FetchManager>(m_face, bind(&SyncLog::LookupLocator, &*m_syncLog, _1),
                               Name(BROADCAST_DOMAIN), // no appname suffix now
-                              3, bind(&Dispatcher::Did_FetchManager_FileSegmentFetch, this, _1, _2,
+                              3, true, bind(&Dispatcher::Did_FetchManager_FileSegmentFetch, this, _1, _2,
                                       _3, _4),
                               bind(&Dispatcher::Did_FetchManager_FileFetchComplete, this, _1, _2),
                               fileTaskDb);
@@ -329,8 +329,7 @@ Dispatcher::Did_FetchManager_ActionFetch(const Name& deviceName, const Name& act
 
     Name fileNameBase = Name("/");
     fileNameBase.append(deviceName).append(CHRONOSHARE_APP).append("file");
-    //      fileNameBase.append(name::Component(hash));
-    fileNameBase.appendImplicitSha256Digest(hash);
+    fileNameBase.append(name::Component(hash));
 
     std::string hashStr = toHex(*hash);
     if (ObjectDb::doesExist(m_rootDir / ".chronoshare", deviceName, hashStr)) {

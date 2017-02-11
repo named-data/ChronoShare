@@ -108,7 +108,7 @@ SyncCore::localStateChanged()
   // reply sync Interest with oldDigest as last component
 
   Name syncName(m_syncPrefix);
-  syncName.appendImplicitSha256Digest(oldDigest);
+  syncName.append(name::Component(oldDigest));
 
   BufferPtr syncData = serializeGZipMsg(*msg);
 
@@ -150,7 +150,7 @@ SyncCore::sendSyncInterest()
 {
   Name syncInterest(m_syncPrefix);
   //  syncInterest.append(name::Component(*m_rootDigest));
-  syncInterest.appendImplicitSha256Digest(m_rootDigest);
+  syncInterest.append(name::Component(m_rootDigest));
 
   _LOG_DEBUG("[" << m_log->GetLocalName() << "] >>> send SYNC Interest for " << toHex(*m_rootDigest)
                  << ": "
@@ -178,7 +178,7 @@ SyncCore::recover(ConstBufferPtr digest)
     // unfortunately we still don't recognize this digest
     // append the unknown digest
     Name recoverInterest(m_syncPrefix);
-    recoverInterest.append(RECOVER).appendImplicitSha256Digest(digest);
+    recoverInterest.append(RECOVER).append(name::Component(digest));
 
     _LOG_DEBUG("[" << m_log->GetLocalName() << "] >>> send RECOVER Interests for " << toHex(*digest));
 

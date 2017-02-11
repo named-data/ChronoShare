@@ -44,6 +44,7 @@ public:
   typedef std::function<void(Fetcher&)> OnFetchFailedCallback;
 
   Fetcher(Face& face,
+          bool isSegment,
           const SegmentCallback& segmentCallback, // callback passed by caller of FetchManager
           const FinishCallback& finishCallback,   // callback passed by caller of FetchManager
           const OnFetchCompleteCallback& onFetchComplete,
@@ -166,6 +167,7 @@ private:
   std::mutex m_seqNoMutex;
 
   boost::asio::io_service& m_ioService;
+  bool m_isSegment;
 };
 
 typedef shared_ptr<Fetcher> FetcherPtr;

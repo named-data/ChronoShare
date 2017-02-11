@@ -40,6 +40,7 @@ struct fetcher_disposer
 
 FetchManager::FetchManager(Face& face, const Mapping& mapping, const Name& broadcastForwardingHint,
                            uint32_t parallelFetches, // = 3
+                           bool isSegment,
                            const SegmentCallback& defaultSegmentCallback,
                            const FinishCallback& defaultFinishCallback, const FetchTaskDbPtr& taskDb)
   : m_face(face)
@@ -53,6 +54,7 @@ FetchManager::FetchManager(Face& face, const Mapping& mapping, const Name& broad
   , m_taskDb(taskDb)
   , m_broadcastHint(broadcastForwardingHint)
   , m_ioService(m_face.getIoService())
+  , m_isSegment(isSegment)
 {
   // no need to check to often. if needed, will be rescheduled
   m_scheduledFetchesEvent =
@@ -102,7 +104,7 @@ FetchManager::Enqueue(const Name& deviceName, const Name& baseName,
 
   _LOG_TRACE("++++ Create fetcher: " << baseName);
   Fetcher* fetcher =
-    new Fetcher(m_face, segmentCallback, finishCallback,
+    new Fetcher(m_face, m_isSegment, segmentCallback, finishCallback,
                 bind(&FetchManager::DidFetchComplete, this, _1, _2, _3),
                 bind(&FetchManager::DidNoDataTimeout, this, _1), deviceName, baseName, minSeqNo,
                 maxSeqNo, time::seconds(30), forwardingHint);

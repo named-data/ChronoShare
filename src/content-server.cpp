@@ -117,14 +117,14 @@ ContentServer::filterAndServe(const InterestFilter& interestFilter, const Intere
 {
   Name forwardingHint = Name(interestFilter);
   Name interest = interestTrue.getName();
-  _LOG_DEBUG("I'm serving ForwardingHint: " << forwardingHint << " Interest: " << interest);
+  _LOG_TRACE("Serving ForwardingHint: " << forwardingHint << " Interest: " << interest);
   if (forwardingHint.size() > 0 && m_userName.size() >= forwardingHint.size() &&
       m_userName.getSubName(0, forwardingHint.size()) == forwardingHint) {
     _LOG_DEBUG("Triggered without Forwardinghint!");
     filterAndServeImpl(Name("/"), interest, interest); // try without forwarding hints
   }
 
-  _LOG_DEBUG("Triggered with Forwardinghint~!");
+  _LOG_TRACE("Triggered with Forwardinghint~!");
   filterAndServeImpl(forwardingHint, interest.getSubName(forwardingHint.size()),
                      interest); // always try with hint... :( have to
 }

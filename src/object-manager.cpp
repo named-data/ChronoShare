@@ -75,8 +75,8 @@ ObjectManager::localFileToObjects(const fs::path& file, const Name& deviceName)
     name.append(deviceName)
       .append(m_appName)
       .append("file")
-      .appendImplicitSha256Digest(fileHash.computeDigest())
-      .appendNumber(segment);
+      .append(name::Component(fileHash.computeDigest()))
+      .appendSegment(segment);
 
     shared_ptr<Data> data = make_shared<Data>();
     data->setName(name);
@@ -94,9 +94,9 @@ ObjectManager::localFileToObjects(const fs::path& file, const Name& deviceName)
     Name name = Name("/");
     name.append(m_appName)
       .append("file")
-      .appendImplicitSha256Digest(fileHash.computeDigest())
+      .append(name::Component(fileHash.computeDigest()))
       .append(deviceName)
-      .appendNumber(0);
+      .appendSegment(0);
 
     shared_ptr<Data> data = make_shared<Data>();
     data->setName(name);

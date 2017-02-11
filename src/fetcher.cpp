@@ -31,6 +31,7 @@ namespace chronoshare {
 _LOG_INIT(Fetcher);
 
 Fetcher::Fetcher(Face& face,
+                 bool isSegment,
                  const SegmentCallback& segmentCallback,
                  const FinishCallback& finishCallback,
                  const OnFetchCompleteCallback& onFetchComplete,
@@ -67,6 +68,7 @@ Fetcher::Fetcher(Face& face,
   , m_nextScheduledRetry(time::steady_clock::now())
 
   , m_ioService(m_face.getIoService())
+  , m_isSegment(isSegment)
 {
 }
 
@@ -110,15 +112,21 @@ Fetcher::FillPipeline()
 
     // cout << ">>> " << m_minSendSeqNo+1 << endl;
 
-    Interest interest(
-      Name(m_forwardingHint).append(m_name).appendNumber(m_minSendSeqNo + 1)); // Alex: this lifetime should be changed to RTO
-    _LOG_DEBUG("interest Name: " << interest);
-    interest.setInterestLifetime(time::seconds(1));
+    Name name = Name(m_forwardingHint).append(m_name);
+    if (m_isSegment) {
+       name.appendSegment(m_minSendSeqNo + 1);
+    }
+    else {
+       name.appendNumber(m_minSendSeqNo + 1);
+    }
+    Interest interest(name);
+    interest.setInterestLifetime(time::seconds(1));  // Alex: this lifetime should be changed to RTO
+    _LOG_DEBUG("interest: " << interest);
     m_face.expressInterest(interest,
                            bind(&Fetcher::OnData, this, m_minSendSeqNo + 1, _1, _2),
                            bind(&Fetcher::OnTimeout, this, m_minSendSeqNo + 1, _1));
 
-    _LOG_DEBUG(" >>> i ok");
+    _LOG_TRACE(" >>> i ok");
 
     m_activePipeline++;
   }

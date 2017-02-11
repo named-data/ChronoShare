@@ -55,7 +55,7 @@ public:
     recvData.insert(seqno);
     differentNames.insert(basename);
     Name name = basename;
-    name.appendNumber(seqno);
+    name.appendSegment(seqno);
     segmentNames.insert(name);
 
     Block block = data->getContent();
@@ -111,7 +111,7 @@ BOOST_FIXTURE_TEST_CASE(TestFetcher, FetcherTestData)
 
         auto data = make_shared<Data>();
         Name name(baseName);
-        name.appendNumber(requestedSeqNo);
+        name.appendSegment(requestedSeqNo);
 
         data->setName(name);
         data->setFreshnessPeriod(time::seconds(300));
@@ -122,7 +122,7 @@ BOOST_FIXTURE_TEST_CASE(TestFetcher, FetcherTestData)
       }
     });
 
-  Fetcher fetcher(face, bind(&FetcherTestData::onData, this, _1, _2, _3, _4),
+  Fetcher fetcher(face, true, bind(&FetcherTestData::onData, this, _1, _2, _3, _4),
                   bind(&FetcherTestData::finish, this, _1, _2),
                   bind(&FetcherTestData::onComplete, this, _1),
                   bind(&FetcherTestData::onFail, this, _1), deviceName, Name("/fetchtest"), 0, 26,
