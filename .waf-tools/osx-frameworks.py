@@ -45,7 +45,7 @@ def configure(conf):
                     # Download to local path and retry
                     Logs.info ("Sparkle framework not found, trying to download it to 'build/'")
 
-                    urllib.urlretrieve ("https://github.com/sparkle-project/Sparkle/releases/download/1.16.0/Sparkle-1.16.0.tar.bz2", "build/Sparkle.tar.bz2")
+                    urllib.urlretrieve ("https://github.com/sparkle-project/Sparkle/releases/download/1.17.0/Sparkle-1.17.0.tar.bz2", "build/Sparkle.tar.bz2")
                     if os.path.exists('build/Sparkle.tar.bz2'):
                         try:
                             subprocess.check_call(['mkdir', 'build/Sparkle'])

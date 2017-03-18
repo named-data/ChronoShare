@@ -1,4 +1,4 @@
-<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0">
+<rss xmlns:ns0="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <title>ChronoShare Changelog</title>
     <link>
@@ -6,5 +6,11 @@
     </link>
     <description>Most recent changes with links to updates.</description>
     <language>en</language>
-  </channel>
+<item>
+<title>Version 0.1.0</title>
+<pubDate>Thu, 23 Mar 2017 09:32:14 -0700</pubDate>
+<ns0:minimumSystemVersion>10.12.0</ns0:minimumSystemVersion>
+<enclosure length="17713425" type="application/octet-stream" url="https://named-data.net/binaries/ChronoShare/ChronoShare-0.1.0.dmg" ns0:dsaSignature="MC4CFQCCmLhRNO6aRv1GA+CwHAl+4AQ7OwIVAI1nERVItIqvzUtyScXTiTYWML8v" ns0:shortVersionString="0.1.0" ns0:version="0.1.0" />
+<ns0:releaseNotesLink>https://named-data.net/binaries/ChronoShare/release-notes-0.1.0.html</ns0:releaseNotesLink></item>
+</channel>
 </rss>
