@@ -163,6 +163,8 @@ ChronoShareGui::startBackend(bool restart /*=false*/)
     m_ioServiceManager->handle_stop();
     m_NetworkThread.join();
     delete m_ioServiceManager;
+
+    m_face.reset();
   }
 
   fs::path realPathToFolder(m_dirPath.toStdString());
