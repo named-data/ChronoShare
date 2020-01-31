@@ -1,18 +1,14 @@
-ChronoShare Authors
-===================
+# ChronoShare Authors
 
-## The primary authors are (and/or have been):
+The following lists maintainers, primary developers, and all much-appreciated contributors to ChronoShare in alphabetic order.
+The specific contributions of individual authors can be obtained from the git history of the [official ChronoShare repository](https://github.com/named-data/ChronoShare).
+If you would like to become a contributor to the official repository, please follow the recommendations in https://github.com/named-data/.github/blob/master/CONTRIBUTING.md.
 
-* Zhenkai Zhu           <http://irl.cs.ucla.edu/~zhenkai/>
-* Alexander Afanasyev   <http://lasr.cs.ucla.edu/afanasyev/index.html>
-* Lijing Wang           <wanglj11@mails.tsinghua.edu.cn>
-* Yukai Tu              <ytu@cs.ucla.edu>
-
-## All project authors and contributors
-
-The following is an inevitably incomplete list of MUCH-APPRECIATED CONTRIBUTORS,
-people who have reported bugs, submitted patches, and implemented new features
-in the library:
-
-* Ilya Moiseenko        <http://ilyamoiseenko.com/>
-* Jared Lindblom        <lindblom@cs.ucla.edu>
+* Alexander Afanasyev <https://users.cs.fiu.edu/~afanasyev>
+* Jared Lindblom <https://github.com/jelindblom>
+* Ilya Moiseenko <https://www.linkedin.com/in/ilya-moiseenko-52884317>
+* Eric Newberry <https://ericnewberry.com>
+* Yukai Tu <https://irl.cs.ucla.edu/~yukai>
+* Lijing Wang <https://github.com/PhdLoLi>
+* Yingdi Yu <https://irl.cs.ucla.edu/~yingdi>
+* Zhenkai Zhu <https://irl.cs.ucla.edu/~zhenkai>
